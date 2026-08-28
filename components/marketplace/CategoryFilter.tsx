@@ -48,7 +48,7 @@ export function CategoryFilter({
   return (
     <div className="space-y-3.5">
       {/* Category Pills Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {CATEGORIES.map((cat) => {
           const Icon = cat.icon;
           const isSelected = selectedCategory.toLowerCase() === cat.id.toLowerCase();

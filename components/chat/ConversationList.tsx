@@ -55,7 +55,7 @@ export function ConversationList({
   });
 
   return (
-    <div className="flex h-full flex-col border-r border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <div className="flex h-full flex-col border-r-0 md:border-r border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
       {/* Header & Tabs */}
       <div className="border-b border-slate-200/80 dark:border-slate-800 p-4 space-y-3">
         <div className="flex items-center justify-between">

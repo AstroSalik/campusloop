@@ -88,9 +88,9 @@ export default function ConversationDetailPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 h-[calc(100vh-8.5rem)] min-h-[500px]">
-        <div className="h-full rounded-2xl border border-slate-200 bg-white animate-pulse flex items-center justify-center">
-          <MessageSquare className="h-8 w-8 text-slate-300 animate-spin" />
+      <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100vh-8.5rem)] min-h-[500px]">
+        <div className="h-full rounded-none sm:rounded-2xl border-0 sm:border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse flex items-center justify-center">
+          <MessageSquare className="h-8 w-8 text-slate-300 dark:text-slate-600 animate-spin" />
         </div>
       </div>
     );
@@ -99,11 +99,11 @@ export default function ConversationDetailPage() {
   if (!conversation) {
     return (
       <div className="container mx-auto max-w-md px-4 py-16 text-center space-y-4">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
           <MessageSquare className="h-8 w-8" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Conversation Not Found</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Conversation Not Found</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           This thread may have been archived or is no longer accessible.
         </p>
         <Button asChild>
@@ -114,8 +114,8 @@ export default function ConversationDetailPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 h-[calc(100vh-8.5rem)] min-h-[500px]">
-      <div className="h-full rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden flex flex-col md:flex-row">
+    <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100vh-8.5rem)] min-h-[500px]">
+      <div className="h-full rounded-none sm:rounded-2xl border-0 sm:border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-none sm:shadow-xs overflow-hidden flex flex-col md:flex-row">
         {/* Left Pane: Conversation List (hidden on mobile when inside thread) */}
         <div className="hidden md:block w-80 lg:w-96 h-full shrink-0">
           <ConversationList
@@ -126,7 +126,7 @@ export default function ConversationDetailPage() {
         </div>
 
         {/* Right Pane: Active Chat Room */}
-        <div className="flex-1 flex flex-col h-full bg-white">
+        <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-900">
           {/* Linked Context Header (Marketplace Item / Room Card with Rent Health Link) */}
           <ChatContextHeader conversation={conversation} />
 
