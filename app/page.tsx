@@ -85,62 +85,93 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-8">
-      {/* 1. Welcome & Campus Header */}
-      <div className="rounded-2xl bg-gradient-to-r from-primary/15 via-slate-50 dark:via-slate-900/80 to-primary/10 border border-primary/20 dark:border-primary/30 p-6 sm:p-8 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 dark:bg-primary/20 px-2.5 py-0.5 rounded-full border border-primary/20 dark:border-primary/30">
-                Active Student
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5 text-primary" />
-                Demo Campus (Sopore)
-              </span>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white" suppressHydrationWarning>
-              Welcome back, {mounted ? currentUser.name.split(" ")[0] : "Student"} 👋
-            </h1>
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-2xl">
-              Your unified campus hub for buying & selling student items, finding verified flats, and calculating transparent rent splits.
-            </p>
-          </div>
-
-          {/* Quick Stats Banner */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 p-3 shadow-2xs text-center min-w-[100px]">
-              <span className="text-xs text-slate-400 font-medium block">Marketplace</span>
-              <span className="text-lg font-bold text-slate-900 dark:text-white">{listings.length || 20} Items</span>
-            </div>
-            <div className="rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 p-3 shadow-2xs text-center min-w-[100px]">
-              <span className="text-xs text-slate-400 font-medium block">Flats & PGs</span>
-              <span className="text-lg font-bold text-slate-900 dark:text-white">{rooms.length || 8} Rooms</span>
-            </div>
-            <div className="rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 p-3 shadow-2xs text-center min-w-[100px]">
-              <span className="text-xs text-slate-400 font-medium block">Flatmates</span>
-              <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">10 Looking</span>
-            </div>
-          </div>
+      {/* 1. Seamless Blended Hero Section */}
+      <div className="relative pt-6 pb-16 lg:pt-12 lg:pb-24 overflow-hidden">
+        {/* Subtle background glow/blend */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[100px] opacity-60 dark:opacity-40" />
+          <div className="absolute top-32 -right-32 w-[30rem] h-[30rem] bg-indigo-500/10 rounded-full blur-[120px] opacity-60 dark:opacity-40" />
         </div>
 
-        {/* 2. Global Search Bar */}
-        <form onSubmit={handleSearch} className="mt-6 max-w-2xl relative">
-          <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Search cycles, study tables, kettles, books, or 2BHK flats..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-11 pr-24 h-12 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white text-sm shadow-xs border-slate-200 focus-visible:ring-primary rounded-xl"
-          />
-          <Button
-            type="submit"
-            size="sm"
-            className="absolute right-1.5 top-1.5 h-9 px-4 rounded-lg shadow-xs"
-          >
-            Search
-          </Button>
-        </form>
+        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-12">
+          <div className="max-w-2xl space-y-8 flex-1">
+            <div className="flex flex-wrap items-center gap-3 text-sm font-semibold">
+              <span className="text-primary bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20 flex items-center gap-1.5 shadow-sm">
+                <Sparkles className="w-4 h-4" />
+                {mounted ? `Welcome back, ${currentUser.name.split(" ")[0]} 👋` : "Welcome to CampusLoop"}
+              </span>
+            </div>
+
+            <h1 className="text-5xl sm:text-6xl lg:text-[4.5rem] font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.05]" suppressHydrationWarning>
+              Your Unified <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">
+                Campus Hub.
+              </span>
+            </h1>
+            
+            <p className="text-lg text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
+              Buy & sell items, find verified student housing, and calculate transparent rent splits—all in one place designed exclusively for your campus.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+               <Button size="lg" asChild className="rounded-full h-14 px-8 text-base font-bold shadow-lg shadow-primary/25 group">
+                 <Link href="/marketplace">
+                   Start Exploring
+                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                 </Link>
+               </Button>
+               <Button variant="outline" size="lg" asChild className="rounded-full h-14 px-8 text-base font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800">
+                 <Link href="/marketplace/new">
+                   Post an Item
+                 </Link>
+               </Button>
+            </div>
+            
+            {/* Relevant Stats/Trust Indicators */}
+            <div className="pt-8 flex items-center gap-8 border-t border-slate-200/60 dark:border-slate-800/60 w-max pr-8">
+              <div>
+                <div className="text-3xl font-black text-slate-900 dark:text-white">100%</div>
+                <div className="text-sm font-semibold text-slate-500 mt-1 uppercase tracking-wider">Student Verified</div>
+              </div>
+              <div className="w-px h-10 bg-slate-200 dark:bg-slate-800" />
+              <div>
+                <div className="text-3xl font-black text-slate-900 dark:text-white">0%</div>
+                <div className="text-sm font-semibold text-slate-500 mt-1 uppercase tracking-wider">Brokerage Fees</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right side floating UI showcase */}
+          <div className="w-full max-w-lg lg:w-[45%] relative z-20 mt-8 lg:mt-0 px-4 sm:px-8 lg:px-0">
+             <div className="relative">
+                {/* Main showcase image (a cool campus or room photo) */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-3 shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800 transform lg:rotate-2 hover:rotate-0 transition-transform duration-500">
+                  <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=2340&auto=format&fit=crop" className="w-full h-64 sm:h-80 lg:h-[340px] object-cover rounded-[1.5rem]" alt="Modern Student Room" />
+                  
+                  {/* Floating elements simulating app UI */}
+                  <div className="absolute -left-4 sm:-left-10 top-12 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3 animate-[bounce_4s_infinite]">
+                    <div className="bg-emerald-100 dark:bg-emerald-900/40 p-2 sm:p-2.5 rounded-xl text-emerald-600 dark:text-emerald-400">
+                      <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Verified Flatmate</div>
+                      <div className="text-[10px] sm:text-xs text-slate-500">Looking for 1 room</div>
+                    </div>
+                  </div>
+                  
+                  <div className="absolute -right-4 sm:-right-8 bottom-12 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3 animate-[bounce_5s_infinite]" style={{ animationDelay: '1s' }}>
+                    <div className="bg-primary/15 p-2 sm:p-2.5 rounded-xl text-primary">
+                      <Bike className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">₹3,500</div>
+                      <div className="text-[10px] sm:text-xs text-slate-500">Listed on campus</div>
+                    </div>
+                  </div>
+                </div>
+             </div>
+          </div>
+        </div>
       </div>
 
       {/* 2.5 Quick Options Mode Switcher Bar */}
