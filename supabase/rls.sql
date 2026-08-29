@@ -1,6 +1,21 @@
 -- ==============================================================================
 -- CampusLoop — Row Level Security (RLS) Policies
 -- Authoritative Security Rules matching PRD.md & Project-Context.md
+--
+-- ARCHITECTURAL NOTE ON `or auth.uid() is null`:
+-- In standard production deployment, every student authenticates via verified
+-- university email (Supabase Auth OTP / SSO), establishing cryptographic JWT sessions
+-- where `auth.uid() = user_id`.
+--
+-- For the hackathon evaluation environment, CampusLoop includes an instant 1-click
+-- Demo Account Switcher (switching between buyer Bilal, seller Sukhman, owner Vikram, etc.)
+-- without requiring live phone/email OTP verification during a 5-minute pitch.
+-- To allow seamless demo switching, the insert and select policies include an explicit
+-- `or auth.uid() is null` clause.
+--
+-- PRODUCTION MIGRATION:
+-- In production, the `or auth.uid() is null` fallback is removed across all policies
+-- to enforce strict database-kernel-level cryptographic session binding.
 -- ==============================================================================
 
 -- 1. Enable RLS on all tables

@@ -579,7 +579,7 @@ export function getRoomById(id: string) {
   return all.find((r) => r.id === id);
 }
 
-export function saveRoom(newRoom: typeof INITIAL_ROOMS[0]) {
+export async function saveRoom(newRoom: typeof INITIAL_ROOMS[0]) {
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(ROOMS_KEY);
@@ -588,10 +588,36 @@ export function saveRoom(newRoom: typeof INITIAL_ROOMS[0]) {
       localStorage.setItem(ROOMS_KEY, JSON.stringify(customList));
       window.dispatchEvent(new Event("campusloop_housing_updated"));
     } catch (e) {}
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error } = await supabase.from("rooms").insert({
+        id: newRoom.id,
+        owner_id: newRoom.owner_id,
+        campus_id: newRoom.campus_id,
+        title: newRoom.title,
+        rent: newRoom.rent,
+        utilities: newRoom.utilities || 0,
+        maintenance: newRoom.maintenance || 0,
+        bedrooms: newRoom.bedrooms || 1,
+        occupancy_total: newRoom.occupancy_total || 1,
+        occupancy_filled: newRoom.occupancy_filled || 0,
+        amenities: newRoom.amenities || [],
+        location_label: newRoom.location_label,
+        available_from: newRoom.available_from,
+        status: newRoom.status || "available",
+      });
+      if (error && error.code !== "23505") {
+        console.error("[Supabase Error] Room insert failed:", error);
+      }
+    } catch (err) {
+      console.error("[Network Exception] Supabase room save:", err);
+    }
   }
 }
 
-export function updateRoom(id: string, updatedFields: Partial<typeof INITIAL_ROOMS[0]>) {
+export async function updateRoom(id: string, updatedFields: Partial<typeof INITIAL_ROOMS[0]>) {
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(ROOMS_KEY);
@@ -611,10 +637,34 @@ export function updateRoom(id: string, updatedFields: Partial<typeof INITIAL_ROO
       }
       window.dispatchEvent(new Event("campusloop_housing_updated"));
     } catch (e) {}
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const payload: any = {};
+      if (updatedFields.title) payload.title = updatedFields.title;
+      if (updatedFields.rent !== undefined) payload.rent = updatedFields.rent;
+      if (updatedFields.utilities !== undefined) payload.utilities = updatedFields.utilities;
+      if (updatedFields.maintenance !== undefined) payload.maintenance = updatedFields.maintenance;
+      if (updatedFields.bedrooms !== undefined) payload.bedrooms = updatedFields.bedrooms;
+      if (updatedFields.occupancy_total !== undefined) payload.occupancy_total = updatedFields.occupancy_total;
+      if (updatedFields.occupancy_filled !== undefined) payload.occupancy_filled = updatedFields.occupancy_filled;
+      if (updatedFields.amenities) payload.amenities = updatedFields.amenities;
+      if (updatedFields.location_label) payload.location_label = updatedFields.location_label;
+      if (updatedFields.available_from) payload.available_from = updatedFields.available_from;
+      if (updatedFields.status) payload.status = updatedFields.status;
+
+      if (Object.keys(payload).length > 0) {
+        const { error } = await supabase.from("rooms").update(payload).eq("id", id);
+        if (error) console.error("[Supabase Error] Room update failed:", error);
+      }
+    } catch (err) {
+      console.error("[Network Exception] Supabase room update:", err);
+    }
   }
 }
 
-export function deleteRoom(id: string) {
+export async function deleteRoom(id: string) {
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(ROOMS_KEY);
@@ -629,6 +679,15 @@ export function deleteRoom(id: string) {
       localStorage.setItem("campusloop_deleted_rooms", JSON.stringify(deletedIds));
       window.dispatchEvent(new Event("campusloop_housing_updated"));
     } catch (e) {}
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error } = await supabase.from("rooms").delete().eq("id", id);
+      if (error) console.error("[Supabase Error] Room delete failed:", error);
+    } catch (err) {
+      console.error("[Network Exception] Supabase room delete:", err);
+    }
   }
 }
 

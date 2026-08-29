@@ -419,7 +419,7 @@ export async function getOrCreateMarketplaceConversation(
   const buyer = getDemoUserById(buyerId) || PRIMARY_DEMO_USER;
   const seller = getDemoUserById(sellerId) || getDemoUserById(listing?.seller_id || "") || PRIMARY_DEMO_USER;
 
-  const newConvId = `conv-dm-${listingId}-${Date.now().toString(36)}`;
+  const newConvId = `conv-dm-${listingId}-${buyerId}`;
 
   const listingTitle = listing?.title || "Marketplace Item";
   const listingSubtitle = listing 
@@ -474,13 +474,31 @@ export async function getOrCreateMarketplaceConversation(
       listing_id: listing ? listingId : null,
       type: "marketplace_dm",
     });
-    if (convErr) console.warn("Supabase marketplace conversation insert:", convErr);
+
+    if (convErr) {
+      if (convErr.code === "23505" || convErr.message?.includes("duplicate") || convErr.message?.includes("unique")) {
+        console.warn(`[Race Condition Handled] Existing marketplace conversation for listing ${listingId}.`);
+      } else {
+        console.error("[Supabase Error] Marketplace conversation insert failed:", {
+          operation: "getOrCreateMarketplaceConversation",
+          listingId,
+          buyerId,
+          sellerId,
+          error: convErr,
+        });
+      }
+    }
 
     const { error: memErr } = await supabase.from("conversation_members").insert([
       { conversation_id: newConvId, user_id: seller.id, role: "seller" },
       { conversation_id: newConvId, user_id: buyer.id, role: "buyer" },
     ]);
-    if (memErr) console.warn("Supabase marketplace members insert:", memErr);
+    if (memErr && memErr.code !== "23505") {
+      console.error("[Supabase Error] Marketplace members insert failed:", {
+        conversationId: newConvId,
+        error: memErr,
+      });
+    }
 
     const { error: msgErr } = await supabase.from("messages").insert({
       id: `msg-${Date.now()}`,
@@ -488,9 +506,18 @@ export async function getOrCreateMarketplaceConversation(
       sender_id: buyer.id,
       content: initialMsg,
     });
-    if (msgErr) console.warn("Supabase marketplace initial message insert:", msgErr);
+    if (msgErr) {
+      console.error("[Supabase Error] Marketplace initial message insert failed:", {
+        conversationId: newConvId,
+        error: msgErr,
+      });
+    }
   } catch (e) {
-    console.warn("Supabase network exception during marketplace conv creation:", e);
+    console.error("[Network Exception] Supabase marketplace conversation creation:", {
+      listingId,
+      buyerId,
+      exception: e,
+    });
   }
 
   saveConversations([newConv, ...all]);
@@ -522,7 +549,7 @@ export async function getOrCreateRoommateConversation(
     return existing.id;
   }
 
-  const newConvId = `conv-dm-roommate-${Date.now().toString(36)}`;
+  const newConvId = `conv-dm-roommate-${[initiator.id, target.id].sort().join("-")}`;
 
   const newConv: StoredConversation = {
     id: newConvId,
@@ -625,7 +652,7 @@ export async function getOrCreateRoomConversation(
   }
 
   // 2. If no conversation exists yet for this room, create ONE with owner + student
-  const newConvId = `conv-housing-${roomId}-${Date.now().toString(36)}`;
+  const newConvId = `conv-housing-${roomId}`;
   const newConv: StoredConversation = {
     id: newConvId,
     listing_id: null,
@@ -670,13 +697,47 @@ export async function getOrCreateRoomConversation(
       room_id: roomId,
       type: "housing_group",
     });
-    if (convErr) console.warn("Supabase room conversation insert:", convErr);
+
+    if (convErr) {
+      // Step 3 Race Condition Recovery: Unique violation (Postgres error 23505)
+      // If another concurrent request already created the housing_group for this room_id:
+      if (convErr.code === "23505" || convErr.message?.includes("duplicate") || convErr.message?.includes("unique")) {
+        console.warn(`[Race Condition Handled] Concurrent housing_group insert for room ${roomId}. Re-fetching existing thread...`);
+        const { data: existingRemote } = await supabase
+          .from("conversations")
+          .select("id, room_id, type")
+          .eq("room_id", roomId)
+          .eq("type", "housing_group")
+          .maybeSingle();
+
+        if (existingRemote) {
+          // Add this user as member to existing remote conversation
+          await supabase.from("conversation_members").insert({
+            conversation_id: existingRemote.id,
+            user_id: user.id,
+            role: "prospective_roommate",
+          });
+          return existingRemote.id;
+        }
+      }
+      console.error("[Supabase Error] Room conversation creation failed:", {
+        operation: "getOrCreateRoomConversation",
+        roomId,
+        userId,
+        error: convErr,
+      });
+    }
 
     const { error: memErr } = await supabase.from("conversation_members").insert([
       { conversation_id: newConvId, user_id: owner.id, role: "owner" },
       { conversation_id: newConvId, user_id: user.id, role: "prospective_roommate" },
     ]);
-    if (memErr) console.warn("Supabase room members insert:", memErr);
+    if (memErr && memErr.code !== "23505") {
+      console.error("[Supabase Error] Room member insert failed:", {
+        conversationId: newConvId,
+        error: memErr,
+      });
+    }
 
     const { error: msgErr } = await supabase.from("messages").insert({
       id: `msg-${Date.now()}`,
@@ -684,9 +745,18 @@ export async function getOrCreateRoomConversation(
       sender_id: user.id,
       content: `Hi ${owner.name}, I'm interested in "${room?.title}". Is there still a spot open?`,
     });
-    if (msgErr) console.warn("Supabase room initial message insert:", msgErr);
+    if (msgErr) {
+      console.error("[Supabase Error] Room initial message insert failed:", {
+        conversationId: newConvId,
+        error: msgErr,
+      });
+    }
   } catch (e) {
-    console.warn("Supabase network exception during room conv creation:", e);
+    console.error("[Network Exception] Supabase room conversation creation:", {
+      roomId,
+      userId,
+      exception: e,
+    });
   }
 
   saveConversations([newConv, ...all]);
@@ -720,7 +790,7 @@ export async function getOrCreateWantedConversation(
   const provider = getDemoUserById(providerId) || PRIMARY_DEMO_USER;
   const requester = getDemoUserById(requesterId) || getDemoUserById(wanted?.requester_id || "") || PRIMARY_DEMO_USER;
 
-  const newConvId = `conv-wanted-${wantedListingId}-${Date.now().toString(36)}`;
+  const newConvId = `conv-wanted-${wantedListingId}-${provider.id}`;
 
   const title = wanted?.title ? `Wanted: ${wanted.title}` : "Wanted Item Response";
   const subtitle = wanted
@@ -776,13 +846,26 @@ export async function getOrCreateWantedConversation(
         wanted_listing_id: wantedListingId,
         type: "wanted_response",
       });
-      if (convErr) console.warn("Supabase conversation insert error:", convErr);
+      if (convErr && convErr.code !== "23505") {
+        console.error("[Supabase Error] Wanted conversation insert failed:", {
+          operation: "getOrCreateWantedConversation",
+          wantedListingId,
+          providerId,
+          requesterId,
+          error: convErr,
+        });
+      }
 
       const { error: memErr } = await supabase.from("conversation_members").insert([
         { conversation_id: newConvId, user_id: requester.id, role: "buyer" },
         { conversation_id: newConvId, user_id: provider.id, role: "seller" },
       ]);
-      if (memErr) console.warn("Supabase member insert error:", memErr);
+      if (memErr && memErr.code !== "23505") {
+        console.error("[Supabase Error] Wanted conversation members insert failed:", {
+          conversationId: newConvId,
+          error: memErr,
+        });
+      }
 
       const { error: msgErr } = await supabase.from("messages").insert({
         id: `msg-${Date.now()}`,
@@ -790,9 +873,18 @@ export async function getOrCreateWantedConversation(
         sender_id: provider.id,
         content: initialMsg,
       });
-      if (msgErr) console.warn("Supabase initial message insert error:", msgErr);
+      if (msgErr) {
+        console.error("[Supabase Error] Wanted initial message insert failed:", {
+          conversationId: newConvId,
+          error: msgErr,
+        });
+      }
     } catch (e) {
-      console.warn("Supabase network error during wanted conv creation:", e);
+      console.error("[Network Exception] Wanted conversation creation:", {
+        wantedListingId,
+        providerId,
+        exception: e,
+      });
     }
 
   saveConversations([newConv, ...all]);

@@ -510,7 +510,7 @@ export function getListingById(id: string) {
   return all.find((l) => l.id === id);
 }
 
-export function saveListing(newListing: typeof INITIAL_LISTINGS[0]) {
+export async function saveListing(newListing: typeof INITIAL_LISTINGS[0]) {
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -520,10 +520,45 @@ export function saveListing(newListing: typeof INITIAL_LISTINGS[0]) {
     } catch (e) {
       // fallback
     }
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error: listErr } = await supabase.from("listings").insert({
+        id: newListing.id,
+        seller_id: newListing.seller_id,
+        campus_id: newListing.campus_id,
+        title: newListing.title,
+        description: newListing.description,
+        category: newListing.category,
+        type: newListing.type,
+        price: newListing.price,
+        condition: newListing.condition,
+        location_label: newListing.location_label,
+        status: newListing.status || "active",
+      });
+      if (listErr && listErr.code !== "23505") {
+        console.error("[Supabase Error] Listing insert failed:", listErr);
+      }
+
+      if (newListing.images && newListing.images.length > 0) {
+        const imageRows = newListing.images.map((img) => ({
+          id: img.id,
+          listing_id: newListing.id,
+          image_url: img.image_url,
+        }));
+        const { error: imgErr } = await supabase.from("listing_images").insert(imageRows);
+        if (imgErr && imgErr.code !== "23505") {
+          console.error("[Supabase Error] Listing images insert failed:", imgErr);
+        }
+      }
+    } catch (err) {
+      console.error("[Network Exception] Supabase listing save:", err);
+    }
   }
 }
 
-export function updateListing(id: string, updatedFields: Partial<typeof INITIAL_LISTINGS[0]>) {
+export async function updateListing(id: string, updatedFields: Partial<typeof INITIAL_LISTINGS[0]>) {
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -544,10 +579,31 @@ export function updateListing(id: string, updatedFields: Partial<typeof INITIAL_
     } catch (e) {
       // fallback
     }
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const payload: any = {};
+      if (updatedFields.title) payload.title = updatedFields.title;
+      if (updatedFields.description) payload.description = updatedFields.description;
+      if (updatedFields.category) payload.category = updatedFields.category;
+      if (updatedFields.type) payload.type = updatedFields.type;
+      if (updatedFields.price !== undefined) payload.price = updatedFields.price;
+      if (updatedFields.condition) payload.condition = updatedFields.condition;
+      if (updatedFields.location_label) payload.location_label = updatedFields.location_label;
+      if (updatedFields.status) payload.status = updatedFields.status;
+
+      if (Object.keys(payload).length > 0) {
+        const { error } = await supabase.from("listings").update(payload).eq("id", id);
+        if (error) console.error("[Supabase Error] Listing update failed:", error);
+      }
+    } catch (err) {
+      console.error("[Network Exception] Supabase listing update:", err);
+    }
   }
 }
 
-export function deleteListing(id: string) {
+export async function deleteListing(id: string) {
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -562,6 +618,15 @@ export function deleteListing(id: string) {
       }
       localStorage.setItem("campusloop_deleted_listings", JSON.stringify(deletedIds));
     } catch (e) {}
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error } = await supabase.from("listings").delete().eq("id", id);
+      if (error) console.error("[Supabase Error] Listing delete failed:", error);
+    } catch (err) {
+      console.error("[Network Exception] Supabase listing delete:", err);
+    }
   }
 }
 
