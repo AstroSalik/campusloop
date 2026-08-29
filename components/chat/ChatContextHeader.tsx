@@ -91,30 +91,30 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
         </div>
 
         {/* Right: Quick Action Buttons (Flow C: Deep-link to Rent Health & Itinerary) */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
           {room && (
-            <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-primary/30 text-primary dark:text-teal-300 hover:bg-primary/5 dark:hover:bg-primary/20">
+            <Button asChild variant="outline" size="sm" className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1 border-primary/30 text-primary dark:text-teal-300 hover:bg-primary/5 dark:hover:bg-primary/20 bg-transparent">
               <Link href={`/rent?room=${room.id}`}>
-                <Percent className="h-3.5 w-3.5" />
-                Calculate Rent Health
+                <Percent className="h-3 w-3" />
+                Rent Health
               </Link>
             </Button>
           )}
 
           {listing && (
-            <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+            <Button asChild variant="outline" size="sm" className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
               <Link href={`/marketplace/${listing.id}`}>
-                <ExternalLink className="h-3.5 w-3.5" />
+                <ExternalLink className="h-3 w-3" />
                 View Listing
               </Link>
             </Button>
           )}
 
           {room && (
-            <Button asChild size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+            <Button asChild size="sm" className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
               <Link href={`/housing/${room.id}`}>
-                <Building2 className="h-3.5 w-3.5" />
-                View Spots & Itinerary
+                <Building2 className="h-3 w-3" />
+                Spots & Itinerary
               </Link>
             </Button>
           )}

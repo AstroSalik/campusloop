@@ -27,10 +27,10 @@ export function MessageThread({ conversation, currentUserId }: MessageThreadProp
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/50">
+    <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 bg-slate-50/50 dark:bg-slate-950">
       {/* Starting timestamp indicator */}
-      <div className="flex justify-center my-2">
-        <span className="text-[11px] font-medium bg-slate-200/70 text-slate-600 px-3 py-1 rounded-full shadow-2xs">
+      <div className="flex justify-center my-1.5">
+        <span className="text-[11px] font-medium bg-slate-200/70 dark:bg-slate-800/90 text-slate-600 dark:text-slate-400 border border-transparent dark:border-slate-700/60 px-3 py-1 rounded-full shadow-2xs">
           Conversation started • {new Date(conversation.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
         </span>
       </div>
@@ -51,27 +51,27 @@ export function MessageThread({ conversation, currentUserId }: MessageThreadProp
           >
             {/* Other User Avatar */}
             {!isMe && (
-              <Avatar className="h-8 w-8 shrink-0 border border-slate-200 shadow-2xs mb-1">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+              <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-teal-500/30 shadow-2xs mb-1">
+                <AvatarFallback className="bg-primary/10 dark:bg-teal-950 text-primary dark:text-teal-300 text-xs font-bold">
                   {sender.initials}
                 </AvatarFallback>
               </Avatar>
             )}
 
-            <div className={`max-w-[80%] sm:max-w-[70%] space-y-1 ${isMe ? "items-end text-right" : "items-start text-left"}`}>
+            <div className={`max-w-[85%] sm:max-w-[70%] space-y-1 ${isMe ? "items-end text-right" : "items-start text-left"}`}>
               {/* Sender Name in Group Chat */}
               {!isMe && (
                 <div className="flex items-center gap-1.5 px-1">
-                  <span className="text-xs font-bold text-slate-800">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     {sender.name}
                   </span>
                   {sender.role === "owner" && (
-                    <span className="text-[9px] font-bold uppercase bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded">
+                    <span className="text-[9px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 px-1.5 py-0.2 rounded">
                       Owner
                     </span>
                   )}
                   {sender.role === "seller" && (
-                    <span className="text-[9px] font-bold uppercase bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded">
+                    <span className="text-[9px] font-bold uppercase bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800 px-1.5 py-0.2 rounded">
                       Seller
                     </span>
                   )}
@@ -82,15 +82,15 @@ export function MessageThread({ conversation, currentUserId }: MessageThreadProp
               <div
                 className={`rounded-2xl px-4 py-2.5 text-sm shadow-xs leading-relaxed ${
                   isMe
-                    ? "bg-primary text-white rounded-br-xs font-normal"
-                    : "bg-white text-slate-900 border border-slate-200/80 rounded-bl-xs"
+                    ? "bg-primary dark:bg-teal-600 text-white rounded-br-xs font-normal"
+                    : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 rounded-bl-xs"
                 }`}
               >
                 <p className="whitespace-pre-line">{msg.content}</p>
               </div>
 
               {/* Timestamp */}
-              <span className="text-[10px] text-slate-400 px-1 block">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1 block">
                 {timeFormatted}
               </span>
             </div>

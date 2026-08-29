@@ -83,11 +83,11 @@ export function MessageInput({
   };
 
   return (
-    <div className="border-t border-slate-200/80 bg-white p-3 sm:p-4 space-y-2.5">
+    <div className="border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 sm:p-4 space-y-2.5">
       {/* Quick Prompt Chips */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-        <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0 flex items-center gap-1">
-          <Sparkles className="h-3 w-3 text-primary" />
+        <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-teal-400 shrink-0 flex items-center gap-1">
+          <Sparkles className="h-3 w-3 text-primary dark:text-teal-400" />
           {isOwnerOrSeller ? "Seller Quick Reply:" : "Quick Reply:"}
         </span>
         {quickPrompts.map((p, idx) => (
@@ -95,7 +95,7 @@ export function MessageInput({
             key={idx}
             type="button"
             onClick={() => handleQuickPrompt(p)}
-            className="text-xs shrink-0 rounded-full bg-slate-100 px-3 py-1 text-slate-700 hover:bg-primary/10 hover:text-primary transition-colors border border-slate-200/60"
+            className="text-xs shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-slate-700 dark:text-slate-200 hover:bg-primary/10 dark:hover:bg-slate-700 hover:text-primary dark:hover:text-teal-300 transition-colors border border-slate-200/60 dark:border-slate-700 font-medium"
           >
             {p}
           </button>
@@ -109,13 +109,13 @@ export function MessageInput({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           disabled={disabled}
-          className="h-10 bg-slate-50 border-slate-200 text-sm focus-visible:bg-white"
+          className="h-10 bg-slate-50 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-800"
         />
         <Button
           type="submit"
           size="sm"
           disabled={disabled || !content.trim()}
-          className="h-10 px-4 shrink-0 shadow-xs"
+          className="h-10 px-4 shrink-0 bg-primary dark:bg-teal-600 hover:dark:bg-teal-500 text-white font-bold shadow-xs"
         >
           <Send className="h-4 w-4" />
           <span className="sr-only">Send</span>
