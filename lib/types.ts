@@ -85,6 +85,7 @@ export interface Room {
   status: RoomStatus;
   created_at?: string;
   owner?: User;
+  images?: { id: string; room_id: string; image_url: string }[];
   booked_users?: BookedUser[];
   interested_users?: InterestedUser[];
 }

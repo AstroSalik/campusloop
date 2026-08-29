@@ -18,6 +18,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 3",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 4).toISOString(),
+    images: [
+      {
+        id: "img-l01",
+        listing_id: "l01-study-table",
+        image_url: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l02-bajaj-lamp",
@@ -35,6 +42,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 1",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 3.5).toISOString(),
+    images: [
+      {
+        id: "img-l02",
+        listing_id: "l02-bajaj-lamp",
+        image_url: "https://images.unsplash.com/photo-1534353436294-0dbd4bdac845?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l03-firefox-cycle",
@@ -52,6 +66,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 5",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
+    images: [
+      {
+        id: "img-l03",
+        listing_id: "l03-firefox-cycle",
+        image_url: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l04-mini-fridge",
@@ -69,6 +90,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Lovely Nagar PG",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 2.8).toISOString(),
+    images: [
+      {
+        id: "img-l04",
+        listing_id: "l04-mini-fridge",
+        image_url: "https://images.unsplash.com/photo-1584992236310-6edddc08acff?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l05-scientific-calc",
@@ -86,6 +114,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 2",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 2.5).toISOString(),
+    images: [
+      {
+        id: "img-l05",
+        listing_id: "l05-scientific-calc",
+        image_url: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l06-single-mattress",
@@ -103,6 +138,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 3",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 2.2).toISOString(),
+    images: [
+      {
+        id: "img-l06",
+        listing_id: "l06-single-mattress",
+        image_url: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l07-mechanics-book",
@@ -120,6 +162,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 1",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 2.0).toISOString(),
+    images: [
+      {
+        id: "img-l07",
+        listing_id: "l07-mechanics-book",
+        image_url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l08-jbl-speaker",
@@ -137,6 +186,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 5",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 1.8).toISOString(),
+    images: [
+      {
+        id: "img-l08",
+        listing_id: "l08-jbl-speaker",
+        image_url: "https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l09-steel-cupboard",
@@ -154,6 +210,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Lovely Nagar PG",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 1.5).toISOString(),
+    images: [
+      {
+        id: "img-l09",
+        listing_id: "l09-steel-cupboard",
+        image_url: "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l10-induction-cooktop",
@@ -171,6 +234,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 2",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 1.3).toISOString(),
+    images: [
+      {
+        id: "img-l10",
+        listing_id: "l10-induction-cooktop",
+        image_url: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l11-geared-cycle",
@@ -188,6 +258,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Main Gate PG",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 1.0).toISOString(),
+    images: [
+      {
+        id: "img-l11",
+        listing_id: "l11-geared-cycle",
+        image_url: "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l12-iron-box",
@@ -205,6 +282,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 3",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 0.9).toISOString(),
+    images: [
+      {
+        id: "img-l12",
+        listing_id: "l12-iron-box",
+        image_url: "https://images.unsplash.com/photo-1585659722983-3a675dabf23d?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l13-cormen-algo",
@@ -222,6 +306,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 1",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 0.8).toISOString(),
+    images: [
+      {
+        id: "img-l13",
+        listing_id: "l13-cormen-algo",
+        image_url: "https://images.unsplash.com/photo-1532012164546-f432f2e37271?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l14-desk-chair",
@@ -239,6 +330,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 5",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 0.7).toISOString(),
+    images: [
+      {
+        id: "img-l14",
+        listing_id: "l14-desk-chair",
+        image_url: "https://images.unsplash.com/photo-1580481077111-2b08a9fa6600?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l15-electric-kettle",
@@ -256,6 +354,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Lovely Nagar PG",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 0.6).toISOString(),
+    images: [
+      {
+        id: "img-l15",
+        listing_id: "l15-electric-kettle",
+        image_url: "https://images.unsplash.com/photo-1594213114663-d94db9b17125?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l16-wall-clock",
@@ -273,6 +378,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 2",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 0.5).toISOString(),
+    images: [
+      {
+        id: "img-l16",
+        listing_id: "l16-wall-clock",
+        image_url: "https://images.unsplash.com/photo-1563861826100-9cb868fdbe1c?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l17-badminton-set",
@@ -290,6 +402,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Main Gate PG",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 0.4).toISOString(),
+    images: [
+      {
+        id: "img-l17",
+        listing_id: "l17-badminton-set",
+        image_url: "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l18-table-fan",
@@ -307,6 +426,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 3",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 0.3).toISOString(),
+    images: [
+      {
+        id: "img-l18",
+        listing_id: "l18-table-fan",
+        image_url: "https://images.unsplash.com/photo-1618941716939-553df3c6c278?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l19-laptop-stand",
@@ -324,6 +450,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 1",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 0.2).toISOString(),
+    images: [
+      {
+        id: "img-l19",
+        listing_id: "l19-laptop-stand",
+        image_url: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
   {
     id: "l20-curtains",
@@ -341,6 +474,13 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
     location_label: "Hostel 5",
     status: "active",
     created_at: new Date(Date.now() - 3600000 * 24 * 0.1).toISOString(),
+    images: [
+      {
+        id: "img-l20",
+        listing_id: "l20-curtains",
+        image_url: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
   },
 ];
 

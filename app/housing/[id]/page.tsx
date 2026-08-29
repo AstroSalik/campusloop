@@ -324,36 +324,61 @@ export default function RoomDetailPage({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left 2 Cols: Details, Live Spot Itinerary, and Breakdown */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Header Banner */}
+          {/* Header Banner with Room Photo */}
           <div className="relative h-64 sm:h-80 w-full rounded-2xl bg-gradient-to-br from-primary/10 via-slate-50 dark:via-slate-900/80 to-primary/5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-            <Building2 className="h-16 w-16 text-primary/70 dark:text-teal-400/80 mb-3" />
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              {room.title}
-            </h2>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1 flex items-center gap-1.5">
-              <MapPin className="h-4 w-4 text-primary dark:text-teal-400" />
-              {room.location_label} • Available from {room.available_from}
-            </p>
+            {room.images && room.images.length > 0 ? (
+              <>
+                <img
+                  src={room.images[0].image_url}
+                  alt={room.title}
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = "none";
+                  }}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-slate-950/30" />
+                <div className="relative z-10 space-y-1 text-white">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">
+                    {room.title}
+                  </h2>
+                  <p className="text-sm font-medium text-slate-200 flex items-center justify-center gap-1.5 drop-shadow-sm">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    {room.location_label} • Available from {room.available_from}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="relative z-10">
+                <Building2 className="h-16 w-16 text-primary/70 dark:text-teal-400/80 mb-3 mx-auto" />
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  {room.title}
+                </h2>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1 flex items-center justify-center gap-1.5">
+                  <MapPin className="h-4 w-4 text-primary dark:text-teal-400" />
+                  {room.location_label} • Available from {room.available_from}
+                </p>
+              </div>
+            )}
 
-            <div className="absolute top-4 left-4">
+            <div className="absolute top-4 left-4 z-20">
               <Badge className="bg-primary text-white shadow-xs">
                 {room.bedrooms} BHK Unit
               </Badge>
             </div>
 
-            <div className="absolute top-4 right-4 flex items-center gap-2">
+            <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
               {activeInterests.length > 0 && !isFull && (
-                <Badge variant="outline" className="bg-orange-50 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800 shadow-2xs font-semibold">
-                  <Flame className="h-3 w-3 mr-1 text-orange-500 fill-orange-500" />
+                <Badge variant="outline" className="bg-orange-500/90 backdrop-blur text-white border-transparent shadow-xs font-semibold">
+                  <Flame className="h-3 w-3 mr-1 text-amber-200 fill-amber-200" />
                   {activeInterests.length} Interested
                 </Badge>
               )}
               <Badge
                 variant="outline"
-                className={`shadow-2xs font-semibold ${
+                className={`shadow-xs font-semibold ${
                   isFull
-                    ? "bg-red-50 dark:bg-red-950/80 border-red-200 text-red-700 dark:text-red-300"
-                    : "bg-white/90 dark:bg-slate-800/90 backdrop-blur border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    ? "bg-red-600/90 text-white border-transparent"
+                    : "bg-white/95 dark:bg-slate-800/95 backdrop-blur border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                 }`}
               >
                 <Users className="h-3 w-3 mr-1 inline-block" />

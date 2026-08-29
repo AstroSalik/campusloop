@@ -29,13 +29,24 @@ export function RoomCard({ room }: RoomCardProps) {
       <Card className="h-full overflow-hidden border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-primary/40 dark:hover:border-primary/50 flex flex-col justify-between">
         <div>
           {/* Header Graphic / Image Area */}
-          <div className="relative h-44 w-full bg-gradient-to-br from-primary/5 dark:from-primary/15 to-slate-100 dark:to-slate-800 flex items-center justify-center border-b border-slate-100 dark:border-slate-800 group-hover:from-primary/10 transition-colors">
-            <div className="flex flex-col items-center space-y-1 text-center p-4">
-              <Building2 className="h-10 w-10 text-primary/60 dark:text-primary/80 group-hover:scale-105 transition-transform" />
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                {room.bedrooms} BHK Accommodation
-              </span>
-            </div>
+          <div className="relative h-44 w-full bg-gradient-to-br from-primary/5 dark:from-primary/15 to-slate-100 dark:to-slate-800 flex items-center justify-center border-b border-slate-100 dark:border-slate-800 overflow-hidden group-hover:from-primary/10 transition-colors">
+            {room.images && room.images.length > 0 ? (
+              <img
+                src={room.images[0].image_url}
+                alt={room.title}
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = "none";
+                }}
+                className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <div className="flex flex-col items-center space-y-1 text-center p-4">
+                <Building2 className="h-10 w-10 text-primary/60 dark:text-primary/80 group-hover:scale-105 transition-transform" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                  {room.bedrooms} BHK Accommodation
+                </span>
+              </div>
+            )}
 
             {/* Occupancy Status Badge */}
             <div className="absolute top-3 left-3 flex items-center gap-1.5">

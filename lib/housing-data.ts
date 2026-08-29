@@ -29,6 +29,13 @@ export const INITIAL_ROOMS: (Room & {
     available_from: "Sept 1st",
     status: "available",
     created_at: new Date(Date.now() - 3600000 * 24 * 5).toISOString(),
+    images: [
+      {
+        id: "img-r01",
+        room_id: "r01-main-gate-2bhk",
+        image_url: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1000&q=80",
+      },
+    ],
     booked_users: [
       {
         user_id: DEMO_USERS[2].id, // Salik Riyaz
@@ -85,6 +92,13 @@ export const INITIAL_ROOMS: (Room & {
     available_from: "Immediate",
     status: "available",
     created_at: new Date(Date.now() - 3600000 * 24 * 4.5).toISOString(),
+    images: [
+      {
+        id: "img-r02",
+        room_id: "r02-hostel2-single",
+        image_url: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=1000&q=80",
+      },
+    ],
     booked_users: [],
     interested_users: [
       {
@@ -116,6 +130,13 @@ export const INITIAL_ROOMS: (Room & {
     available_from: "Sept 15th",
     status: "available",
     created_at: new Date(Date.now() - 3600000 * 24 * 4).toISOString(),
+    images: [
+      {
+        id: "img-r03",
+        room_id: "r03-shared-flat-3bhk",
+        image_url: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
+      },
+    ],
     booked_users: [
       {
         user_id: DEMO_USERS[4].id, // Vikram Iyer
@@ -172,6 +193,13 @@ export const INITIAL_ROOMS: (Room & {
     available_from: "Immediate",
     status: "available",
     created_at: new Date(Date.now() - 3600000 * 24 * 3.5).toISOString(),
+    images: [
+      {
+        id: "img-r04",
+        room_id: "r04-twin-sharing-pg",
+        image_url: "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1000&q=80",
+      },
+    ],
     booked_users: [
       {
         user_id: DEMO_USERS[3].id, // Sana Wani
@@ -203,6 +231,13 @@ export const INITIAL_ROOMS: (Room & {
     available_from: "Oct 1st",
     status: "available",
     created_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
+    images: [
+      {
+        id: "img-r05",
+        room_id: "r05-studio-1bhk",
+        image_url: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1000&q=80",
+      },
+    ],
     booked_users: [],
     interested_users: [
       {
@@ -234,6 +269,13 @@ export const INITIAL_ROOMS: (Room & {
     available_from: "Sept 1st",
     status: "available",
     created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
+    images: [
+      {
+        id: "img-r06",
+        room_id: "r06-hostel5-2bhk",
+        image_url: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1000&q=80",
+      },
+    ],
     booked_users: [
       {
         user_id: DEMO_USERS[0].id, // Bilal Ashiq
@@ -273,6 +315,13 @@ export const INITIAL_ROOMS: (Room & {
     available_from: "Immediate",
     status: "available",
     created_at: new Date(Date.now() - 3600000 * 24 * 1.5).toISOString(),
+    images: [
+      {
+        id: "img-r07",
+        room_id: "r07-triple-sharing-pg",
+        image_url: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=80",
+      },
+    ],
     booked_users: [
       {
         user_id: DEMO_USERS[2].id, // Salik Riyaz
@@ -312,6 +361,13 @@ export const INITIAL_ROOMS: (Room & {
     available_from: "Oct 1st",
     status: "available",
     created_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
+    images: [
+      {
+        id: "img-r08",
+        room_id: "r08-furnished-2bhk",
+        image_url: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1000&q=80",
+      },
+    ],
     booked_users: [
       {
         user_id: DEMO_USERS[3].id, // Sana Wani

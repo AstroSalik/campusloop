@@ -54,7 +54,7 @@ import {
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { getRoommateProfiles, saveRoommateProfile } from "@/lib/housing-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, PRIMARY_DEMO_USER, DEMO_USERS } from "@/lib/auth";
 import { getOrCreateRoommateConversation } from "@/lib/conversations";
 
 const AVAILABLE_TAGS = [
@@ -396,9 +396,20 @@ export default function RoommatesPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-12 w-12 border-2 border-primary/20 dark:border-teal-400/40 shadow-xs">
-                          <AvatarFallback className="bg-primary/10 dark:bg-teal-950/90 text-primary dark:text-teal-300 font-extrabold text-sm">
-                            {p.user_initials || p.user_name[0]}
-                          </AvatarFallback>
+                          {(() => {
+                            const matchedUser = DEMO_USERS.find((u) => u.id === p.user_id);
+                            return matchedUser?.avatar ? (
+                              <img
+                                src={matchedUser.avatar}
+                                alt={p.user_name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <AvatarFallback className="bg-primary/10 dark:bg-teal-950/90 text-primary dark:text-teal-300 font-extrabold text-sm">
+                                {p.user_initials || p.user_name[0]}
+                              </AvatarFallback>
+                            );
+                          })()}
                         </Avatar>
                         <div>
                           <div className="flex items-center gap-1.5">
