@@ -93,12 +93,15 @@ export function setClientDemoSession(user: DemoUser | User) {
           : user.name
               .split(" ")
               .map((n) => n[0])
-              .join(""),
+              .join("")
+              .substring(0, 2)
+              .toUpperCase(),
       role_desc:
         "role_desc" in user ? (user as DemoUser).role_desc : "Student Account",
     };
     localStorage.setItem("campusloop_user", JSON.stringify(demoUser));
     document.cookie = `campusloop_demo_user_id=${user.id}; path=/; max-age=86400; SameSite=Lax`;
+    window.dispatchEvent(new Event("campusloop_auth_changed"));
   }
 }
 
@@ -106,25 +109,36 @@ export function getClientDemoSession(): DemoUser | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem("campusloop_user");
+    if (raw === "LOGGED_OUT") return null;
     if (raw) {
       const parsed = JSON.parse(raw);
       const matched = getDemoUserById(parsed.id);
-      if (matched) return matched;
       return {
+        ...(matched || {}),
         ...parsed,
-        initials: parsed.initials || parsed.name?.[0] || "S",
-        role_desc: parsed.role_desc || "Student Account",
+        initials:
+          parsed.initials ||
+          (parsed.name
+            ? parsed.name
+                .split(" ")
+                .map((n: string) => n[0])
+                .join("")
+                .substring(0, 2)
+                .toUpperCase()
+            : "S"),
+        role_desc: parsed.role_desc || matched?.role_desc || "Student Account",
       };
     }
   } catch (e) {
     // fallback
   }
-  return PRIMARY_DEMO_USER;
+  return null;
 }
 
 export function clearClientDemoSession() {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("campusloop_user");
+    localStorage.setItem("campusloop_user", "LOGGED_OUT");
     document.cookie = `campusloop_demo_user_id=; path=/; max-age=0; SameSite=Lax`;
+    window.dispatchEvent(new Event("campusloop_auth_changed"));
   }
 }

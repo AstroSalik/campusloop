@@ -59,12 +59,15 @@ import {
   markUserInterested, 
   withdrawUserInterest, 
   bookRoomSpot, 
-  cancelRoomBooking,
   filterActiveInterests
 } from "@/lib/housing-data";
 import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
 import { getOrCreateRoomConversation } from "@/lib/conversations";
 import { calculateSplit, evaluateRentHealth } from "@/lib/rent-engine";
+import { RazorpayCheckoutModal } from "@/components/payments/RazorpayCheckoutModal";
+import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
+import { CancelBookingDialog } from "@/components/housing/CancelBookingDialog";
+import { PaymentTransaction } from "@/lib/razorpay-service";
 
 export default function RoomDetailPage({
   params,
@@ -76,6 +79,11 @@ export default function RoomDetailPage({
   const [room, setRoom] = useState<ReturnType<typeof getRoomById> | null>(null);
   const [loading, setLoading] = useState(true);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [depositType, setDepositType] = useState<"token" | "full">("token");
+  const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [receiptTx, setReceiptTx] = useState<PaymentTransaction | null>(null);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   const refreshRoom = () => {
@@ -192,9 +200,14 @@ export default function RoomDetailPage({
     refreshRoom();
   };
 
-  // Handler: Confirm Official Booking
-  const handleConfirmBooking = () => {
-    setProcessing(true);
+  // Handler: Open Razorpay Test Gateway
+  const handleProceedToPayment = () => {
+    setIsBookingOpen(false);
+    setIsRazorpayModalOpen(true);
+  };
+
+  // Handler: On Successful Razorpay Payment
+  const handlePaymentSuccess = (transaction: PaymentTransaction) => {
     const res = bookRoomSpot(room.id, {
       id: currentUser.id,
       name: currentUser.name,
@@ -203,22 +216,18 @@ export default function RoomDetailPage({
     });
 
     if (res.success) {
-      toast.success(res.message);
-      setIsBookingOpen(false);
+      toast.success(`Payment verified! ${res.message}`);
       refreshRoom();
+      setReceiptTx(transaction);
+      setIsReceiptOpen(true);
     } else {
       toast.error(res.message);
     }
-    setProcessing(false);
   };
 
-  // Handler: Cancel Booking
+  // Handler: Open Cancel Booking Dialog
   const handleCancelBooking = () => {
-    const res = cancelRoomBooking(room.id, currentUser.id);
-    if (res.success) {
-      toast.info(res.message);
-      refreshRoom();
-    }
+    setIsCancelDialogOpen(true);
   };
 
   return (
@@ -752,10 +761,10 @@ export default function RoomDetailPage({
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Zap className="h-5 w-5 text-emerald-600" />
-              Confirm Room Booking
+              Book Accommodation Spot
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-              Review your spot allocation and split breakdown before confirming.
+              Review your spot allocation and select payment method via Razorpay Test Gateway.
             </DialogDescription>
           </DialogHeader>
 
@@ -771,6 +780,42 @@ export default function RoomDetailPage({
               <p className="text-xs text-slate-500 dark:text-slate-400">{room.location_label}</p>
             </div>
 
+            {/* Payment Choice: Token Deposit vs Full 1st Month Share */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                Select Advance Payment Option:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDepositType("token")}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    depositType === "token"
+                      ? "border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-600"
+                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">Token Deposit</span>
+                  <span className="text-base font-extrabold block">₹1,000</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Hold spot & itinerary</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDepositType("full")}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    depositType === "full"
+                      ? "border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-600"
+                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">Full 1st Month</span>
+                  <span className="text-base font-extrabold block">₹{perPersonShare.toLocaleString("en-IN")}</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Complete monthly share</span>
+                </button>
+              </div>
+            </div>
+
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 space-y-2 text-xs">
               <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>Monthly Rent Share:</span>
@@ -781,13 +826,18 @@ export default function RoomDetailPage({
                 <span className="font-semibold text-slate-900 dark:text-white">₹{Math.round((room.utilities + room.maintenance) / room.occupancy_total).toLocaleString("en-IN")}</span>
               </div>
               <div className="border-t border-slate-200 dark:border-slate-800 pt-2 flex justify-between font-bold text-sm text-slate-900 dark:text-white">
-                <span>Your Total Monthly Share:</span>
-                <span className="text-emerald-600 dark:text-emerald-400">₹{perPersonShare.toLocaleString("en-IN")}/mo</span>
+                <span>Due Now (Razorpay Test):</span>
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  ₹{(depositType === "token" ? 1000 : perPersonShare).toLocaleString("en-IN")}
+                </span>
               </div>
             </div>
 
-            <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-[11px] text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60">
-              👤 Booking under: <strong>{currentUser.name}</strong> ({currentUser.email}). Your name and avatar will reflect in the itinerary immediately.
+            <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-[11px] text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>
+                Booking under <strong>{currentUser.name}</strong> ({currentUser.email}). Verified with Razorpay sandbox.
+              </span>
             </div>
           </div>
 
@@ -800,15 +850,60 @@ export default function RoomDetailPage({
               Cancel
             </Button>
             <Button
-              onClick={handleConfirmBooking}
-              disabled={processing}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+              onClick={handleProceedToPayment}
+              className="bg-[#3395ff] hover:bg-[#287bd5] text-white font-bold gap-1.5 shadow-xs"
             >
-              {processing ? "Booking..." : "Confirm & Lock My Spot"}
+              Pay ₹{(depositType === "token" ? 1000 : perPersonShare).toLocaleString("en-IN")} with Razorpay
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Razorpay Test Checkout Modal */}
+      <RazorpayCheckoutModal
+        open={isRazorpayModalOpen}
+        onOpenChange={setIsRazorpayModalOpen}
+        amount={depositType === "token" ? 1000 : perPersonShare}
+        title={`${room.title} (Spot #${bookedUsers.length + 1})`}
+        description={depositType === "token" ? "Spot Reservation Deposit" : "1st Month Rent Share"}
+        type="housing_booking"
+        typeLabel="PG Spot Reservation Deposit"
+        itemId={room.id}
+        payeeId={room.owner_id}
+        payeeName={room.owner_name}
+        payeeEmail={room.owner_email}
+        bookingSpot={bookedUsers.length + 1}
+        notes={{
+          room_type: `${room.bedrooms}BHK Accommodation`,
+          location: room.location_label,
+          deposit_type: depositType === "token" ? "Reservation Token" : "Full Rent Share",
+        }}
+        onSuccess={handlePaymentSuccess}
+      />
+
+      {/* Verified Digital Payment Receipt Dialog */}
+      <PaymentReceiptDialog
+        transaction={receiptTx}
+        open={isReceiptOpen}
+        onOpenChange={setIsReceiptOpen}
+      />
+
+      {/* Cancel Booking & Refund Dialog */}
+      {userBooking && (
+        <CancelBookingDialog
+          open={isCancelDialogOpen}
+          onOpenChange={setIsCancelDialogOpen}
+          roomId={room.id}
+          roomTitle={room.title}
+          spotNumber={userBooking.spot_number}
+          userId={currentUser.id}
+          userName={currentUser.name}
+          depositAmount={depositType === "token" ? 1000 : perPersonShare}
+          onCancelled={() => {
+            refreshRoom();
+          }}
+        />
+      )}
     </div>
   );
 }

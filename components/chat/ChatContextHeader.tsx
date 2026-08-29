@@ -7,11 +7,13 @@ import {
   BookOpen, 
   Building2, 
   ExternalLink, 
+  HelpCircle,
   Home, 
   MapPin, 
   Package, 
   Percent, 
   ShieldCheck, 
+  Sparkles, 
   Tag, 
   Users 
 } from "lucide-react";
@@ -20,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { StoredConversation } from "@/lib/conversations";
 import { getListingById } from "@/lib/marketplace-data";
 import { getRoomById } from "@/lib/housing-data";
+import { getWantedListingById } from "@/lib/wanted-data";
 import { calculateSplit } from "@/lib/rent-engine";
 
 interface ChatContextHeaderProps {
@@ -28,8 +31,10 @@ interface ChatContextHeaderProps {
 
 export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
   const isMarketplace = conversation.type === "marketplace_dm";
+  const isWanted = conversation.type === "wanted_response";
   const listing = conversation.listing_id ? getListingById(conversation.listing_id) : null;
   const room = conversation.room_id ? getRoomById(conversation.room_id) : null;
+  const wanted = conversation.wanted_listing_id ? getWantedListingById(conversation.wanted_listing_id) : null;
 
   return (
     <div className="border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-4 py-3 shadow-2xs">
@@ -43,7 +48,9 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
           </Button>
 
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300">
-            {isMarketplace ? (
+            {isWanted ? (
+              <Sparkles className="h-5 w-5 text-primary dark:text-teal-400" />
+            ) : isMarketplace ? (
               <Package className="h-5 w-5" />
             ) : (
               <Building2 className="h-5 w-5" />
@@ -58,18 +65,20 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
               <Badge
                 variant="outline"
                 className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.2 ${
-                  isMarketplace
+                  isWanted
+                    ? "bg-teal-50 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800"
+                    : isMarketplace
                     ? "bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800"
                     : "bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
                 }`}
               >
-                {isMarketplace ? "Marketplace" : "Housing Group"}
+                {isWanted ? "Wanted Request" : isMarketplace ? "Marketplace" : "Housing Group"}
               </Badge>
             </div>
 
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <span>{conversation.subtitle}</span>
-              {!isMarketplace && (
+              {!isMarketplace && !isWanted && (
                 <>
                   <span>•</span>
                   <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-semibold">
@@ -90,7 +99,7 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
           </div>
         </div>
 
-        {/* Right: Quick Action Buttons (Flow C: Deep-link to Rent Health & Itinerary) */}
+        {/* Right: Quick Action Buttons (Flow C: Deep-link to Rent Health, Listing, or Wanted Detail) */}
         <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
           {room && (
             <Button asChild variant="outline" size="sm" className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1 border-primary/30 text-primary dark:text-teal-300 hover:bg-primary/5 dark:hover:bg-primary/20 bg-transparent">
@@ -110,6 +119,15 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
             </Button>
           )}
 
+          {wanted && (
+            <Button asChild variant="outline" size="sm" className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+              <Link href={`/wanted/${wanted.id}`}>
+                <ExternalLink className="h-3 w-3" />
+                View Wanted Request
+              </Link>
+            </Button>
+          )}
+
           {room && (
             <Button asChild size="sm" className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
               <Link href={`/housing/${room.id}`}>
@@ -123,3 +141,4 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
     </div>
   );
 }
+

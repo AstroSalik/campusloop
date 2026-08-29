@@ -14,6 +14,7 @@ drop table if exists conversation_members cascade;
 drop table if exists conversations cascade;
 drop table if exists roommate_profiles cascade;
 drop table if exists listing_images cascade;
+drop table if exists wanted_listings cascade;
 drop table if exists listings cascade;
 drop table if exists rooms cascade;
 drop table if exists users cascade;
@@ -51,6 +52,19 @@ create table listings (
   condition text not null,
   location_label text not null,
   status text not null default 'active' check (status in ('active', 'sold', 'archived')),
+  created_at timestamptz not null default now()
+);
+
+-- 3b. Wanted Listings (Reverse Marketplace / Buyer Requests)
+create table wanted_listings (
+  id text primary key,
+  requester_id uuid not null references users(id) on delete cascade,
+  campus_id uuid not null references campuses(id) on delete cascade,
+  title text not null,
+  description text not null,
+  category text not null,
+  budget_max numeric not null,
+  status text not null default 'active' check (status in ('active', 'fulfilled', 'archived')),
   created_at timestamptz not null default now()
 );
 
@@ -98,7 +112,8 @@ create table conversations (
   id text primary key,
   listing_id text references listings(id) on delete set null,
   room_id text references rooms(id) on delete set null,
-  type text not null check (type in ('marketplace_dm', 'housing_group', 'roommate_dm')),
+  wanted_listing_id text references wanted_listings(id) on delete set null,
+  type text not null check (type in ('marketplace_dm', 'housing_group', 'roommate_dm', 'wanted_response')),
   created_at timestamptz not null default now()
 );
 
@@ -139,6 +154,9 @@ create table rent_splits (
 -- Indexes
 create index if not exists idx_listings_campus on listings(campus_id);
 create index if not exists idx_listings_category on listings(category);
+create index if not exists idx_wanted_listings_campus on wanted_listings(campus_id);
+create index if not exists idx_wanted_listings_category on wanted_listings(category);
+create index if not exists idx_wanted_listings_requester on wanted_listings(requester_id);
 create index if not exists idx_rooms_campus on rooms(campus_id);
 create index if not exists idx_messages_conv on messages(conversation_id, created_at asc);
 
@@ -146,6 +164,7 @@ create index if not exists idx_messages_conv on messages(conversation_id, create
 alter table campuses enable row level security;
 alter table users enable row level security;
 alter table listings enable row level security;
+alter table wanted_listings enable row level security;
 alter table listing_images enable row level security;
 alter table rooms enable row level security;
 alter table roommate_profiles enable row level security;
@@ -157,6 +176,7 @@ alter table rent_splits enable row level security;
 create policy "Allow all access to campuses" on campuses for all using (true) with check (true);
 create policy "Allow all access to users" on users for all using (true) with check (true);
 create policy "Allow all access to listings" on listings for all using (true) with check (true);
+create policy "Allow all access to wanted_listings" on wanted_listings for all using (true) with check (true);
 create policy "Allow all access to listing_images" on listing_images for all using (true) with check (true);
 create policy "Allow all access to rooms" on rooms for all using (true) with check (true);
 create policy "Allow all access to roommate_profiles" on roommate_profiles for all using (true) with check (true);
@@ -204,6 +224,15 @@ INSERT INTO listings (id, seller_id, campus_id, title, description, category, ty
 ('l18-table-fan', '22222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-000000000001', 'High-Speed Desk Table Fan', 'Monthly rental for oscillating 3-speed table fan. Low noise, powerful airflow.', 'Appliances', 'rent', 300, 'Fair', 'Hostel 3', 'active', NOW() - INTERVAL '0.3 days'),
 ('l19-laptop-stand', '33333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000001', 'Aluminium Foldable Laptop Stand', '6-angle height adjustable aluminium riser. Sturdy, fits 11-16 inch laptops with silicone pads.', 'Electronics', 'sell', 650, 'Like New', 'Hostel 1', 'active', NOW() - INTERVAL '0.2 days'),
 ('l20-curtains', '44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000001', 'Room Curtains (Set of 2, 7ft)', 'Navy blue blackout eyelet curtains for standard hostel window/door.', 'Other', 'sell', 400, 'Good', 'Hostel 5', 'active', NOW() - INTERVAL '0.1 days');
+
+-- 3b. Wanted Listings (Reverse Marketplace Seed Data)
+INSERT INTO wanted_listings (id, requester_id, campus_id, title, description, category, budget_max, status, created_at) VALUES
+('w01-mini-fridge', '11111111-1111-1111-1111-111111111111', '00000000-0000-0000-0000-000000000001', 'Looking for a mini fridge under ₹2500', 'Need a compact working mini-fridge for my room in Main Gate PG. Must cool properly, cosmetic scratches are totally fine.', 'Appliances', 2500, 'active', NOW() - INTERVAL '2 days'),
+('w02-study-table', '22222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-000000000001', 'Need a study table, budget ₹1000', 'Looking for a sturdy wooden or metal study desk for Hostel 3. Prefer something with a small drawer or shelf for books.', 'Furniture', 1000, 'active', NOW() - INTERVAL '1.8 days'),
+('w03-casio-calc', '33333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000001', 'Looking for Casio fx-991EX or fx-991CW Calculator', 'Urgent requirement for upcoming semester exams. Need genuine Casio scientific calculator with all buttons working smoothly.', 'Electronics', 750, 'active', NOW() - INTERVAL '1.5 days'),
+('w04-mattress', '44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000001', 'Need Single Bed Mattress for Hostel 5', 'Looking for a clean 4-inch single bed foam mattress. Budget around ₹700, can pick up immediately from any hostel on campus.', 'Furniture', 700, 'active', NOW() - INTERVAL '1.2 days'),
+('w05-electric-kettle', '55555555-5555-5555-5555-555555555555', '00000000-0000-0000-0000-000000000001', 'Looking for an Electric Kettle under ₹500', 'Need a working 1.5L or 1.8L stainless steel electric kettle for tea and boiling water. Should auto shut-off.', 'Appliances', 500, 'active', NOW() - INTERVAL '1.0 days'),
+('w06-geared-cycle', '66666666-6666-6666-6666-666666666666', '00000000-0000-0000-0000-000000000001', 'Need 21-Speed Geared Bicycle (any brand)', 'Seeking a reliable geared commuter cycle for daily transit between PG and campus. Brakes and gear shifters must be in working order.', 'Cycles', 4000, 'active', NOW() - INTERVAL '0.6 days');
 
 -- 4. Listing Images
 INSERT INTO listing_images (id, listing_id, image_url) VALUES

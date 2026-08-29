@@ -25,9 +25,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { getListings } from "@/lib/marketplace-data";
 import { getRooms, getRoommateProfiles } from "@/lib/housing-data";
+import { getWantedListings } from "@/lib/wanted-data";
 
 interface GlobalSearchModalProps {
   open: boolean;
@@ -37,9 +37,10 @@ interface GlobalSearchModalProps {
 export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<"all" | "marketplace" | "housing" | "roommates">("all");
+  const [activeCategory, setActiveCategory] = useState<"all" | "marketplace" | "wanted" | "housing" | "roommates">("all");
 
   const listings = useMemo(() => getListings(), []);
+  const wantedListings = useMemo(() => getWantedListings(), []);
   const rooms = useMemo(() => getRooms(), []);
   const roommateProfiles = useMemo(() => getRoommateProfiles(), []);
 
@@ -55,6 +56,19 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
         item.description.toLowerCase().includes(q)
     );
   }, [query, listings]);
+
+  // Filter wanted requests
+  const filteredWanted = useMemo(() => {
+    if (!query.trim()) return wantedListings.slice(0, 3);
+    const q = query.toLowerCase();
+    return wantedListings.filter(
+      (item) =>
+        item.title.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q) ||
+        item.requester_name.toLowerCase().includes(q)
+    );
+  }, [query, wantedListings]);
 
   // Filter rooms
   const filteredRooms = useMemo(() => {
@@ -82,6 +96,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
 
   const totalResults =
     (activeCategory === "all" || activeCategory === "marketplace" ? filteredListings.length : 0) +
+    (activeCategory === "all" || activeCategory === "wanted" ? filteredWanted.length : 0) +
     (activeCategory === "all" || activeCategory === "housing" ? filteredRooms.length : 0) +
     (activeCategory === "all" || activeCategory === "roommates" ? filteredRoommates.length : 0);
 
@@ -134,6 +149,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
             [
               { id: "all", label: "All Results" },
               { id: "marketplace", label: `Marketplace (${filteredListings.length})` },
+              { id: "wanted", label: `Wanted (${filteredWanted.length})` },
               { id: "housing", label: `Housing (${filteredRooms.length})` },
               { id: "roommates", label: `Roommates (${filteredRoommates.length})` },
             ] as const
@@ -201,6 +217,55 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-sm font-extrabold text-slate-900 dark:text-white">
                         ₹{item.price.toLocaleString("en-IN")}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 1b. Wanted Requests Results */}
+          {(activeCategory === "all" || activeCategory === "wanted") && filteredWanted.length > 0 && (
+            <div className="space-y-2 pt-4 first:pt-0">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">
+                <span className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Wanted Requests (Buyer Needs)
+                </span>
+                {query.trim() && (
+                  <button
+                    onClick={() => handleNavigate(`/marketplace?type=buy&q=${encodeURIComponent(query)}`)}
+                    className="text-primary dark:text-teal-400 hover:underline lowercase font-normal"
+                  >
+                    view all ({filteredWanted.length}) →
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-1.5">
+                {filteredWanted.slice(0, 3).map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleNavigate(`/wanted/${item.id}`)}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer transition-colors border border-transparent hover:border-slate-200/60 dark:hover:border-slate-700/60 group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300 font-bold text-xs">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-primary dark:group-hover:text-teal-300 transition-colors truncate">
+                          {item.title}
+                        </p>
+                        <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
+                          {item.category} • Requested by {item.requester_name}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-bold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/80 px-2 py-0.5 rounded-full border border-teal-200/60 dark:border-teal-800/60">
+                        Up to ₹{item.budget_max.toLocaleString("en-IN")}
                       </span>
                       <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
                     </div>
@@ -309,6 +374,13 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
           {/* Quick Page Jump Shortcuts */}
           <div className="pt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-400 dark:text-slate-500 mr-1">Quick Links:</span>
+            <button
+              onClick={() => handleNavigate("/marketplace?type=buy")}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
+            >
+              <Sparkles className="h-3 w-3 text-primary dark:text-teal-400" />
+              Wanted Requests
+            </button>
             <button
               onClick={() => handleNavigate("/rent")}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-colors"

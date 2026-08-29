@@ -38,10 +38,13 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getListingById, deleteListing } from "@/lib/marketplace-data";
+import { getListingById, deleteListing, updateListing } from "@/lib/marketplace-data";
 import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
 import { getOrCreateMarketplaceConversation } from "@/lib/conversations";
 import { EditListingDialog } from "@/components/marketplace/EditListingDialog";
+import { RazorpayCheckoutModal } from "@/components/payments/RazorpayCheckoutModal";
+import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
+import { PaymentTransaction } from "@/lib/razorpay-service";
 
 export default function ListingDetailPage({
   params,
@@ -55,10 +58,17 @@ export default function ListingDetailPage({
   const [contacting, setContacting] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
+  const [receiptTx, setReceiptTx] = useState<PaymentTransaction | null>(null);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
-  useEffect(() => {
+  const refreshListing = () => {
     const item = getListingById(params.id);
     setListing(item || null);
+  };
+
+  useEffect(() => {
+    refreshListing();
     setLoading(false);
   }, [params.id]);
 
@@ -226,7 +236,7 @@ export default function ListingDetailPage({
                   listing.type === "rent"
                     ? "bg-amber-600"
                     : listing.type === "buy"
-                    ? "bg-purple-600"
+                    ? "bg-teal-700"
                     : "bg-primary"
                 }`}
               >
@@ -301,12 +311,12 @@ export default function ListingDetailPage({
               {/* Message Seller / Interested CTA (PRD Flow A) vs Owner Management */}
               {isOwner ? (
                 <div className="space-y-2.5">
-                  <div className="rounded-lg bg-teal-50 border border-teal-200/60 p-2.5 text-center text-xs text-teal-800 font-medium">
+                  <div className="rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800 p-2.5 text-center text-xs text-teal-800 dark:text-teal-200 font-medium">
                     You are the seller of this listing.
                   </div>
                   <Button
                     variant="outline"
-                    className="w-full h-10 font-semibold gap-2 border-slate-300 hover:bg-slate-50"
+                    className="w-full h-10 font-semibold gap-2 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                     onClick={() => setIsEditDialogOpen(true)}
                   >
                     <Edit3 className="h-4 w-4 text-primary" />
@@ -321,15 +331,45 @@ export default function ListingDetailPage({
                     Delete Listing
                   </Button>
                 </div>
+              ) : listing.status === "sold" ? (
+                <div className="space-y-2.5">
+                  <div className="rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3.5 text-center">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block">
+                      Item Sold
+                    </span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      This item has already been purchased and reserved for pickup.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 text-sm font-semibold"
+                    onClick={handleMessageSeller}
+                    disabled={contacting}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    {contacting ? "Connecting..." : "Message Seller"}
+                  </Button>
+                </div>
               ) : (
-                <Button
-                  className="w-full h-11 text-base font-semibold shadow-xs"
-                  onClick={handleMessageSeller}
-                  disabled={contacting}
-                >
-                  <MessageSquare className="mr-2 h-5 w-5" />
-                  {contacting ? "Connecting..." : "I'm Interested / Message Seller"}
-                </Button>
+                <div className="space-y-2.5">
+                  <Button
+                    className="w-full h-11 text-base font-semibold bg-[#3395ff] hover:bg-[#287bd5] text-white shadow-xs"
+                    onClick={() => setIsRazorpayModalOpen(true)}
+                  >
+                    Buy Now
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 text-sm font-semibold border-slate-200 dark:border-slate-700"
+                    onClick={handleMessageSeller}
+                    disabled={contacting}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    {contacting ? "Connecting..." : "Message Seller"}
+                  </Button>
+                </div>
               )}
 
               <div className="flex items-center gap-2 text-xs text-slate-500 justify-center">
@@ -338,33 +378,33 @@ export default function ListingDetailPage({
               </div>
 
               {/* Seller Info Card */}
-              <div className="pt-4 border-t border-slate-100 space-y-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Seller Information
                 </h4>
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-11 w-11 border border-slate-200">
+                  <Avatar className="h-11 w-11 border border-slate-200 dark:border-slate-700">
                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
                       {listing.seller_initials || listing.seller_name?.[0] || "S"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="space-y-0.5">
-                    <p className="text-sm font-bold text-slate-900">{listing.seller_name}</p>
-                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{listing.seller_name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       <Mail className="h-3 w-3 text-slate-400" />
                       {listing.seller_email}
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-lg bg-slate-50 p-2.5 text-[11px] text-slate-600 space-y-1">
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/80 p-2.5 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
                   <div className="flex justify-between">
                     <span>Campus:</span>
-                    <strong className="text-slate-800">Demo Campus (Sopore)</strong>
+                    <strong className="text-slate-800 dark:text-slate-100">Demo Campus (Sopore)</strong>
                   </div>
                   <div className="flex justify-between">
                     <span>Location:</span>
-                    <strong className="text-slate-800">{listing.location_label}</strong>
+                    <strong className="text-slate-800 dark:text-slate-100">{listing.location_label}</strong>
                   </div>
                 </div>
               </div>
@@ -382,6 +422,41 @@ export default function ListingDetailPage({
           onUpdated={(updated) => setListing(updated as any)}
         />
       )}
+
+      {/* Razorpay Test Checkout Modal */}
+      {listing && (
+        <RazorpayCheckoutModal
+          open={isRazorpayModalOpen}
+          onOpenChange={setIsRazorpayModalOpen}
+          amount={listing.price}
+          title={listing.title}
+          description={`${listing.category} • ${listing.location_label}`}
+          type="marketplace_purchase"
+          typeLabel="Marketplace Item Purchase"
+          itemId={listing.id}
+          payeeId={listing.seller_id}
+          payeeName={listing.seller_name}
+          payeeEmail={listing.seller_email}
+          notes={{
+            category: listing.category,
+            pickup_location: listing.location_label,
+          }}
+          onSuccess={(transaction) => {
+            updateListing(listing.id, { status: "sold" as any });
+            refreshListing();
+            toast.success(`Purchase successful! Pickup OTP: ${transaction.pickup_otp}`);
+            setReceiptTx(transaction);
+            setIsReceiptOpen(true);
+          }}
+        />
+      )}
+
+      {/* Verified Digital Payment Receipt Dialog */}
+      <PaymentReceiptDialog
+        transaction={receiptTx}
+        open={isReceiptOpen}
+        onOpenChange={setIsReceiptOpen}
+      />
     </div>
   );
 }

@@ -7,13 +7,17 @@ import { toast } from "sonner";
 import { 
   Building2, 
   Check, 
+  CreditCard,
   Edit3, 
   ExternalLink, 
+  FileText,
   Home, 
+  Lock,
   LogOut, 
   Mail, 
   Package, 
   Plus, 
+  Receipt,
   ShieldCheck, 
   Sparkles, 
   Store, 
@@ -32,7 +36,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -45,21 +49,31 @@ import {
 } from "@/lib/auth";
 import { getListings, deleteListing } from "@/lib/marketplace-data";
 import { getRooms, deleteRoom } from "@/lib/housing-data";
+import { getTransactionsByUserId, PaymentTransaction } from "@/lib/razorpay-service";
+import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EditListingDialog } from "@/components/marketplace/EditListingDialog";
+import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ProfilePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<DemoUser>(PRIMARY_DEMO_USER);
   const [myListings, setMyListings] = useState<ReturnType<typeof getListings>>([]);
   const [myRooms, setMyRooms] = useState<ReturnType<typeof getRooms>>([]);
+  const [myTransactions, setMyTransactions] = useState<PaymentTransaction[]>([]);
+  const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [editingListing, setEditingListing] = useState<any | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   const loadUserData = (user: DemoUser) => {
     const allListings = getListings();
     const allRooms = getRooms();
+    const txs = getTransactionsByUserId(user.id);
     setMyListings(allListings.filter((l) => l.seller_id === user.id));
     setMyRooms(allRooms.filter((r) => r.owner_id === user.id));
+    setMyTransactions(txs);
   };
 
   useEffect(() => {
@@ -75,7 +89,11 @@ export default function ProfilePage() {
     toast.success(`Switched account to ${user.name} (${user.role_desc})`);
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {}
     clearClientDemoSession();
     toast.info("Signed out from session.");
     router.push("/login");
@@ -99,45 +117,73 @@ export default function ProfilePage() {
       <Card className="border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/95 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-primary/10 via-slate-50 to-primary/5 dark:from-teal-950/50 dark:via-slate-800 dark:to-slate-800 p-6 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16 border-2 border-white dark:border-teal-400/40 shadow-sm">
+            <Avatar className="h-16 w-16 border-2 border-white dark:border-teal-400/40 shadow-sm shrink-0">
+              {currentUser.avatar && <AvatarImage src={currentUser.avatar} alt={currentUser.name} />}
               <AvatarFallback className="bg-primary dark:bg-teal-950 text-white dark:text-teal-300 text-xl font-extrabold">
                 {currentUser.initials}
               </AvatarFallback>
             </Avatar>
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
                   {currentUser.name}
                 </h1>
                 <Badge variant="outline" className="bg-white dark:bg-slate-900 text-primary dark:text-teal-300 border-primary/30 dark:border-teal-500/40 text-xs font-bold">
                   {currentUser.role_desc}
                 </Badge>
+                <Badge variant="secondary" className="bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 text-[10px] gap-1">
+                  <ShieldCheck className="h-3 w-3" />
+                  Verified Student
+                </Badge>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1">
+              <p className="text-xs text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
-                {currentUser.email} • Demo Campus (Sopore)
+                <span>{currentUser.email}</span>
+                <span>•</span>
+                <Building2 className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
+                <span>Demo Campus (Sopore)</span>
+                <span>•</span>
+                <span className="text-slate-500 dark:text-slate-400">Member since Aug 2026</span>
               </p>
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSignOut}
-            className="text-xs border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400 gap-1.5 font-medium"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditingProfile(true)}
+              className="text-xs border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-primary dark:hover:text-teal-300 gap-1.5 font-semibold"
+            >
+              <Edit3 className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
+              Edit Profile
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="text-xs border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400 gap-1.5 font-medium"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         {/* Quick Allowance Summary */}
         <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 gap-4 bg-white dark:bg-slate-800/60">
-          <div className="rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-900/90 p-3.5 shadow-2xs">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold block">Monthly Allowance</span>
+          <div 
+            onClick={() => setIsEditingProfile(true)}
+            className="rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-900/90 p-3.5 shadow-2xs hover:border-primary/40 cursor-pointer transition-colors group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold block">Monthly Allowance</span>
+              <Edit3 className="h-3 w-3 text-slate-400 group-hover:text-primary dark:group-hover:text-teal-300 transition-colors" />
+            </div>
             <span className="text-base font-extrabold text-slate-900 dark:text-white">
               ₹{currentUser.monthly_income?.toLocaleString("en-IN") || "15,000"}
             </span>
+            <span className="text-[10px] text-slate-400 block">Click to update budget</span>
           </div>
           <div className="rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-900/90 p-3.5 shadow-2xs">
             <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold block">Active Items Listed</span>
@@ -150,20 +196,24 @@ export default function ProfilePage() {
         </div>
       </Card>
 
-      {/* Tabs: My Listings, My Rooms, Demo Switcher */}
+      {/* Tabs: My Listings, My Rooms, Payments, Demo Switcher */}
       <Tabs defaultValue="listings" className="w-full space-y-4">
-        <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
           <TabsTrigger value="listings" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
             <Package className="h-3.5 w-3.5" />
-            My Listings ({myListings.length})
+            Listings ({myListings.length})
           </TabsTrigger>
           <TabsTrigger value="rooms" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
             <Home className="h-3.5 w-3.5" />
-            My Rooms ({myRooms.length})
+            Rooms ({myRooms.length})
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
+            <Receipt className="h-3.5 w-3.5" />
+            Payments ({myTransactions.length})
           </TabsTrigger>
           <TabsTrigger value="accounts" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
             <Users className="h-3.5 w-3.5" />
-            Switch Account
+            Switcher
           </TabsTrigger>
         </TabsList>
 
@@ -370,6 +420,108 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Tab 4: Payments & Digital Receipts */}
+        <TabsContent value="payments" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Receipt className="h-4 w-4 text-primary" />
+                Verified Digital Payment Receipts
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Razorpay test transactions for your housing bookings, marketplace purchases, and rent shares.
+              </p>
+            </div>
+            <Button asChild size="sm" variant="outline" className="h-8 text-xs font-semibold gap-1">
+              <Link href="/payments">
+                Open Full Ledger
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+
+          {myTransactions.length === 0 ? (
+            <EmptyState
+              icon={Receipt}
+              title="No transactions yet"
+              description="When you book rooms, buy marketplace items, or pay rent shares, digital receipts will appear here."
+              actionLabel="Browse Marketplace"
+              onAction={() => router.push("/marketplace")}
+            />
+          ) : (
+            <div className="space-y-3">
+              {myTransactions.map((tx) => (
+                <Card
+                  key={tx.id}
+                  className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition-all overflow-hidden"
+                >
+                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
+                          tx.type === "housing_booking"
+                            ? "bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300"
+                            : tx.type === "marketplace_purchase"
+                            ? "bg-blue-50 dark:bg-blue-950/60 text-[#3395ff]"
+                            : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                        }`}
+                      >
+                        {tx.type === "housing_booking" ? (
+                          <Building2 className="h-4 w-4" />
+                        ) : tx.type === "marketplace_purchase" ? (
+                          <Package className="h-4 w-4" />
+                        ) : (
+                          <Receipt className="h-4 w-4" />
+                        )}
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-slate-900 dark:text-white text-sm">
+                            {tx.item_title}
+                          </p>
+                          <Badge variant="outline" className="text-[9px] uppercase px-1.5 py-0 font-bold">
+                            {tx.type_label}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <span className="font-mono text-[11px]">{tx.id}</span>
+                          <span>•</span>
+                          <span>{new Date(tx.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>
+                          {tx.pickup_otp && (
+                            <>
+                              <span>•</span>
+                              <span className="text-amber-600 dark:text-amber-400 font-semibold">OTP: {tx.pickup_otp}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                      <span className="font-extrabold text-slate-900 dark:text-white text-sm">
+                        ₹{tx.amount.toLocaleString("en-IN")}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedTx(tx);
+                          setIsReceiptOpen(true);
+                        }}
+                        className="h-7 text-xs font-semibold gap-1"
+                      >
+                        <FileText className="h-3 w-3 text-primary" />
+                        Receipt
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Edit Listing Modal */}
@@ -386,6 +538,25 @@ export default function ProfilePage() {
           }}
         />
       )}
+
+      {/* Edit Profile Modal */}
+      {currentUser && (
+        <EditProfileDialog
+          user={currentUser}
+          open={isEditingProfile}
+          onOpenChange={setIsEditingProfile}
+          onProfileUpdated={(updated) => {
+            setCurrentUser(updated);
+          }}
+        />
+      )}
+
+      {/* Digital Receipt Modal */}
+      <PaymentReceiptDialog
+        transaction={selectedTx}
+        open={isReceiptOpen}
+        onOpenChange={setIsReceiptOpen}
+      />
     </div>
   );
 }

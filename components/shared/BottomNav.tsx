@@ -7,6 +7,7 @@ import {
   Home, 
   MessageSquare, 
   ShoppingBag, 
+  Sparkles, 
   User 
 } from "lucide-react";
 import { cn } from "@/lib/utils";

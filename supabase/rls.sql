@@ -7,6 +7,7 @@
 alter table campuses enable row level security;
 alter table users enable row level security;
 alter table listings enable row level security;
+alter table wanted_listings enable row level security;
 alter table listing_images enable row level security;
 alter table rooms enable row level security;
 alter table roommate_profiles enable row level security;
@@ -75,6 +76,29 @@ create policy "Sellers can manage listing images"
       and (listings.seller_id = auth.uid() or auth.uid() is null)
     )
   );
+
+-- ------------------------------------------------------------------------------
+-- Wanted Listings Policies (Reverse Marketplace)
+-- ------------------------------------------------------------------------------
+-- Anyone can browse active wanted listings
+create policy "Wanted listings are viewable by everyone"
+  on wanted_listings for select
+  using (true);
+
+-- Requester create
+create policy "Authenticated users can create wanted listings"
+  on wanted_listings for insert
+  with check (auth.uid() = requester_id or auth.uid() is null);
+
+-- Requester update and delete
+create policy "Requesters can update their own wanted listings"
+  on wanted_listings for update
+  using (auth.uid() = requester_id)
+  with check (auth.uid() = requester_id);
+
+create policy "Requesters can delete their own wanted listings"
+  on wanted_listings for delete
+  using (auth.uid() = requester_id);
 
 -- ------------------------------------------------------------------------------
 -- Rooms Policies

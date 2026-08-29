@@ -32,6 +32,7 @@ interface RentHealthResultProps {
   monthlyIncome: number;
   onSave?: () => void;
   saved?: boolean;
+  onPayShare?: () => void;
 }
 
 export function RentHealthResult({
@@ -42,6 +43,7 @@ export function RentHealthResult({
   monthlyIncome,
   onSave,
   saved,
+  onPayShare,
 }: RentHealthResultProps) {
   const { flag, flagLabel, flagEmoji, housingRatioPct } = assessment;
 
@@ -166,11 +168,18 @@ export function RentHealthResult({
         </div>
       </CardContent>
 
-      {onSave && (
-        <CardFooter className="bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 p-4 flex justify-between items-center">
-          <span className="text-xs text-slate-400 dark:text-slate-500">
-            Deterministic calculation per Project-Context.md Section 6
-          </span>
+      <CardFooter className="bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 p-4 flex flex-wrap gap-2 justify-between items-center">
+        {onPayShare && (
+          <button
+            type="button"
+            onClick={onPayShare}
+            className="text-xs font-bold px-4 py-2 rounded-lg bg-[#3395ff] hover:bg-[#287bd5] text-white shadow-xs transition-all"
+          >
+            Pay Rent Share (Razorpay)
+          </button>
+        )}
+
+        {onSave && (
           <button
             type="button"
             onClick={onSave}
@@ -178,13 +187,13 @@ export function RentHealthResult({
             className={`text-xs font-semibold px-4 py-2 rounded-lg transition-all ${
               saved
                 ? "bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                : "bg-primary text-white hover:bg-primary/90 shadow-xs"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs"
             }`}
           >
-            {saved ? "✓ Saved to History" : "Save to Recent Calculations"}
+            {saved ? "✓ Saved to History" : "Save Calculation"}
           </button>
-        </CardFooter>
-      )}
+        )}
+      </CardFooter>
     </Card>
   );
 }

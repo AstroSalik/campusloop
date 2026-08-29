@@ -2,6 +2,7 @@ import { Conversation, ConversationMember, Message } from "@/lib/types";
 import { DEMO_USERS, getDemoUserById, PRIMARY_DEMO_USER } from "@/lib/auth";
 import { getListingById } from "@/lib/marketplace-data";
 import { getRoomById } from "@/lib/housing-data";
+import { getWantedListingById } from "@/lib/wanted-data";
 import { createClient } from "@/lib/supabase/client";
 
 export interface StoredConversation extends Conversation {
@@ -468,16 +469,29 @@ export async function getOrCreateMarketplaceConversation(
 
   try {
     const supabase = createClient();
-    await supabase.from("conversations").insert({
+    const { error: convErr } = await supabase.from("conversations").insert({
       id: newConvId,
       listing_id: listing ? listingId : null,
       type: "marketplace_dm",
     });
-    await supabase.from("conversation_members").insert([
+    if (convErr) console.warn("Supabase marketplace conversation insert:", convErr);
+
+    const { error: memErr } = await supabase.from("conversation_members").insert([
       { conversation_id: newConvId, user_id: seller.id, role: "seller" },
       { conversation_id: newConvId, user_id: buyer.id, role: "buyer" },
     ]);
-  } catch (e) {}
+    if (memErr) console.warn("Supabase marketplace members insert:", memErr);
+
+    const { error: msgErr } = await supabase.from("messages").insert({
+      id: `msg-${Date.now()}`,
+      conversation_id: newConvId,
+      sender_id: buyer.id,
+      content: initialMsg,
+    });
+    if (msgErr) console.warn("Supabase marketplace initial message insert:", msgErr);
+  } catch (e) {
+    console.warn("Supabase network exception during marketplace conv creation:", e);
+  }
 
   saveConversations([newConv, ...all]);
   return newConvId;
@@ -651,40 +665,184 @@ export async function getOrCreateRoomConversation(
 
   try {
     const supabase = createClient();
-    await supabase.from("conversations").insert({
+    const { error: convErr } = await supabase.from("conversations").insert({
       id: newConvId,
       room_id: roomId,
       type: "housing_group",
     });
-    await supabase.from("conversation_members").insert([
+    if (convErr) console.warn("Supabase room conversation insert:", convErr);
+
+    const { error: memErr } = await supabase.from("conversation_members").insert([
       { conversation_id: newConvId, user_id: owner.id, role: "owner" },
       { conversation_id: newConvId, user_id: user.id, role: "prospective_roommate" },
     ]);
-  } catch (e) {}
+    if (memErr) console.warn("Supabase room members insert:", memErr);
+
+    const { error: msgErr } = await supabase.from("messages").insert({
+      id: `msg-${Date.now()}`,
+      conversation_id: newConvId,
+      sender_id: user.id,
+      content: `Hi ${owner.name}, I'm interested in "${room?.title}". Is there still a spot open?`,
+    });
+    if (msgErr) console.warn("Supabase room initial message insert:", msgErr);
+  } catch (e) {
+    console.warn("Supabase network exception during room conv creation:", e);
+  }
 
   saveConversations([newConv, ...all]);
   return newConvId;
 }
 
 /**
- * Add a new message to any conversation
+ * Flow: Student responds to Wanted Request ("I Can Provide This") -> Auto create or open conversation
  */
-export function sendMessage(conversationId: string, senderId: string, content: string): Message {
+export async function getOrCreateWantedConversation(
+  wantedListingId: string,
+  providerId: string,
+  requesterId: string
+): Promise<string> {
+  const all = getConversations();
+
+  // 1. Check if conversation already exists for this wanted listing + provider
+  const existing = all.find(
+    (c) =>
+      c.type === "wanted_response" &&
+      c.wanted_listing_id === wantedListingId &&
+      c.members.some((m) => m.user_id === providerId)
+  );
+
+  if (existing) {
+    return existing.id;
+  }
+
+  // 2. Fetch metadata
+  const wanted = getWantedListingById(wantedListingId);
+  const provider = getDemoUserById(providerId) || PRIMARY_DEMO_USER;
+  const requester = getDemoUserById(requesterId) || getDemoUserById(wanted?.requester_id || "") || PRIMARY_DEMO_USER;
+
+  const newConvId = `conv-wanted-${wantedListingId}-${Date.now().toString(36)}`;
+
+  const title = wanted?.title ? `Wanted: ${wanted.title}` : "Wanted Item Response";
+  const subtitle = wanted
+    ? `Budget: Up to ₹${wanted.budget_max.toLocaleString("en-IN")} • ${wanted.category}`
+    : `Buyer Request • Demo Campus`;
+
+  const initialMsg = wanted
+    ? `Hi ${requester.name}, I saw your request for "${wanted.title}" (Budget: up to ₹${wanted.budget_max.toLocaleString("en-IN")}). I have this available and can provide it to you!`
+    : `Hi ${requester.name}, I saw your wanted request on CampusLoop and can provide this item!`;
+
+  const newConv: StoredConversation = {
+    id: newConvId,
+    listing_id: null,
+    room_id: null,
+    wanted_listing_id: wantedListingId,
+    type: "wanted_response",
+    created_at: new Date().toISOString(),
+    title,
+    subtitle,
+    members: [
+      {
+        conversation_id: newConvId,
+        user_id: requester.id,
+        role: "buyer",
+        user_name: requester.name,
+        user_email: requester.email,
+        user_initials: requester.initials || requester.name[0],
+      },
+      {
+        conversation_id: newConvId,
+        user_id: provider.id,
+        role: "seller",
+        user_name: provider.name,
+        user_email: provider.email,
+        user_initials: provider.initials || provider.name[0],
+      },
+    ],
+    messages: [
+      {
+        id: `msg-${Date.now()}`,
+        conversation_id: newConvId,
+        sender_id: provider.id,
+        content: initialMsg,
+        created_at: new Date().toISOString(),
+      },
+    ],
+  };
+
+    try {
+      const supabase = createClient();
+      const { error: convErr } = await supabase.from("conversations").insert({
+        id: newConvId,
+        wanted_listing_id: wantedListingId,
+        type: "wanted_response",
+      });
+      if (convErr) console.warn("Supabase conversation insert error:", convErr);
+
+      const { error: memErr } = await supabase.from("conversation_members").insert([
+        { conversation_id: newConvId, user_id: requester.id, role: "buyer" },
+        { conversation_id: newConvId, user_id: provider.id, role: "seller" },
+      ]);
+      if (memErr) console.warn("Supabase member insert error:", memErr);
+
+      const { error: msgErr } = await supabase.from("messages").insert({
+        id: `msg-${Date.now()}`,
+        conversation_id: newConvId,
+        sender_id: provider.id,
+        content: initialMsg,
+      });
+      if (msgErr) console.warn("Supabase initial message insert error:", msgErr);
+    } catch (e) {
+      console.warn("Supabase network error during wanted conv creation:", e);
+    }
+
+  saveConversations([newConv, ...all]);
+  return newConvId;
+}
+
+/**
+ * Add a new message to any conversation (Persists to both Supabase and local cache)
+ */
+export async function sendMessage(conversationId: string, senderId: string, content: string): Promise<Message> {
   const all = getConversations();
   const conv = all.find((c) => c.id === conversationId);
 
+  const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const timestamp = new Date().toISOString();
+
   const newMsg: Message = {
-    id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: messageId,
     conversation_id: conversationId,
     sender_id: senderId,
     content,
-    created_at: new Date().toISOString(),
+    created_at: timestamp,
   };
 
+  // 1. Update local state immediately (optimistic update)
   if (conv) {
     conv.messages.push(newMsg);
     saveConversations([...all]);
   }
 
+  // 2. Real Supabase Database Insert
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("messages").insert({
+      id: messageId,
+      conversation_id: conversationId,
+      sender_id: senderId,
+      content,
+      created_at: timestamp,
+    }).select();
+
+    if (error) {
+      console.error("Supabase sendMessage error:", error);
+    } else {
+      console.log("Supabase message saved successfully:", data);
+    }
+  } catch (err) {
+    console.error("Supabase sendMessage exception:", err);
+  }
+
   return newMsg;
 }
+

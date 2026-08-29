@@ -41,6 +41,19 @@ create table if not exists listings (
   created_at timestamptz not null default now()
 );
 
+-- 3b. Wanted Listings (Reverse Marketplace / Buyer Requests)
+create table if not exists wanted_listings (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references users(id) on delete cascade,
+  campus_id uuid not null references campuses(id) on delete cascade,
+  title text not null,
+  description text not null,
+  category text not null,
+  budget_max numeric not null,
+  status text not null default 'active' check (status in ('active', 'fulfilled', 'archived')),
+  created_at timestamptz not null default now()
+);
+
 -- 4. Listing Images
 create table if not exists listing_images (
   id uuid primary key default gen_random_uuid(),
@@ -85,7 +98,8 @@ create table if not exists conversations (
   id uuid primary key default gen_random_uuid(),
   listing_id uuid references listings(id) on delete set null,
   room_id uuid references rooms(id) on delete set null,
-  type text not null check (type in ('marketplace_dm', 'housing_group')),
+  wanted_listing_id uuid references wanted_listings(id) on delete set null,
+  type text not null check (type in ('marketplace_dm', 'housing_group', 'roommate_dm', 'wanted_response')),
   created_at timestamptz not null default now()
 );
 
@@ -127,9 +141,13 @@ create table if not exists rent_splits (
 create index if not exists idx_listings_campus on listings(campus_id);
 create index if not exists idx_listings_category on listings(category);
 create index if not exists idx_listings_type on listings(type);
+create index if not exists idx_wanted_listings_campus on wanted_listings(campus_id);
+create index if not exists idx_wanted_listings_category on wanted_listings(category);
+create index if not exists idx_wanted_listings_requester on wanted_listings(requester_id);
 create index if not exists idx_rooms_campus on rooms(campus_id);
 create index if not exists idx_roommate_profiles_user on roommate_profiles(user_id);
 create index if not exists idx_messages_conversation on messages(conversation_id, created_at asc);
 create index if not exists idx_conv_members_user on conversation_members(user_id);
 create index if not exists idx_conv_listing on conversations(listing_id);
 create index if not exists idx_conv_room on conversations(room_id);
+create index if not exists idx_conv_wanted_listing on conversations(wanted_listing_id);

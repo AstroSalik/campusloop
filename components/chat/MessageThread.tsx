@@ -11,11 +11,34 @@ interface MessageThreadProps {
 }
 
 export function MessageThread({ conversation, currentUserId }: MessageThreadProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prevCountRef = useRef(0);
+
+  const scrollToBottom = (smooth = true) => {
+    const container = containerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: smooth ? "smooth" : "auto",
+      });
+    }
+  };
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation.messages]);
+    const currentCount = conversation.messages?.length || 0;
+    // Only scroll if message count changed or on initial load
+    if (currentCount !== prevCountRef.current) {
+      const container = containerRef.current;
+      if (container) {
+        const isNearBottom =
+          container.scrollHeight - container.scrollTop - container.clientHeight < 180;
+        if (prevCountRef.current === 0 || isNearBottom) {
+          scrollToBottom(prevCountRef.current !== 0);
+        }
+      }
+      prevCountRef.current = currentCount;
+    }
+  }, [conversation.messages?.length]);
 
   const getMemberInfo = (senderId: string) => {
     const member = conversation.members.find((m) => m.user_id === senderId);
@@ -27,7 +50,10 @@ export function MessageThread({ conversation, currentUserId }: MessageThreadProp
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 bg-slate-50/50 dark:bg-slate-950">
+    <div
+      ref={containerRef}
+      className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 bg-slate-50/50 dark:bg-slate-950 overscroll-contain"
+    >
       {/* Starting timestamp indicator */}
       <div className="flex justify-center my-1.5">
         <span className="text-[11px] font-medium bg-slate-200/70 dark:bg-slate-800/90 text-slate-600 dark:text-slate-400 border border-transparent dark:border-slate-700/60 px-3 py-1 rounded-full shadow-2xs">
@@ -97,8 +123,6 @@ export function MessageThread({ conversation, currentUserId }: MessageThreadProp
           </div>
         );
       })}
-
-      <div ref={scrollRef} />
     </div>
   );
 }

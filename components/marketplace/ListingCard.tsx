@@ -85,7 +85,7 @@ export function ListingCard({ listing }: ListingCardProps) {
                   listing.type === "rent"
                     ? "bg-amber-600 hover:bg-amber-700"
                     : listing.type === "buy"
-                    ? "bg-purple-600 hover:bg-purple-700"
+                    ? "bg-teal-700 hover:bg-teal-800"
                     : "bg-primary hover:bg-primary/90"
                 }`}
               >

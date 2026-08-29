@@ -27,7 +27,7 @@ export function ConversationList({
   activeConversationId,
   currentUserId,
 }: ConversationListProps) {
-  const [filterType, setFilterType] = useState<"all" | "marketplace_dm" | "housing_group">("all");
+  const [filterType, setFilterType] = useState<"all" | "marketplace_dm" | "housing_group" | "wanted_response">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const sorted = [...conversations].sort((a, b) => {
@@ -80,7 +80,7 @@ export function ConversationList({
         </div>
 
         {/* Filter Tabs */}
-        <div className="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-1 text-xs">
+        <div className="grid grid-cols-4 gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-1 text-[11px]">
           <button
             onClick={() => setFilterType("all")}
             className={`py-1 rounded-md font-semibold transition-all ${
@@ -99,7 +99,7 @@ export function ConversationList({
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            Marketplace
+            Market
           </button>
           <button
             onClick={() => setFilterType("housing_group")}
@@ -110,6 +110,16 @@ export function ConversationList({
             }`}
           >
             Housing
+          </button>
+          <button
+            onClick={() => setFilterType("wanted_response")}
+            className={`py-1 rounded-md font-semibold transition-all ${
+              filterType === "wanted_response"
+                ? "bg-white dark:bg-slate-900 text-primary dark:text-teal-300 shadow-xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            Wanted
           </button>
         </div>
       </div>
@@ -127,6 +137,7 @@ export function ConversationList({
             const lastMsg = conv.messages[conv.messages.length - 1];
             const otherMembers = conv.members.filter((m) => m.user_id !== currentUserId);
             const isGroup = conv.type === "housing_group";
+            const isWanted = conv.type === "wanted_response";
 
             const displayTitle = conv.title || (isGroup ? "Housing Group" : otherMembers[0]?.user_name || "Chat");
             const timeStr = lastMsg
@@ -156,6 +167,12 @@ export function ConversationList({
                         </Avatar>
                       ))}
                     </div>
+                  ) : isWanted ? (
+                    <Avatar className="h-10 w-10 border border-slate-200 dark:border-slate-700">
+                      <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
+                        {otherMembers[0]?.user_initials || otherMembers[0]?.user_name?.[0] || "W"}
+                      </AvatarFallback>
+                    </Avatar>
                   ) : (
                     <Avatar className="h-10 w-10 border border-slate-200 dark:border-slate-700">
                       <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
@@ -190,12 +207,14 @@ export function ConversationList({
                     <Badge
                       variant="secondary"
                       className={`text-[9px] px-1.5 py-0 font-medium ${
-                        isGroup
+                        isWanted
+                          ? "bg-teal-50 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-200/50 dark:border-teal-800/50"
+                          : isGroup
                           ? "bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50"
                           : "bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200/50 dark:border-teal-800/50"
                       }`}
                     >
-                      {isGroup ? "Housing Group" : "Marketplace DM"}
+                      {isWanted ? "Wanted Request" : isGroup ? "Housing Group" : "Marketplace DM"}
                     </Badge>
                   </div>
                 </div>

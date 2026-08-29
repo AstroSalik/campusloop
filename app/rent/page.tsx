@@ -43,6 +43,9 @@ import {
 } from "@/lib/rent-engine";
 import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
 import { getRoomById } from "@/lib/housing-data";
+import { RazorpayCheckoutModal } from "@/components/payments/RazorpayCheckoutModal";
+import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
+import { PaymentTransaction } from "@/lib/razorpay-service";
 
 interface CalculationRecord {
   id: string;
@@ -74,6 +77,9 @@ function RentCalculatorContent() {
 
   const [saved, setSaved] = useState(false);
   const [history, setHistory] = useState<CalculationRecord[]>([]);
+  const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
+  const [receiptTx, setReceiptTx] = useState<PaymentTransaction | null>(null);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
   // Pre-fill from roomId if present in query string (PRD Flow C)
   useEffect(() => {
@@ -220,15 +226,16 @@ function RentCalculatorContent() {
           monthlyIncome={monthlyIncome}
           onSave={handleSaveCalculation}
           saved={saved}
+          onPayShare={() => setIsRazorpayModalOpen(true)}
         />
       </div>
 
       {/* Comparison History */}
       {history.length > 0 && (
-        <Card className="border-slate-200/80 bg-white shadow-xs">
-          <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
+        <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <History className="h-4 w-4 text-primary" />
                 Recent Saved Calculations
               </CardTitle>
@@ -247,12 +254,12 @@ function RentCalculatorContent() {
             </Button>
           </CardHeader>
 
-          <CardContent className="p-0 divide-y divide-slate-100">
+          <CardContent className="p-0 divide-y divide-slate-100 dark:divide-slate-800">
             {history.map((rec) => (
-              <div key={rec.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition-colors">
+              <div key={rec.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors">
                 <div className="space-y-0.5">
-                  <p className="text-sm font-bold text-slate-900">{rec.title}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{rec.title}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Total ₹{rec.totalCost.toLocaleString("en-IN")} • {rec.occupants} Flatmates • Share: <strong>₹{rec.perPersonShare.toLocaleString("en-IN")}/mo</strong>
                   </p>
                 </div>
@@ -266,6 +273,38 @@ function RentCalculatorContent() {
           </CardContent>
         </Card>
       )}
+
+      {/* Razorpay Test Checkout Modal */}
+      <RazorpayCheckoutModal
+        open={isRazorpayModalOpen}
+        onOpenChange={setIsRazorpayModalOpen}
+        amount={perPersonShare}
+        title={linkedRoom ? `${linkedRoom.title} — Monthly Share` : `Roommate Flat Rent & Utilities Share (${occupants} occupants)`}
+        description={`Rent ₹${rent.toLocaleString("en-IN")} + Utilities ₹${(utilities + maintenance).toLocaleString("en-IN")}`}
+        type="rent_split"
+        typeLabel="Roommate Rent & Utilities Share"
+        itemId={linkedRoom?.id || "custom_flat_split"}
+        payeeId={linkedRoom?.owner_id}
+        payeeName={linkedRoom?.owner_name || "Campus Flatmates"}
+        payeeEmail={linkedRoom?.owner_email}
+        notes={{
+          occupants: occupants.toString(),
+          total_flat_cost: totalCost.toString(),
+          per_person_share: perPersonShare.toString(),
+        }}
+        onSuccess={(transaction) => {
+          toast.success("Rent share paid successfully via Razorpay test gateway!");
+          setReceiptTx(transaction);
+          setIsReceiptOpen(true);
+        }}
+      />
+
+      {/* Verified Digital Payment Receipt Dialog */}
+      <PaymentReceiptDialog
+        transaction={receiptTx}
+        open={isReceiptOpen}
+        onOpenChange={setIsReceiptOpen}
+      />
     </div>
   );
 }

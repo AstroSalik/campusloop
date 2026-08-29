@@ -48,6 +48,21 @@ export interface ListingImage {
   created_at?: string;
 }
 
+export type WantedListingStatus = "active" | "fulfilled" | "archived";
+
+export interface WantedListing {
+  id: string;
+  requester_id: string;
+  campus_id: string;
+  title: string;
+  description: string;
+  category: string;
+  budget_max: number;
+  status: WantedListingStatus;
+  created_at: string;
+  requester?: User;
+}
+
 export type RoomStatus = "available" | "occupied" | "archived";
 
 export interface BookedUser {
@@ -102,16 +117,18 @@ export interface RoommateProfile {
   user?: User;
 }
 
-export type ConversationType = "marketplace_dm" | "housing_group" | "roommate_dm";
+export type ConversationType = "marketplace_dm" | "housing_group" | "roommate_dm" | "wanted_response";
 
 export interface Conversation {
   id: string;
   listing_id?: string | null;
   room_id?: string | null;
+  wanted_listing_id?: string | null;
   type: ConversationType;
   created_at: string;
   listing?: Listing | null;
   room?: Room | null;
+  wanted_listing?: WantedListing | null;
   members?: ConversationMember[];
   last_message?: Message | null;
 }

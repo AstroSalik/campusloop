@@ -6,12 +6,14 @@ import { usePathname } from "next/navigation";
 import { 
   Building2, 
   Compass, 
+  LogIn, 
   MapPin, 
   MessageSquare, 
   Percent, 
-  Plus, 
   Search, 
   ShoppingBag, 
+  Sparkles, 
+  User, 
   Users2 
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,14 +21,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { GlobalSearchModal } from "./GlobalSearchModal";
 import { ThemeToggle } from "./ThemeToggle";
 import { useUserLocation } from "@/lib/useUserLocation";
 
 export function Navbar() {
   const pathname = usePathname();
-  const [currentUser, setCurrentUser] = useState(PRIMARY_DEMO_USER);
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { location: userLoc, detectLocation, loading: detectingLoc, mounted: locationMounted } = useUserLocation();
 
@@ -39,10 +41,18 @@ export function Navbar() {
   };
 
   useEffect(() => {
-    const user = getClientDemoSession();
-    if (user) {
+    const checkAuth = () => {
+      const user = getClientDemoSession();
       setCurrentUser(user);
-    }
+    };
+    checkAuth();
+
+    window.addEventListener("campusloop_auth_changed", checkAuth);
+    window.addEventListener("storage", checkAuth);
+    return () => {
+      window.removeEventListener("campusloop_auth_changed", checkAuth);
+      window.removeEventListener("storage", checkAuth);
+    };
   }, [pathname]);
 
   // Global Keyboard Shortcut: ⌘K or Ctrl+K
@@ -110,13 +120,13 @@ export function Navbar() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
                     isActive
                       ? "bg-slate-100/90 text-primary font-semibold dark:bg-primary/20 dark:text-teal-300"
                       : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800"
                   )}
                 >
-                  <Icon className={cn("h-4 w-4", isActive ? "text-primary dark:text-teal-300" : "text-slate-500 dark:text-slate-400")} />
+                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary dark:text-teal-300" : "text-slate-500 dark:text-slate-400")} />
                   {link.label}
                 </Link>
               );
@@ -138,33 +148,37 @@ export function Navbar() {
               </kbd>
             </button>
 
-            {/* + Post Item Button with Improved Padding & Alignment */}
-            <Link
-              href="/marketplace/new"
-              className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 active:scale-98 transition-all shadow-xs shrink-0"
-            >
-              <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-              <span>Post Item</span>
-            </Link>
-
             {/* Light / Dark Mode Theme Toggle */}
             <ThemeToggle />
 
-            {/* Profile Avatar */}
-            <Link 
-              href="/profile" 
-              className="flex items-center gap-2 pl-0.5 hover:opacity-90 transition-opacity"
-              title="My Account & Switcher"
-            >
-              <Avatar className="h-9 w-9 border border-slate-200 dark:border-slate-700 ring-2 ring-transparent hover:ring-primary/20 transition-all shadow-2xs">
-                <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
-                  {currentUser.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
+            {/* Profile Avatar or Sign In / Sign Up Button */}
+            {currentUser ? (
+              <Link 
+                href="/profile" 
+                className="flex items-center gap-2 pl-0.5 hover:opacity-90 transition-opacity"
+                title={`${currentUser.name} (${currentUser.role_desc})`}
+              >
+                <Avatar className="h-9 w-9 border border-slate-200 dark:border-slate-700 ring-2 ring-transparent hover:ring-primary/20 transition-all shadow-2xs">
+                  <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
+                    {currentUser.initials ||
+                      currentUser.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 active:scale-98 transition-all shadow-xs shrink-0 whitespace-nowrap"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                <span>Sign In / Sign Up</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>

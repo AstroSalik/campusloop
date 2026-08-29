@@ -80,9 +80,9 @@ export default function ConversationDetailPage() {
     };
   }, [conversationId, currentUser.id]);
 
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
     if (!conversation) return;
-    sendMessage(conversation.id, currentUser.id, text);
+    await sendMessage(conversation.id, currentUser.id, text);
     loadData();
   };
 
