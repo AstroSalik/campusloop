@@ -928,8 +928,6 @@ export async function sendMessage(conversationId: string, senderId: string, cont
 
     if (error) {
       console.error("Supabase sendMessage error:", error);
-    } else {
-      console.log("Supabase message saved successfully:", data);
     }
   } catch (err) {
     console.error("Supabase sendMessage exception:", err);

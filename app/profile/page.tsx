@@ -77,17 +77,45 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    const user = getClientDemoSession() || PRIMARY_DEMO_USER;
-    setCurrentUser(user);
-    loadUserData(user);
-  }, []);
+    const fetchUser = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const clientSession = getClientDemoSession();
+          const activeUser: DemoUser = {
+            id: user.id,
+            name: clientSession?.name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Student",
+            email: user.email || clientSession?.email || "",
+            campus_id: clientSession?.campus_id || "00000000-0000-0000-0000-000000000001",
+            monthly_income: clientSession?.monthly_income || 15000,
+            avatar: clientSession?.avatar || user.user_metadata?.avatar || null,
+            initials: (clientSession?.name || user.user_metadata?.full_name || user.email || "S")
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+              .substring(0, 2)
+              .toUpperCase(),
+            role_desc: clientSession?.role_desc || "Student Account",
+          };
+          setCurrentUser(activeUser);
+          loadUserData(activeUser);
+          return;
+        }
+      } catch (err) {}
 
-  const handleSwitchAccount = (user: DemoUser) => {
-    setClientDemoSession(user);
-    setCurrentUser(user);
-    loadUserData(user);
-    toast.success(`Switched account to ${user.name} (${user.role_desc})`);
-  };
+      const fallback = getClientDemoSession();
+      if (fallback) {
+        setCurrentUser(fallback);
+        loadUserData(fallback);
+      } else {
+        router.push("/login");
+      }
+    };
+
+    fetchUser();
+  }, [router]);
+
 
   const handleSignOut = async () => {
     try {
@@ -196,9 +224,9 @@ export default function ProfilePage() {
         </div>
       </Card>
 
-      {/* Tabs: My Listings, My Rooms, Payments, Demo Switcher */}
+      {/* Tabs: My Listings, My Rooms, Payments */}
       <Tabs defaultValue="listings" className="w-full space-y-4">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
           <TabsTrigger value="listings" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
             <Package className="h-3.5 w-3.5" />
             Listings ({myListings.length})
@@ -210,10 +238,6 @@ export default function ProfilePage() {
           <TabsTrigger value="payments" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
             <Receipt className="h-3.5 w-3.5" />
             Payments ({myTransactions.length})
-          </TabsTrigger>
-          <TabsTrigger value="accounts" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
-            <Users className="h-3.5 w-3.5" />
-            Switcher
           </TabsTrigger>
         </TabsList>
 
@@ -362,66 +386,7 @@ export default function ProfilePage() {
           )}
         </TabsContent>
 
-        {/* Tab 3: Demo Accounts Switcher */}
-        <TabsContent value="accounts" className="space-y-4">
-          <Card className="border-slate-200/90 dark:border-slate-700/90 bg-white dark:bg-slate-800/95 shadow-xs overflow-hidden">
-            <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-700/70">
-              <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary dark:text-teal-400" />
-                Live Demo Accounts Switcher
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                Switch instantly between pre-seeded demo students to test real-time chats and roles.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 divide-y divide-slate-100 dark:divide-slate-700/70">
-              {DEMO_USERS.map((user) => {
-                const isCurrent = user.id === currentUser.id;
-                return (
-                  <div
-                    key={user.id}
-                    className="py-3.5 flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-11 w-11 border border-slate-200 dark:border-teal-500/30">
-                        <AvatarFallback className="bg-primary/10 dark:bg-teal-950 text-primary dark:text-teal-300 font-extrabold text-xs">
-                          {user.initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-900 dark:text-white">{user.name}</span>
-                          {isCurrent && (
-                            <Badge className="bg-teal-600 text-white text-[10px] py-0 px-1.5 font-bold">
-                              Active
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-300">{user.role_desc} • {user.email}</p>
-                      </div>
-                    </div>
-
-                    <Button
-                      size="sm"
-                      variant={isCurrent ? "secondary" : "outline"}
-                      disabled={isCurrent}
-                      onClick={() => handleSwitchAccount(user)}
-                      className={
-                        isCurrent 
-                          ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs h-8 font-bold" 
-                          : "border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs h-8 font-semibold"
-                      }
-                    >
-                      {isCurrent ? "Active Account" : "Switch To"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab 4: Payments & Digital Receipts */}
+        {/* Tab 3: Payments & Digital Receipts */}
         <TabsContent value="payments" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>

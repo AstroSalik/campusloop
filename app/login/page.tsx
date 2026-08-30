@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { 
-  ArrowRight, 
-  CheckCircle2, 
   Compass, 
   Eye, 
   EyeOff, 
@@ -14,9 +12,7 @@ import {
   LogIn, 
   Mail, 
   ShieldCheck, 
-  Sparkles, 
   User, 
-  UserCheck, 
   UserPlus 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,7 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { DEMO_USERS, PRIMARY_DEMO_USER, setClientDemoSession } from "@/lib/auth";
+import { setClientDemoSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -42,9 +38,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedDemoId, setSelectedDemoId] = useState(PRIMARY_DEMO_USER.id);
 
-  // Email + Password or Magic Link Handler
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -79,102 +73,115 @@ export default function LoginPage() {
 
       if (authMode === "signin") {
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: email.trim().toLowerCase(),
           password: password,
         });
 
         if (error) {
-          // Check if it's one of our registered/demo accounts
-          const matchingDemo = DEMO_USERS.find(
-            (u) => u.email.toLowerCase() === email.trim().toLowerCase()
-          );
-          if (matchingDemo) {
-            setClientDemoSession(matchingDemo);
-            toast.success(`Welcome back, ${matchingDemo.name}!`);
-            router.push("/");
-            return;
-          }
-
-          // Fallback mock session for custom email
-          const customUser = {
-            id: `usr_${Math.random().toString(36).substring(2, 10)}`,
-            name: email.split("@")[0],
-            email: email.trim(),
-            campus_id: "00000000-0000-0000-0000-000000000001",
-            monthly_income: 15000,
-            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-            initials: email.substring(0, 2).toUpperCase(),
-            role_desc: "Student Account",
-          };
-          setClientDemoSession(customUser);
-          toast.success(`Signed in as ${customUser.name}!`);
-          router.push("/");
+          toast.error(error.message || "Invalid email or password. Please try again.");
           return;
         }
 
         if (data.user) {
+          const userName =
+            data.user.user_metadata?.full_name ||
+            data.user.user_metadata?.name ||
+            email.split("@")[0];
+
+          // Ensure profile exists in public.users
+          try {
+            await fetch("/api/auth/sync-profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: data.user.id,
+                name: userName,
+                email: data.user.email || email.trim().toLowerCase(),
+                campus_id: "00000000-0000-0000-0000-000000000001",
+              }),
+            });
+          } catch (syncErr) {
+            console.warn("Profile sync warning:", syncErr);
+          }
+
           const studentUser = {
             id: data.user.id,
-            name: data.user.user_metadata?.full_name || email.split("@")[0],
-            email: data.user.email || email,
+            name: userName,
+            email: data.user.email || email.trim().toLowerCase(),
             campus_id: "00000000-0000-0000-0000-000000000001",
             monthly_income: 15000,
-            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-            initials: (data.user.user_metadata?.full_name || email).substring(0, 2).toUpperCase(),
+            avatar: data.user.user_metadata?.avatar || null,
+            initials: userName
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+              .substring(0, 2)
+              .toUpperCase(),
             role_desc: "Student Account",
           };
           setClientDemoSession(studentUser);
           toast.success(`Welcome back, ${studentUser.name}!`);
           router.push("/");
+          router.refresh();
           return;
         }
       } else {
-        // Sign Up Flow
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password: password,
-          options: {
-            data: {
-              full_name: name.trim(),
-            },
-          },
+        // Sign Up Flow via Server Endpoint (auto-confirmed + synced to public.users)
+        const signupRes = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            password: password,
+          }),
         });
 
+        const signupData = await signupRes.json();
+
+        if (!signupRes.ok || signupData.error) {
+          toast.error(signupData.error || "Sign up failed. Please try again.");
+          return;
+        }
+
+        // Immediately sign in with Supabase Auth to establish the active browser session
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password: password,
+        });
+
+        if (signInError) {
+          toast.error(signInError.message || "Account created, but sign-in encountered an issue.");
+          return;
+        }
+
         const newStudentUser = {
-          id: data.user?.id || `usr_${Math.random().toString(36).substring(2, 10)}`,
+          id: signInData.user.id,
           name: name.trim(),
-          email: email.trim(),
+          email: email.trim().toLowerCase(),
           campus_id: "00000000-0000-0000-0000-000000000001",
           monthly_income: 15000,
-          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+          avatar: null,
           initials: name
+            .trim()
             .split(" ")
             .map((n) => n[0])
             .join("")
             .substring(0, 2)
             .toUpperCase(),
-          role_desc: "New Student Member",
+          role_desc: "Student Account",
         };
         setClientDemoSession(newStudentUser);
         toast.success(`Account created successfully! Welcome to CampusLoop, ${name}!`);
         router.push("/");
+        router.refresh();
         return;
       }
     } catch (err: any) {
-      toast.error(err?.message || "Authentication error. Signing you into demo session.");
-      const fallbackUser = DEMO_USERS[0];
-      setClientDemoSession(fallbackUser);
-      router.push("/");
+      toast.error(err?.message || "An unexpected authentication error occurred.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickDemoLogin = (userId: string) => {
-    const user = DEMO_USERS.find((u) => u.id === userId) || PRIMARY_DEMO_USER;
-    setClientDemoSession(user);
-    toast.success(`Signed in as ${user.name} (${user.role_desc})`);
-    router.push("/");
   };
 
   return (
@@ -229,56 +236,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Quick Demo Access Bar */}
-          <div className="rounded-xl border border-primary/20 bg-primary/[0.03] dark:bg-primary/10 p-3.5 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-primary dark:text-teal-300 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                Quick Student Access
-              </span>
-              <span className="text-[10px] text-slate-400">1-Click Sign In</span>
-            </div>
-
-            <Button
-              type="button"
-              size="sm"
-              className="w-full font-bold shadow-xs h-9 text-xs"
-              onClick={() => handleQuickDemoLogin(selectedDemoId)}
-            >
-              <UserCheck className="mr-1.5 h-3.5 w-3.5" />
-              Continue as {DEMO_USERS.find((u) => u.id === selectedDemoId)?.name}
-              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-            </Button>
-
-            {/* Quick Demo Switcher */}
-            <div className="grid grid-cols-3 gap-1 pt-0.5">
-              {DEMO_USERS.map((user) => {
-                const isSelected = user.id === selectedDemoId;
-                return (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => setSelectedDemoId(user.id)}
-                    className={`p-1.5 rounded-lg text-left text-[10px] border transition-all truncate ${
-                      isSelected
-                        ? "border-primary bg-primary/10 text-primary dark:text-teal-300 font-bold"
-                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="truncate block font-semibold">{user.name.split(" ")[0]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="relative flex items-center justify-center">
-            <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-            <span className="absolute bg-white dark:bg-slate-900 px-3 text-[11px] font-medium text-slate-400">
-              Or {authMode === "signin" ? "enter your credentials" : "create a student account"}
-            </span>
-          </div>
-
           {/* Email / Password Form */}
           <form onSubmit={handleAuthSubmit} className="space-y-3.5">
             {/* Full Name for Sign Up */}
@@ -291,7 +248,7 @@ export default function LoginPage() {
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
                     type="text"
-                    placeholder="e.g. Salik Riyaz"
+                    placeholder="e.g. Bilal Ashiq"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -304,13 +261,13 @@ export default function LoginPage() {
             {/* Campus Email Address */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Campus Email Address
+                Campus / Student Email
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <Input
                   type="email"
-                  placeholder="student@campus.edu or gmail.com"
+                  placeholder="student@campus.edu or your.email@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -325,17 +282,12 @@ export default function LoginPage() {
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Password
                 </label>
-                {authMode === "signin" && (
-                  <span className="text-[10px] text-primary hover:underline cursor-pointer">
-                    Forgot password?
-                  </span>
-                )}
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="At least 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
