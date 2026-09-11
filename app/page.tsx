@@ -136,17 +136,17 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-8">
+    <div className="container mx-auto max-w-7xl px-5 sm:px-8 py-6 sm:py-8 space-y-8">
       {/* 1. Seamless Blended Hero Section */}
-      <div className="relative pt-6 pb-16 lg:pt-12 lg:pb-24 overflow-hidden">
+      <div className="relative pt-4 sm:pt-6 pb-14 sm:pb-16 lg:pt-12 lg:pb-24 overflow-hidden">
         {/* Subtle background glow/blend */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-[100px] opacity-60 dark:opacity-40" />
           <div className="absolute top-32 -right-32 w-[30rem] h-[30rem] bg-indigo-500/10 rounded-full blur-[120px] opacity-60 dark:opacity-40" />
         </div>
 
-        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-12">
-          <div className="max-w-2xl space-y-8 flex-1">
+        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-12">
+          <div className="max-w-2xl space-y-6 sm:space-y-8 flex-1 px-1 sm:px-3 lg:px-0">
             <div className="flex flex-wrap items-center gap-3 text-sm font-semibold">
               <span className="text-primary bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20 flex items-center gap-1.5 shadow-sm">
                 <Sparkles className="w-4 h-4" />
@@ -158,19 +158,19 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-[4.5rem] font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.05]" suppressHydrationWarning>
+            <h1 className="text-4xl xs:text-5xl sm:text-6xl lg:text-[4.5rem] font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.08] sm:leading-[1.05]" suppressHydrationWarning>
               Your Unified <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">
                 Campus Hub.
               </span>
             </h1>
             
-            <p className="text-lg text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
               Buy & sell items, find verified student housing, and calculate transparent rent splits—all in one place designed exclusively for your campus.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
-               <Button size="lg" asChild className="rounded-full h-14 px-8 text-base font-bold shadow-lg shadow-primary/25 group">
+               <Button size="lg" asChild className="rounded-full h-12 sm:h-14 px-6 sm:px-8 text-sm sm:text-base font-bold shadow-lg shadow-primary/25 group">
                  <Link href="/marketplace">
                    Start Exploring
                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />

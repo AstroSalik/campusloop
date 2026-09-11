@@ -50,13 +50,15 @@ export function MobileNavDrawer({
   onDetectLocation,
 }: MobileNavDrawerProps) {
   const pathname = usePathname();
+  const prevPathRef = React.useRef(pathname);
 
-  // Close drawer on path change
+  // Close drawer only when user navigates to a new route
   useEffect(() => {
-    if (open) {
+    if (prevPathRef.current !== pathname) {
+      prevPathRef.current = pathname;
       onClose();
     }
-  }, [pathname, open, onClose]);
+  }, [pathname, onClose]);
 
   // Lock body scroll when drawer is open
   useEffect(() => {
@@ -83,7 +85,7 @@ export function MobileNavDrawer({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 lg:hidden">
+    <div className="fixed inset-0 z-[60] lg:hidden">
       {/* Backdrop overlay */}
       <div
         className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity animate-in fade-in-0 duration-200"
@@ -92,7 +94,7 @@ export function MobileNavDrawer({
       />
 
       {/* Slide-over panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-[320px] sm:max-w-sm bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col justify-between overflow-y-auto no-scrollbar animate-in slide-in-from-right duration-250 ease-out">
+      <div className="fixed inset-y-0 right-0 z-[60] w-full max-w-[320px] sm:max-w-sm bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col justify-between overflow-y-auto no-scrollbar animate-in slide-in-from-right duration-250 ease-out">
         {/* Top Header */}
         <div>
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">

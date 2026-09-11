@@ -201,8 +201,8 @@ export function Navbar() {
             {/* Mobile & Tablet Hamburger Drawer Button (visible on < lg) */}
             <button
               type="button"
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shadow-2xs"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              className="lg:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shadow-2xs cursor-pointer"
               aria-label="Open navigation menu"
             >
               <Menu className="h-4.5 w-4.5" />
