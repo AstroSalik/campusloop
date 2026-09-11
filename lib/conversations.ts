@@ -812,6 +812,7 @@ export async function sendMessage(conversationId: string, senderId: string, cont
     if (!conv.messages) conv.messages = [];
     conv.messages.push(newMsg);
     saveConversations([...all]);
+    markConversationAsRead(conversationId, senderId);
   }
 
   // 2. Real Supabase Database Insert
@@ -1035,3 +1036,52 @@ export async function fetchConversationByIdFromSupabase(conversationId: string):
     return local;
   }
 }
+
+const READ_RECEIPTS_PREFIX = "campusloop_read_receipts_";
+
+export function getReadReceipts(userId: string): Record<string, string> {
+  if (typeof window === "undefined" || !userId) return {};
+  try {
+    const raw = localStorage.getItem(`${READ_RECEIPTS_PREFIX}${userId}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+export function markConversationAsRead(conversationId: string, userId: string) {
+  if (typeof window === "undefined" || !userId || !conversationId) return;
+  try {
+    const receipts = getReadReceipts(userId);
+    receipts[conversationId] = new Date().toISOString();
+    localStorage.setItem(`${READ_RECEIPTS_PREFIX}${userId}`, JSON.stringify(receipts));
+    window.dispatchEvent(
+      new CustomEvent("campusloop_read_receipts_updated", {
+        detail: { conversationId, userId },
+      })
+    );
+  } catch (e) {}
+}
+
+export function getConversationUnreadCount(conv: StoredConversation, userId: string): number {
+  if (!userId || !conv || !conv.messages || conv.messages.length === 0) return 0;
+  const receipts = getReadReceipts(userId);
+  const lastReadAt = receipts[conv.id];
+  const lastReadTime = lastReadAt ? new Date(lastReadAt).getTime() : 0;
+
+  return conv.messages.filter((m) => {
+    // Exclude messages sent by this user
+    if (m.sender_id === userId) return false;
+    const msgTime = new Date(m.created_at).getTime();
+    return msgTime > lastReadTime;
+  }).length;
+}
+
+export function getTotalUnreadCount(conversations: StoredConversation[], userId: string): number {
+  if (!userId || !conversations || conversations.length === 0) return 0;
+  return conversations.reduce((total, conv) => {
+    if (!conv.members || !conv.members.some((m) => m.user_id === userId)) return total;
+    return total + getConversationUnreadCount(conv, userId);
+  }, 0);
+}
+

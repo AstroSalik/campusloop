@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/shared/BottomNav";
 import { Footer } from "@/components/shared/Footer";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { Toaster } from "@/components/ui/sonner";
+import { GlobalMessageWatcher } from "@/components/chat/GlobalMessageWatcher";
 
 export const metadata: Metadata = {
   title: "CampusLoop — Campus Living & Marketplace",
@@ -36,6 +37,7 @@ export default function RootLayout({
         <Footer />
         <ScrollToTop />
         <BottomNav />
+        <GlobalMessageWatcher />
         <Toaster closeButton position="top-right" />
       </body>
     </html>

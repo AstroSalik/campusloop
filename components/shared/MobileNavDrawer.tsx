@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DemoUser } from "@/lib/auth";
+import { useUnreadMessageCount } from "@/lib/useUnreadMessageCount";
 import { ThemeToggle } from "./ThemeToggle";
 
 interface MobileNavDrawerProps {
@@ -50,6 +51,7 @@ export function MobileNavDrawer({
   onDetectLocation,
 }: MobileNavDrawerProps) {
   const pathname = usePathname();
+  const { unreadCount } = useUnreadMessageCount();
   const prevPathRef = React.useRef(pathname);
 
   // Close drawer only when user navigates to a new route
@@ -283,11 +285,15 @@ export function MobileNavDrawer({
                     />
                     <span>{link.label}</span>
                   </div>
-                  {link.badge && (
+                  {link.href === "/messages" && unreadCount > 0 ? (
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 text-white font-extrabold text-[10px] px-2 shadow-xs">
+                      {unreadCount > 9 ? "9+" : unreadCount} new
+                    </span>
+                  ) : link.badge ? (
                     <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                       {link.badge}
                     </span>
-                  )}
+                  ) : null}
                 </Link>
               );
             })}

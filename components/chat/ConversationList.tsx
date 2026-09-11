@@ -14,7 +14,12 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { StoredConversation } from "@/lib/conversations";
+import { 
+  StoredConversation, 
+  getConversationUnreadCount, 
+  getTotalUnreadCount, 
+  markConversationAsRead 
+} from "@/lib/conversations";
 
 interface ConversationListProps {
   conversations: StoredConversation[];
@@ -54,15 +59,24 @@ export function ConversationList({
     return true;
   });
 
+  const totalUnread = getTotalUnreadCount(conversations, currentUserId);
+
   return (
     <div className="flex h-full flex-col border-r-0 md:border-r border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
       {/* Header & Tabs */}
       <div className="border-b border-slate-200/80 dark:border-slate-800 p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary dark:text-teal-400" />
-            Messages
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary dark:text-teal-400" />
+              Messages
+            </h2>
+            {totalUnread > 0 && (
+              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 text-white font-extrabold text-[10px] px-1.5 shadow-xs animate-pulse">
+                {totalUnread} new
+              </span>
+            )}
+          </div>
           <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs">
             {conversations.length} Threads
           </Badge>
@@ -83,13 +97,18 @@ export function ConversationList({
         <div className="grid grid-cols-4 gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-1 text-[11px]">
           <button
             onClick={() => setFilterType("all")}
-            className={`py-1 rounded-md font-semibold transition-all ${
+            className={`py-1 rounded-md font-semibold transition-all flex items-center justify-center gap-1 ${
               filterType === "all"
                 ? "bg-white dark:bg-slate-900 text-primary dark:text-teal-300 shadow-xs"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            All
+            <span>All</span>
+            {totalUnread > 0 && (
+              <span className="h-4 min-w-[14px] px-1 rounded-full bg-emerald-500 text-[9px] font-extrabold text-white flex items-center justify-center">
+                {totalUnread > 9 ? "9+" : totalUnread}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setFilterType("marketplace_dm")}
@@ -138,6 +157,8 @@ export function ConversationList({
             const otherMembers = conv.members.filter((m) => m.user_id !== currentUserId);
             const isGroup = conv.type === "housing_group";
             const isWanted = conv.type === "wanted_response";
+            const unreadCount = getConversationUnreadCount(conv, currentUserId);
+            const hasUnread = unreadCount > 0;
 
             const displayTitle = conv.title || (isGroup ? "Housing Group" : otherMembers[0]?.user_name || "Chat");
             const timeStr = lastMsg
@@ -151,12 +172,20 @@ export function ConversationList({
               <Link
                 key={conv.id}
                 href={`/messages/${conv.id}`}
+                onClick={() => markConversationAsRead(conv.id, currentUserId)}
                 className={`flex items-start gap-3 p-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 ${
-                  isActive ? "bg-primary/5 dark:bg-primary/15 border-l-4 border-primary pl-2.5" : ""
+                  isActive
+                    ? "bg-primary/5 dark:bg-primary/15 border-l-4 border-primary pl-2.5"
+                    : hasUnread
+                    ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-l-4 border-emerald-500 pl-2.5"
+                    : ""
                 }`}
               >
-                {/* Avatar / Stack */}
+                {/* Avatar / Stack with Unread Dot */}
                 <div className="relative shrink-0">
+                  {hasUnread && (
+                    <span className="absolute -top-1 -left-1 z-10 flex h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                  )}
                   {isGroup ? (
                     <div className="flex -space-x-2 overflow-hidden">
                       {conv.members.slice(0, 2).map((m, i) => (
@@ -191,17 +220,51 @@ export function ConversationList({
                 {/* Details */}
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center justify-between gap-1">
-                    <h3 className={`text-xs font-bold truncate ${isActive ? "text-primary dark:text-teal-300" : "text-slate-900 dark:text-white"}`}>
-                      {displayTitle}
-                    </h3>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0 font-medium">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {hasUnread && (
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                      )}
+                      <h3
+                        className={`text-xs truncate ${
+                          isActive
+                            ? "text-primary dark:text-teal-300 font-bold"
+                            : hasUnread
+                            ? "font-black text-slate-950 dark:text-white"
+                            : "font-semibold text-slate-800 dark:text-slate-200"
+                        }`}
+                      >
+                        {displayTitle}
+                      </h3>
+                    </div>
+                    <span
+                      className={`text-[10px] shrink-0 font-semibold ${
+                        hasUnread
+                          ? "text-emerald-600 dark:text-teal-400 font-bold"
+                          : "text-slate-400 dark:text-slate-500 font-medium"
+                      }`}
+                    >
                       {timeStr}
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate leading-tight">
-                    {lastMsg ? lastMsg.content : "No messages yet"}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p
+                      className={`text-xs truncate leading-tight flex-1 ${
+                        hasUnread
+                          ? "font-bold text-slate-950 dark:text-slate-100"
+                          : "text-slate-500 dark:text-slate-400"
+                      }`}
+                    >
+                      {lastMsg ? lastMsg.content : "No messages yet"}
+                    </p>
+
+                    {/* WhatsApp-style green pill badge */}
+                    {hasUnread && (
+                      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 text-[10px] font-extrabold text-white shadow-xs px-1.5 shrink-0 animate-in zoom-in-50">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex items-center gap-1.5 pt-0.5">
                     <Badge

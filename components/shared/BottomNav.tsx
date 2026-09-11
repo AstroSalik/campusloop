@@ -10,9 +10,11 @@ import {
   User 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUnreadMessageCount } from "@/lib/useUnreadMessageCount";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { unreadCount } = useUnreadMessageCount();
 
   // Hide BottomNav when user is inside a specific conversation thread
   // so the message input is sticky to the actual device bottom
@@ -51,7 +53,7 @@ export function BottomNav() {
             >
               <div
                 className={cn(
-                  "flex items-center justify-center h-7 w-7 rounded-full transition-transform",
+                  "relative flex items-center justify-center h-7 w-7 rounded-full transition-transform",
                   isActive && "bg-primary/10 dark:bg-primary/20 scale-105"
                 )}
               >
@@ -61,6 +63,11 @@ export function BottomNav() {
                     isActive ? "text-primary stroke-[2.5]" : "text-slate-500 dark:text-slate-400"
                   )}
                 />
+                {item.href === "/messages" && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-500 text-[9px] font-extrabold text-white px-1 shadow-xs ring-2 ring-white dark:ring-slate-900 animate-in zoom-in-50 duration-200">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </div>
               <span className="text-[10px] sm:text-[11px] leading-tight mt-0.5 truncate max-w-[60px] text-center">
                 {item.label}

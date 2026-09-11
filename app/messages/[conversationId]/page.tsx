@@ -16,6 +16,7 @@ import {
   getConversationById, 
   getConversations, 
   sendMessage, 
+  markConversationAsRead,
   StoredConversation 
 } from "@/lib/conversations";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
@@ -34,6 +35,7 @@ export default function ConversationDetailPage() {
 
   const syncLocal = () => {
     if (!currentUser) return;
+    markConversationAsRead(conversationId, currentUser.id);
     const conv = getConversationById(conversationId);
     if (conv) {
       setConversation({ ...conv });
@@ -48,6 +50,7 @@ export default function ConversationDetailPage() {
   const syncCloud = async () => {
     if (!currentUser) return;
     try {
+      markConversationAsRead(conversationId, currentUser.id);
       // 1. Fetch current conversation details & messages from Supabase
       const cloudConv = await fetchConversationByIdFromSupabase(conversationId);
       if (cloudConv) {
