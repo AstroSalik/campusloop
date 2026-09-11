@@ -2,32 +2,21 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { 
   ArrowRight, 
   Bike, 
   Building2, 
-  CheckCircle2, 
-  Compass, 
   Home, 
-  MapPin, 
-  MessageSquare, 
   Package, 
   Percent, 
   Plus, 
-  Search, 
   ShieldCheck, 
   ShoppingBag, 
   Sparkles, 
-  Store, 
-  TrendingUp, 
-  Users, 
-  Users2, 
-  Wallet 
+  Users2 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListingCard } from "@/components/marketplace/ListingCard";
 import { RoomCard } from "@/components/housing/RoomCard";
@@ -41,12 +30,10 @@ import { evaluateRentHealth } from "@/lib/rent-engine";
 import { useAppMode } from "@/lib/useAppMode";
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
   const [mounted, setMounted] = useState(false);
   const [appMode, setAppMode] = useAppMode();
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [listings, setListings] = useState<ReturnType<typeof getListings>>([]);
   const [rooms, setRooms] = useState<ReturnType<typeof getRooms>>([]);
   const [loading, setLoading] = useState(true);
@@ -75,22 +62,13 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/marketplace?q=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      router.push("/marketplace");
-    }
-  };
-
   // Sample snapshot calculation based on student allowance
   const sampleAssessment = evaluateRentHealth(
     18000,
     1500,
     900,
     3,
-    currentUser?.monthly_income || 15000
+    (mounted && currentUser?.monthly_income) ? currentUser.monthly_income : 15000
   );
 
   return (
@@ -160,7 +138,14 @@ export default function DashboardPage() {
              <div className="relative">
                 {/* Main showcase image (a cool campus or room photo) */}
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-3 shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800 transform lg:rotate-2 hover:rotate-0 transition-transform duration-500">
-                  <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=2340&auto=format&fit=crop" className="w-full h-64 sm:h-80 lg:h-[340px] object-cover rounded-[1.5rem]" alt="Modern Student Room" />
+                  <Image 
+                    src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=2340&auto=format&fit=crop" 
+                    className="w-full h-64 sm:h-80 lg:h-[340px] object-cover rounded-[1.5rem]" 
+                    alt="Modern Student Room" 
+                    width={600}
+                    height={400}
+                    priority
+                  />
                   
                   {/* Floating elements simulating app UI */}
                   <div className="absolute -left-4 sm:-left-10 top-12 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3 animate-[bounce_4s_infinite]">
@@ -398,7 +383,7 @@ export default function DashboardPage() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              {currentUser ? (
+              {mounted && currentUser ? (
                 <>
                   Based on your monthly allowance of <strong>₹{currentUser.monthly_income?.toLocaleString("en-IN") || "15,000"}</strong>, a 3-person flat split (₹18,000 rent + utilities) takes <strong>{sampleAssessment.housingRatioPct}%</strong> of your budget.
                 </>

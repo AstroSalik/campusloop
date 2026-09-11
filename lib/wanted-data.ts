@@ -11,7 +11,7 @@ export interface StoredWantedListing extends WantedListing {
 export const INITIAL_WANTED_LISTINGS: StoredWantedListing[] = [
   {
     id: "w01-mini-fridge",
-    requester_id: DEMO_USERS[0].id, // Bilal Ashiq (user_1)
+    requester_id: DEMO_USERS[0].id, // Salik Riyaz
     requester_name: DEMO_USERS[0].name,
     requester_email: DEMO_USERS[0].email,
     requester_initials: DEMO_USERS[0].initials,
@@ -25,26 +25,11 @@ export const INITIAL_WANTED_LISTINGS: StoredWantedListing[] = [
     created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
   },
   {
-    id: "w02-study-table",
-    requester_id: DEMO_USERS[1].id, // Sukhmanpreet Kaur (user_2)
-    requester_name: DEMO_USERS[1].name,
-    requester_email: DEMO_USERS[1].email,
-    requester_initials: DEMO_USERS[1].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Need a study table, budget ₹1000",
-    description: "Looking for a sturdy wooden or metal study desk for Hostel 3. Prefer something with a small drawer or shelf for books and laptop.",
-    category: "Furniture",
-    budget_max: 1000,
-    status: "active",
-    location_label: "Hostel 3",
-    created_at: new Date(Date.now() - 3600000 * 24 * 1.8).toISOString(),
-  },
-  {
     id: "w03-casio-calc",
-    requester_id: DEMO_USERS[2].id, // Salik Riyaz (user_3)
-    requester_name: DEMO_USERS[2].name,
-    requester_email: DEMO_USERS[2].email,
-    requester_initials: DEMO_USERS[2].initials,
+    requester_id: DEMO_USERS[0].id, // Salik Riyaz
+    requester_name: DEMO_USERS[0].name,
+    requester_email: DEMO_USERS[0].email,
+    requester_initials: DEMO_USERS[0].initials,
     campus_id: DEMO_CAMPUS_ID,
     title: "Looking for Casio fx-991EX or fx-991CW Calculator",
     description: "Urgent requirement for upcoming semester exams. Need a genuine Casio scientific calculator with all matrix and complex functions working smoothly.",
@@ -53,51 +38,6 @@ export const INITIAL_WANTED_LISTINGS: StoredWantedListing[] = [
     status: "active",
     location_label: "Hostel 1",
     created_at: new Date(Date.now() - 3600000 * 24 * 1.5).toISOString(),
-  },
-  {
-    id: "w04-mattress",
-    requester_id: DEMO_USERS[3].id, // Sana Wani (user_4)
-    requester_name: DEMO_USERS[3].name,
-    requester_email: DEMO_USERS[3].email,
-    requester_initials: DEMO_USERS[3].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Need Single Bed Mattress for Hostel 5",
-    description: "Looking for a clean 4-inch single bed foam mattress (standard hostel size 3x6 ft). Budget around ₹700, can pick up immediately from any hostel on campus.",
-    category: "Furniture",
-    budget_max: 700,
-    status: "active",
-    location_label: "Hostel 5",
-    created_at: new Date(Date.now() - 3600000 * 24 * 1.2).toISOString(),
-  },
-  {
-    id: "w05-electric-kettle",
-    requester_id: DEMO_USERS[4].id, // Vikram Iyer (user_5)
-    requester_name: DEMO_USERS[4].name,
-    requester_email: DEMO_USERS[4].email,
-    requester_initials: DEMO_USERS[4].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Looking for an Electric Kettle under ₹500",
-    description: "Need a working 1.5L or 1.8L stainless steel electric boiling kettle for tea and late night instant noodles. Should have auto shut-off.",
-    category: "Appliances",
-    budget_max: 500,
-    status: "active",
-    location_label: "Lovely Nagar PG",
-    created_at: new Date(Date.now() - 3600000 * 24 * 1.0).toISOString(),
-  },
-  {
-    id: "w06-geared-cycle",
-    requester_id: DEMO_USERS[5].id, // Zoya Malik (user_6)
-    requester_name: DEMO_USERS[5].name,
-    requester_email: DEMO_USERS[5].email,
-    requester_initials: DEMO_USERS[5].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Need 21-Speed Geared Bicycle (any brand)",
-    description: "Seeking a reliable geared commuter cycle for daily transit between PG and campus. Brakes and gear shifters must be in working order. Open to Hercules, Firefox, or Montra.",
-    category: "Cycles",
-    budget_max: 4000,
-    status: "active",
-    location_label: "Hostel 2",
-    created_at: new Date(Date.now() - 3600000 * 24 * 0.6).toISOString(),
   },
 ];
 

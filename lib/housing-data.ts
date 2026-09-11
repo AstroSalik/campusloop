@@ -12,10 +12,10 @@ export const INITIAL_ROOMS: (Room & {
 })[] = [
   {
     id: "r01-main-gate-2bhk",
-    owner_id: DEMO_USERS[4].id, // Vikram Iyer (user_5)
-    owner_name: DEMO_USERS[4].name,
-    owner_email: DEMO_USERS[4].email,
-    owner_initials: DEMO_USERS[4].initials,
+    owner_id: DEMO_USERS[0].id, // Salik Riyaz
+    owner_name: DEMO_USERS[0].name,
+    owner_email: DEMO_USERS[0].email,
+    owner_initials: DEMO_USERS[0].initials,
     campus_id: DEMO_CAMPUS_ID,
     title: "2BHK Near Main Gate",
     rent: 18000,
@@ -23,7 +23,7 @@ export const INITIAL_ROOMS: (Room & {
     maintenance: 900,
     bedrooms: 2,
     occupancy_total: 3,
-    occupancy_filled: 2, // 2 spots booked, 1 spot open
+    occupancy_filled: 1,
     amenities: ["WiFi", "Geyser", "RO Water", "Power Backup", "Beds & Mattresses"],
     location_label: "Main Gate PG",
     available_from: "Sept 1st",
@@ -38,47 +38,22 @@ export const INITIAL_ROOMS: (Room & {
     ],
     booked_users: [
       {
-        user_id: DEMO_USERS[2].id, // Salik Riyaz
-        user_name: DEMO_USERS[2].name,
-        user_email: DEMO_USERS[2].email,
-        user_initials: DEMO_USERS[2].initials,
+        user_id: DEMO_USERS[0].id,
+        user_name: DEMO_USERS[0].name,
+        user_email: DEMO_USERS[0].email,
+        user_initials: DEMO_USERS[0].initials,
         booked_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
         spot_number: 1,
       },
-      {
-        user_id: DEMO_USERS[3].id, // Sana Wani
-        user_name: DEMO_USERS[3].name,
-        user_email: DEMO_USERS[3].email,
-        user_initials: DEMO_USERS[3].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
-        spot_number: 2,
-      },
     ],
-    interested_users: [
-      {
-        user_id: DEMO_USERS[1].id, // Sukhmanpreet Kaur
-        user_name: DEMO_USERS[1].name,
-        user_email: DEMO_USERS[1].email,
-        user_initials: DEMO_USERS[1].initials,
-        interested_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
-        expires_at: new Date(Date.now() + 3600000 * 24 * 5).toISOString(), // 5 days left
-      },
-      {
-        user_id: DEMO_USERS[5].id, // Zoya Malik
-        user_name: DEMO_USERS[5].name,
-        user_email: DEMO_USERS[5].email,
-        user_initials: DEMO_USERS[5].initials,
-        interested_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
-        expires_at: new Date(Date.now() + 3600000 * 24 * 4).toISOString(), // 4 days left
-      },
-    ],
+    interested_users: [],
   },
   {
     id: "r02-hostel2-single",
-    owner_id: DEMO_USERS[5].id, // Zoya Malik (user_6)
-    owner_name: DEMO_USERS[5].name,
-    owner_email: DEMO_USERS[5].email,
-    owner_initials: DEMO_USERS[5].initials,
+    owner_id: DEMO_USERS[0].id, // Salik Riyaz
+    owner_name: DEMO_USERS[0].name,
+    owner_email: DEMO_USERS[0].email,
+    owner_initials: DEMO_USERS[0].initials,
     campus_id: DEMO_CAMPUS_ID,
     title: "Single Room PG (Hostel 2 area)",
     rent: 8000,
@@ -100,309 +75,14 @@ export const INITIAL_ROOMS: (Room & {
       },
     ],
     booked_users: [],
-    interested_users: [
-      {
-        user_id: DEMO_USERS[0].id, // Bilal Ashiq
-        user_name: DEMO_USERS[0].name,
-        user_email: DEMO_USERS[0].email,
-        user_initials: DEMO_USERS[0].initials,
-        interested_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
-        expires_at: new Date(Date.now() + 3600000 * 24 * 6).toISOString(), // 6 days left
-      },
-    ],
-  },
-  {
-    id: "r03-shared-flat-3bhk",
-    owner_id: DEMO_USERS[0].id, // Bilal Ashiq (user_1)
-    owner_name: DEMO_USERS[0].name,
-    owner_email: DEMO_USERS[0].email,
-    owner_initials: DEMO_USERS[0].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "3BHK Shared Flat",
-    rent: 24000,
-    utilities: 2000,
-    maintenance: 1000,
-    bedrooms: 3,
-    occupancy_total: 4,
-    occupancy_filled: 2, // 2 spots booked, 2 open
-    amenities: ["Modular Kitchen", "Balcony", "Washing Machine", "WiFi", "Security Guard"],
-    location_label: "Lovely Nagar PG",
-    available_from: "Sept 15th",
-    status: "available",
-    created_at: new Date(Date.now() - 3600000 * 24 * 4).toISOString(),
-    images: [
-      {
-        id: "img-r03",
-        room_id: "r03-shared-flat-3bhk",
-        image_url: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
-      },
-    ],
-    booked_users: [
-      {
-        user_id: DEMO_USERS[4].id, // Vikram Iyer
-        user_name: DEMO_USERS[4].name,
-        user_email: DEMO_USERS[4].email,
-        user_initials: DEMO_USERS[4].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 4).toISOString(),
-        spot_number: 1,
-      },
-      {
-        user_id: DEMO_USERS[5].id, // Zoya Malik
-        user_name: DEMO_USERS[5].name,
-        user_email: DEMO_USERS[5].email,
-        user_initials: DEMO_USERS[5].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
-        spot_number: 2,
-      },
-    ],
-    interested_users: [
-      {
-        user_id: DEMO_USERS[2].id, // Salik Riyaz
-        user_name: DEMO_USERS[2].name,
-        user_email: DEMO_USERS[2].email,
-        user_initials: DEMO_USERS[2].initials,
-        interested_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
-        expires_at: new Date(Date.now() + 3600000 * 24 * 5).toISOString(), // 5 days left
-      },
-      {
-        user_id: DEMO_USERS[3].id, // Sana Wani
-        user_name: DEMO_USERS[3].name,
-        user_email: DEMO_USERS[3].email,
-        user_initials: DEMO_USERS[3].initials,
-        interested_at: new Date(Date.now() - 3600000 * 24 * 4).toISOString(),
-        expires_at: new Date(Date.now() + 3600000 * 24 * 3).toISOString(), // 3 days left
-      },
-    ],
-  },
-  {
-    id: "r04-twin-sharing-pg",
-    owner_id: DEMO_USERS[1].id, // Sukhmanpreet Kaur (user_2)
-    owner_name: DEMO_USERS[1].name,
-    owner_email: DEMO_USERS[1].email,
-    owner_initials: DEMO_USERS[1].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "PG Room (Twin Sharing)",
-    rent: 6500,
-    utilities: 600,
-    maintenance: 300,
-    bedrooms: 1,
-    occupancy_total: 2,
-    occupancy_filled: 1,
-    amenities: ["Mess Included", "WiFi", "Daily Cleaning", "AC"],
-    location_label: "Hostel 3",
-    available_from: "Immediate",
-    status: "available",
-    created_at: new Date(Date.now() - 3600000 * 24 * 3.5).toISOString(),
-    images: [
-      {
-        id: "img-r04",
-        room_id: "r04-twin-sharing-pg",
-        image_url: "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1000&q=80",
-      },
-    ],
-    booked_users: [
-      {
-        user_id: DEMO_USERS[3].id, // Sana Wani
-        user_name: DEMO_USERS[3].name,
-        user_email: DEMO_USERS[3].email,
-        user_initials: DEMO_USERS[3].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
-        spot_number: 1,
-      },
-    ],
     interested_users: [],
-  },
-  {
-    id: "r05-studio-1bhk",
-    owner_id: DEMO_USERS[2].id, // Salik Riyaz (user_3)
-    owner_name: DEMO_USERS[2].name,
-    owner_email: DEMO_USERS[2].email,
-    owner_initials: DEMO_USERS[2].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "1BHK Studio Apartment",
-    rent: 12000,
-    utilities: 1200,
-    maintenance: 500,
-    bedrooms: 1,
-    occupancy_total: 1,
-    occupancy_filled: 0,
-    amenities: ["Kitchenette", "Fridge", "WiFi", "Geyser", "Balcony"],
-    location_label: "Hostel 1 area",
-    available_from: "Oct 1st",
-    status: "available",
-    created_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
-    images: [
-      {
-        id: "img-r05",
-        room_id: "r05-studio-1bhk",
-        image_url: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1000&q=80",
-      },
-    ],
-    booked_users: [],
-    interested_users: [
-      {
-        user_id: DEMO_USERS[4].id, // Vikram Iyer
-        user_name: DEMO_USERS[4].name,
-        user_email: DEMO_USERS[4].email,
-        user_initials: DEMO_USERS[4].initials,
-        interested_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
-        expires_at: new Date(Date.now() + 3600000 * 24 * 4).toISOString(),
-      },
-    ],
-  },
-  {
-    id: "r06-hostel5-2bhk",
-    owner_id: DEMO_USERS[3].id, // Sana Wani (user_4)
-    owner_name: DEMO_USERS[3].name,
-    owner_email: DEMO_USERS[3].email,
-    owner_initials: DEMO_USERS[3].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "2BHK Near Hostel 5",
-    rent: 16000,
-    utilities: 1400,
-    maintenance: 800,
-    bedrooms: 2,
-    occupancy_total: 3,
-    occupancy_filled: 2,
-    amenities: ["WiFi", "Beds & Study Tables", "Geyser", "Inverter Backup"],
-    location_label: "Hostel 5",
-    available_from: "Sept 1st",
-    status: "available",
-    created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
-    images: [
-      {
-        id: "img-r06",
-        room_id: "r06-hostel5-2bhk",
-        image_url: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1000&q=80",
-      },
-    ],
-    booked_users: [
-      {
-        user_id: DEMO_USERS[0].id, // Bilal Ashiq
-        user_name: DEMO_USERS[0].name,
-        user_email: DEMO_USERS[0].email,
-        user_initials: DEMO_USERS[0].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
-        spot_number: 1,
-      },
-      {
-        user_id: DEMO_USERS[1].id, // Sukhmanpreet Kaur
-        user_name: DEMO_USERS[1].name,
-        user_email: DEMO_USERS[1].email,
-        user_initials: DEMO_USERS[1].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
-        spot_number: 2,
-      },
-    ],
-    interested_users: [],
-  },
-  {
-    id: "r07-triple-sharing-pg",
-    owner_id: DEMO_USERS[4].id, // Vikram Iyer (user_5)
-    owner_name: DEMO_USERS[4].name,
-    owner_email: DEMO_USERS[4].email,
-    owner_initials: DEMO_USERS[4].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "PG Triple Sharing Room",
-    rent: 5500,
-    utilities: 500,
-    maintenance: 300,
-    bedrooms: 1,
-    occupancy_total: 3,
-    occupancy_filled: 2,
-    amenities: ["Food Included", "WiFi", "Daily Housekeeping", "CCTV"],
-    location_label: "Lovely Nagar PG",
-    available_from: "Immediate",
-    status: "available",
-    created_at: new Date(Date.now() - 3600000 * 24 * 1.5).toISOString(),
-    images: [
-      {
-        id: "img-r07",
-        room_id: "r07-triple-sharing-pg",
-        image_url: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=80",
-      },
-    ],
-    booked_users: [
-      {
-        user_id: DEMO_USERS[2].id, // Salik Riyaz
-        user_name: DEMO_USERS[2].name,
-        user_email: DEMO_USERS[2].email,
-        user_initials: DEMO_USERS[2].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
-        spot_number: 1,
-      },
-      {
-        user_id: DEMO_USERS[0].id, // Bilal Ashiq
-        user_name: DEMO_USERS[0].name,
-        user_email: DEMO_USERS[0].email,
-        user_initials: DEMO_USERS[0].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 0.5).toISOString(),
-        spot_number: 2,
-      },
-    ],
-    interested_users: [],
-  },
-  {
-    id: "r08-furnished-2bhk",
-    owner_id: DEMO_USERS[5].id, // Zoya Malik (user_6)
-    owner_name: DEMO_USERS[5].name,
-    owner_email: DEMO_USERS[5].email,
-    owner_initials: DEMO_USERS[5].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "2BHK Furnished Flat",
-    rent: 20000,
-    utilities: 1800,
-    maintenance: 900,
-    bedrooms: 2,
-    occupancy_total: 3,
-    occupancy_filled: 1,
-    amenities: ["Fully Furnished", "AC", "Washing Machine", "Modular Kitchen", "Lift"],
-    location_label: "Hostel 2 area",
-    available_from: "Oct 1st",
-    status: "available",
-    created_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
-    images: [
-      {
-        id: "img-r08",
-        room_id: "r08-furnished-2bhk",
-        image_url: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1000&q=80",
-      },
-    ],
-    booked_users: [
-      {
-        user_id: DEMO_USERS[3].id, // Sana Wani
-        user_name: DEMO_USERS[3].name,
-        user_email: DEMO_USERS[3].email,
-        user_initials: DEMO_USERS[3].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 0.8).toISOString(),
-        spot_number: 1,
-      },
-    ],
-    interested_users: [
-      {
-        user_id: DEMO_USERS[1].id, // Sukhmanpreet Kaur
-        user_name: DEMO_USERS[1].name,
-        user_email: DEMO_USERS[1].email,
-        user_initials: DEMO_USERS[1].initials,
-        interested_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
-        expires_at: new Date(Date.now() + 3600000 * 24 * 6).toISOString(),
-      },
-      {
-        user_id: DEMO_USERS[4].id, // Vikram Iyer
-        user_name: DEMO_USERS[4].name,
-        user_email: DEMO_USERS[4].email,
-        user_initials: DEMO_USERS[4].initials,
-        interested_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
-        expires_at: new Date(Date.now() + 3600000 * 24 * 5).toISOString(),
-      },
-    ],
   },
 ];
 
 export const INITIAL_ROOMMATE_PROFILES: (RoommateProfile & { user_name: string; user_email: string; user_initials: string })[] = [
   {
     id: "prof-01",
-    user_id: DEMO_USERS[0].id, // Bilal Ashiq
+    user_id: DEMO_USERS[0].id, // Salik Riyaz
     user_name: DEMO_USERS[0].name,
     user_email: DEMO_USERS[0].email,
     user_initials: DEMO_USERS[0].initials,
@@ -414,111 +94,15 @@ export const INITIAL_ROOMMATE_PROFILES: (RoommateProfile & { user_name: string; 
   },
   {
     id: "prof-02",
-    user_id: DEMO_USERS[1].id, // Sukhmanpreet Kaur
-    user_name: DEMO_USERS[1].name,
-    user_email: DEMO_USERS[1].email,
-    user_initials: DEMO_USERS[1].initials,
+    user_id: DEMO_USERS[0].id,
+    user_name: "Aman Verma",
+    user_email: "aman.student@campusloop.app",
+    user_initials: "AV",
     budget_min: 5000,
     budget_max: 8000,
     preferred_location: "Hostel 3",
     move_in_month: "September",
     lifestyle_tags: ["Vegetarian", "Clean & Tidy", "Studious", "Non-Smoker"],
-  },
-  {
-    id: "prof-03",
-    user_id: DEMO_USERS[2].id, // Salik Riyaz
-    user_name: DEMO_USERS[2].name,
-    user_email: DEMO_USERS[2].email,
-    user_initials: DEMO_USERS[2].initials,
-    budget_min: 7000,
-    budget_max: 10000,
-    preferred_location: "Hostel 1",
-    move_in_month: "October",
-    lifestyle_tags: ["Night Owl", "Tech Enthusiast", "Chill Vibes", "Non-Smoker"],
-  },
-  {
-    id: "prof-04",
-    user_id: DEMO_USERS[3].id, // Sana Wani
-    user_name: DEMO_USERS[3].name,
-    user_email: DEMO_USERS[3].email,
-    user_initials: DEMO_USERS[3].initials,
-    budget_min: 6000,
-    budget_max: 9000,
-    preferred_location: "Hostel 5",
-    move_in_month: "September",
-    lifestyle_tags: ["Early Bird", "Organized", "Fitness", "Non-Smoker"],
-  },
-  {
-    id: "prof-05",
-    user_id: DEMO_USERS[4].id, // Vikram Iyer
-    user_name: DEMO_USERS[4].name,
-    user_email: DEMO_USERS[4].email,
-    user_initials: DEMO_USERS[4].initials,
-    budget_min: 8000,
-    budget_max: 12000,
-    preferred_location: "Lovely Nagar PG",
-    move_in_month: "September",
-    lifestyle_tags: ["Foodie", "Music OK", "Friendly", "Non-Smoker"],
-  },
-  {
-    id: "prof-06",
-    user_id: DEMO_USERS[5].id, // Zoya Malik
-    user_name: DEMO_USERS[5].name,
-    user_email: DEMO_USERS[5].email,
-    user_initials: DEMO_USERS[5].initials,
-    budget_min: 6500,
-    budget_max: 10000,
-    preferred_location: "Lovely Nagar PG",
-    move_in_month: "October",
-    lifestyle_tags: ["Quiet Study", "Cat Friendly", "Vegetarian", "Non-Smoker"],
-  },
-  {
-    id: "prof-07",
-    user_id: DEMO_USERS[0].id, // Bilal Ashiq (alternative preference)
-    user_name: DEMO_USERS[0].name,
-    user_email: DEMO_USERS[0].email,
-    user_initials: DEMO_USERS[0].initials,
-    budget_min: 5000,
-    budget_max: 7000,
-    preferred_location: "Hostel 2 area",
-    move_in_month: "September",
-    lifestyle_tags: ["Economical", "Shared Kitchen", "Non-Smoker"],
-  },
-  {
-    id: "prof-08",
-    user_id: DEMO_USERS[2].id, // Salik Riyaz
-    user_name: DEMO_USERS[2].name,
-    user_email: DEMO_USERS[2].email,
-    user_initials: DEMO_USERS[2].initials,
-    budget_min: 7000,
-    budget_max: 11000,
-    preferred_location: "Main Gate PG",
-    move_in_month: "September",
-    lifestyle_tags: ["Coding Late", "AC Preferred", "Clean Space"],
-  },
-  {
-    id: "prof-09",
-    user_id: DEMO_USERS[4].id, // Vikram Iyer
-    user_name: DEMO_USERS[4].name,
-    user_email: DEMO_USERS[4].email,
-    user_initials: DEMO_USERS[4].initials,
-    budget_min: 6000,
-    budget_max: 9000,
-    preferred_location: "Hostel 5",
-    move_in_month: "October",
-    lifestyle_tags: ["Gym", "Friendly", "Non-Smoker"],
-  },
-  {
-    id: "prof-10",
-    user_id: DEMO_USERS[1].id, // Sukhmanpreet Kaur
-    user_name: DEMO_USERS[1].name,
-    user_email: DEMO_USERS[1].email,
-    user_initials: DEMO_USERS[1].initials,
-    budget_min: 9000,
-    budget_max: 13000,
-    preferred_location: "Main Gate PG",
-    move_in_month: "September",
-    lifestyle_tags: ["Private Room", "Balcony", "Peaceful", "Non-Smoker"],
   },
 ];
 
