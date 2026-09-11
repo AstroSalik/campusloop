@@ -72,8 +72,6 @@ export function MobileNavDrawer({
     };
   }, [open]);
 
-  if (!open) return null;
-
   const mainLinks = [
     { href: "/", label: "Home Hub", icon: Home },
     { href: "/marketplace", label: "Marketplace", icon: ShoppingBag, badge: "Buy & Sell" },
@@ -85,16 +83,30 @@ export function MobileNavDrawer({
   ];
 
   return (
-    <div className="fixed inset-0 z-[60] lg:hidden">
+    <div
+      className={cn(
+        "fixed inset-0 z-[60] lg:hidden transition-all duration-300 ease-in-out",
+        open ? "pointer-events-auto visible" : "pointer-events-none invisible"
+      )}
+      aria-hidden={!open}
+    >
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity animate-in fade-in-0 duration-200"
+        className={cn(
+          "fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300 ease-out",
+          open ? "opacity-100" : "opacity-0"
+        )}
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Slide-over panel */}
-      <div className="fixed inset-y-0 right-0 z-[60] w-full max-w-[320px] sm:max-w-sm bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col justify-between overflow-y-auto no-scrollbar animate-in slide-in-from-right duration-250 ease-out">
+      {/* Slide-over panel with smooth sliding transition */}
+      <div
+        className={cn(
+          "fixed inset-y-0 right-0 z-[60] w-full max-w-[320px] sm:max-w-sm bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col justify-between overflow-y-auto no-scrollbar transition-transform duration-300 ease-out transform",
+          open ? "translate-x-0" : "translate-x-full"
+        )}
+      >
         {/* Top Header */}
         <div>
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">

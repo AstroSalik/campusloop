@@ -164,18 +164,18 @@ export function Navbar() {
             {currentUser ? (
               <Link 
                 href="/profile" 
-                className="flex items-center gap-2 pl-0.5 hover:opacity-90 transition-opacity"
+                className="flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity"
                 title={`${currentUser.name} (${currentUser.role_desc})`}
               >
-                <Avatar className="h-8.5 w-8.5 sm:h-9 sm:w-9 border border-slate-200 dark:border-slate-700 ring-2 ring-transparent hover:ring-primary/20 transition-all shadow-2xs">
+                <div className="h-9 w-9 rounded-full overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 ring-2 ring-primary/20 shadow-2xs flex items-center justify-center bg-slate-100 dark:bg-slate-800">
                   {currentUser.avatar ? (
                     <img
                       src={currentUser.avatar}
                       alt={currentUser.name}
-                      className="aspect-square h-full w-full object-cover rounded-full"
+                      className="h-full w-full object-cover rounded-full"
                     />
                   ) : (
-                    <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
+                    <span className="text-primary dark:text-teal-300 font-bold text-xs uppercase select-none">
                       {currentUser.initials ||
                         currentUser.name
                           .split(" ")
@@ -183,9 +183,9 @@ export function Navbar() {
                           .join("")
                           .substring(0, 2)
                           .toUpperCase()}
-                    </AvatarFallback>
+                    </span>
                   )}
-                </Avatar>
+                </div>
               </Link>
             ) : (
               <Link
@@ -193,8 +193,8 @@ export function Navbar() {
                 className="inline-flex items-center justify-center gap-1 sm:gap-1.5 h-9 px-2.5 sm:px-3.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 active:scale-98 transition-all shadow-xs shrink-0 whitespace-nowrap"
               >
                 <LogIn className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline">Sign In</span>
-                <span className="hidden sm:inline"> / Sign Up</span>
+                <span className="hidden sm:inline">Sign In / Sign Up</span>
+                <span className="sm:hidden">Sign In</span>
               </Link>
             )}
 
