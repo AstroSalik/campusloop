@@ -119,12 +119,19 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => {
     try {
+      // 1. Terminate server-side session and invalidate auth cookies
+      await fetch("/api/auth/signout", { method: "POST" });
+      // 2. Clear browser Supabase auth state
       const supabase = createClient();
       await supabase.auth.signOut();
-    } catch {}
+    } catch (err) {
+      console.error("Sign out warning:", err);
+    }
+    // 3. Clear local storage demo session and notify listeners
     clearClientDemoSession();
-    toast.info("Signed out from session.");
+    toast.info("Signed out securely from session.");
     router.push("/login");
+    router.refresh();
   };
 
   const handleDeleteListing = (id: string, title: string) => {

@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, name, email, campus_id, monthly_income } = await req.json();
+    // 1. Authenticate user from session cookies on the server
+    const serverSupabase = createServerSupabaseClient();
+    const {
+      data: { user: sessionUser },
+      error: authError,
+    } = await serverSupabase.auth.getUser();
 
-    if (!id || !email) {
+    if (authError || !sessionUser) {
       return NextResponse.json(
-        { error: "Missing required user id or email" },
-        { status: 400 }
+        { error: "Unauthorized: Active session required to sync profile" },
+        { status: 401 }
       );
     }
+
+    // 2. Extract allowed update fields from body (ignoring any user-supplied ID or email)
+    const body = await req.json().catch(() => ({}));
+    const { name, campus_id, monthly_income } = body;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -22,23 +32,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
 
     const defaultCampusId =
       campus_id || "00000000-0000-0000-0000-000000000001";
-    const userName = name || email.split("@")[0] || "Student";
+    const userName =
+      name ||
+      sessionUser.user_metadata?.full_name ||
+      sessionUser.user_metadata?.name ||
+      sessionUser.email?.split("@")[0] ||
+      "Student";
 
+    // 3. Upsert into public.users using the verified sessionUser.id and sessionUser.email
     const { data, error } = await supabaseAdmin
       .from("users")
       .upsert(
         {
-          id,
+          id: sessionUser.id,
           name: userName,
-          email: email.trim().toLowerCase(),
+          email: (sessionUser.email || "").trim().toLowerCase(),
           campus_id: defaultCampusId,
-          monthly_income: monthly_income !== undefined ? monthly_income : null,
+          monthly_income:
+            monthly_income !== undefined ? monthly_income : null,
         },
         { onConflict: "id" }
       )
@@ -59,3 +76,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

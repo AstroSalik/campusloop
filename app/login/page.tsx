@@ -35,7 +35,9 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -62,9 +64,24 @@ export default function LoginPage() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters.");
-      return;
+    if (authMode === "signup") {
+      if (password.length < 8) {
+        toast.error("Password must be at least 8 characters long.");
+        return;
+      }
+
+      const hasLetter = /[a-zA-Z]/.test(password);
+      const hasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+      if (!hasLetter || !hasNumberOrSymbol) {
+        toast.error("Password must contain both letters and at least one number or symbol.");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        toast.error("Passwords do not match. Please re-check.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -88,15 +105,13 @@ export default function LoginPage() {
             data.user.user_metadata?.name ||
             email.split("@")[0];
 
-          // Ensure profile exists in public.users
+          // Ensure profile exists in public.users via authenticated session
           try {
             await fetch("/api/auth/sync-profile", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                id: data.user.id,
                 name: userName,
-                email: data.user.email || email.trim().toLowerCase(),
                 campus_id: "00000000-0000-0000-0000-000000000001",
               }),
             });
@@ -282,12 +297,21 @@ export default function LoginPage() {
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Password
                 </label>
+                {authMode === "signup" && (
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Min. 8 chars (letters & numbers)
+                  </span>
+                )}
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="At least 6 characters"
+                  placeholder={
+                    authMode === "signup"
+                      ? "Min. 8 chars with letters & numbers"
+                      : "Enter your password"
+                  }
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -302,6 +326,37 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {/* Confirm Password (only in signup mode) */}
+            {authMode === "signup" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Re-enter your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="pl-9 pr-9 h-10 text-xs border-slate-200 dark:border-slate-700"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Terms & Privacy Policy Mandatory Agreement Checkbox */}
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-3 flex items-start gap-2.5">

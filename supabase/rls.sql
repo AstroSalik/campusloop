@@ -3,18 +3,39 @@
 -- Authoritative Security Rules matching PRD.md & Project-Context.md
 -- ==============================================================================
 
--- 1. Enable RLS on all tables
+-- 1. Enable & Force RLS on all 11 tables
 alter table campuses enable row level security;
+alter table campuses force row level security;
+
 alter table users enable row level security;
+alter table users force row level security;
+
 alter table listings enable row level security;
+alter table listings force row level security;
+
 alter table wanted_listings enable row level security;
+alter table wanted_listings force row level security;
+
 alter table listing_images enable row level security;
+alter table listing_images force row level security;
+
 alter table rooms enable row level security;
+alter table rooms force row level security;
+
 alter table roommate_profiles enable row level security;
+alter table roommate_profiles force row level security;
+
 alter table conversations enable row level security;
+alter table conversations force row level security;
+
 alter table conversation_members enable row level security;
+alter table conversation_members force row level security;
+
 alter table messages enable row level security;
+alter table messages force row level security;
+
 alter table rent_splits enable row level security;
+alter table rent_splits force row level security;
 
 -- ------------------------------------------------------------------------------
 -- Campuses Policies
@@ -33,7 +54,7 @@ create policy "Users are viewable by authenticated users"
   on users for select
   using (true);
 
--- Students can insert or update only their own profile
+-- Students can insert, update, or delete only their own profile
 drop policy if exists "Users can insert their own profile" on users;
 create policy "Users can insert their own profile"
   on users for insert
@@ -44,6 +65,11 @@ create policy "Users can update their own profile"
   on users for update
   using (auth.uid() = id)
   with check (auth.uid() = id);
+
+drop policy if exists "Users can delete their own profile" on users;
+create policy "Users can delete their own profile"
+  on users for delete
+  using (auth.uid() = id);
 
 -- ------------------------------------------------------------------------------
 -- Listings & Listing Images Policies
@@ -96,13 +122,12 @@ create policy "Wanted listings are viewable by everyone"
   on wanted_listings for select
   using (true);
 
--- Requester create
+-- Requester create, update, delete
 drop policy if exists "Authenticated users can create wanted listings" on wanted_listings;
 create policy "Authenticated users can create wanted listings"
   on wanted_listings for insert
   with check (auth.uid() = requester_id);
 
--- Requester update and delete
 drop policy if exists "Requesters can update their own wanted listings" on wanted_listings;
 create policy "Requesters can update their own wanted listings"
   on wanted_listings for update
@@ -185,7 +210,7 @@ create policy "Members can view their conversations"
 drop policy if exists "Authenticated users can create conversations" on conversations;
 create policy "Authenticated users can create conversations"
   on conversations for insert
-  with check (true);
+  with check (auth.role() = 'authenticated');
 
 -- Users can view members of conversations they belong to
 drop policy if exists "Members can view conversation members" on conversation_members;
@@ -199,11 +224,11 @@ create policy "Members can view conversation members"
     )
   );
 
--- Users can join conversations as members
+-- Authenticated users can join or add conversation members
 drop policy if exists "Authenticated users can add conversation members" on conversation_members;
 create policy "Authenticated users can add conversation members"
   on conversation_members for insert
-  with check (true);
+  with check (auth.role() = 'authenticated');
 
 -- ------------------------------------------------------------------------------
 -- Messages Policies
@@ -245,6 +270,17 @@ drop policy if exists "Authenticated users can save rent splits" on rent_splits;
 create policy "Authenticated users can save rent splits"
   on rent_splits for insert
   with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own rent splits" on rent_splits;
+create policy "Users can update their own rent splits"
+  on rent_splits for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete their own rent splits" on rent_splits;
+create policy "Users can delete their own rent splits"
+  on rent_splits for delete
+  using (auth.uid() = user_id);
 
 -- ------------------------------------------------------------------------------
 -- Enable Realtime Replication for Chat
