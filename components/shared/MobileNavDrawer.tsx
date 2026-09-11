@@ -137,12 +137,23 @@ export function MobileNavDrawer({
             {currentUser ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                  <Avatar className="h-10 w-10 min-w-[40px] max-w-[40px] min-h-[40px] max-h-[40px] shrink-0 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 shadow-2xs">
                     {currentUser.avatar ? (
                       <img
                         src={currentUser.avatar}
                         alt={currentUser.name}
-                        className="h-full w-full object-cover rounded-full"
+                        width={40}
+                        height={40}
+                        className="w-full h-full max-w-full max-h-full object-cover rounded-full select-none block"
+                        style={{
+                          width: "40px",
+                          height: "40px",
+                          minWidth: "40px",
+                          maxWidth: "40px",
+                          minHeight: "40px",
+                          maxHeight: "40px",
+                          objectFit: "cover"
+                        }}
                       />
                     ) : (
                       <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">

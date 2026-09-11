@@ -164,15 +164,26 @@ export function Navbar() {
             {currentUser ? (
               <Link 
                 href="/profile" 
-                className="flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity"
+                className="relative flex items-center justify-center shrink-0 w-9 h-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] rounded-full overflow-hidden hover:opacity-90 transition-opacity"
                 title={`${currentUser.name} (${currentUser.role_desc})`}
               >
-                <div className="h-9 w-9 rounded-full overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 ring-2 ring-primary/20 shadow-2xs flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+                <div className="relative w-9 h-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] rounded-full overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 ring-2 ring-primary/20 flex items-center justify-center bg-slate-100 dark:bg-slate-800">
                   {currentUser.avatar ? (
                     <img
                       src={currentUser.avatar}
                       alt={currentUser.name}
-                      className="h-full w-full object-cover rounded-full"
+                      width={36}
+                      height={36}
+                      className="w-full h-full max-w-full max-h-full object-cover rounded-full select-none block pointer-events-none"
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        minWidth: "36px",
+                        maxWidth: "36px",
+                        minHeight: "36px",
+                        maxHeight: "36px",
+                        objectFit: "cover"
+                      }}
                     />
                   ) : (
                     <span className="text-primary dark:text-teal-300 font-bold text-xs uppercase select-none">
@@ -202,7 +213,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-              className="lg:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shadow-2xs cursor-pointer"
+              className="lg:hidden flex h-9 w-9 min-w-[36px] max-w-[36px] shrink-0 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors shadow-2xs cursor-pointer"
               aria-label="Open navigation menu"
             >
               <Menu className="h-4.5 w-4.5" />

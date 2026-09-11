@@ -195,12 +195,21 @@ export default function ProfilePage() {
       <Card className="border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/95 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-primary/10 via-slate-50 to-primary/5 dark:from-teal-950/50 dark:via-slate-800 dark:to-slate-800 p-6 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16 border-2 border-white dark:border-teal-400/40 shadow-sm shrink-0">
+            <Avatar className="h-16 w-16 min-w-[64px] max-w-[64px] min-h-[64px] max-h-[64px] border-2 border-white dark:border-teal-400/40 shadow-sm shrink-0 rounded-full overflow-hidden">
               {currentUser.avatar ? (
                 <img
                   src={currentUser.avatar}
                   alt={currentUser.name}
-                  className="aspect-square h-full w-full object-cover rounded-full"
+                  width={64}
+                  height={64}
+                  className="aspect-square w-full h-full max-w-full max-h-full object-cover rounded-full select-none block"
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    maxWidth: "64px",
+                    maxHeight: "64px",
+                    objectFit: "cover"
+                  }}
                 />
               ) : (
                 <AvatarFallback className="bg-primary dark:bg-teal-950 text-white dark:text-teal-300 text-xl font-extrabold">

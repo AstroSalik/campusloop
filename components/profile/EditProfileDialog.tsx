@@ -215,12 +215,21 @@ export function EditProfileDialog({
           {/* Avatar Preview & Device Upload Options */}
           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 flex items-center gap-4">
             <div className="relative group shrink-0">
-              <Avatar className="h-16 w-16 border-2 border-white dark:border-slate-700 shadow-md">
+              <Avatar className="h-16 w-16 min-w-[64px] max-w-[64px] min-h-[64px] max-h-[64px] border-2 border-white dark:border-slate-700 shadow-md shrink-0 rounded-full overflow-hidden">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
                     alt={name || "Avatar"}
-                    className="aspect-square h-full w-full object-cover rounded-full"
+                    width={64}
+                    height={64}
+                    className="aspect-square w-full h-full max-w-full max-h-full object-cover rounded-full select-none block"
+                    style={{
+                      width: "64px",
+                      height: "64px",
+                      maxWidth: "64px",
+                      maxHeight: "64px",
+                      objectFit: "cover"
+                    }}
                   />
                 ) : (
                   <AvatarFallback className="bg-primary text-white font-extrabold text-lg">

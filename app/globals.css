@@ -101,4 +101,12 @@
   .safe-bottom {
     padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
   }
+
+  /* Universal avatar image constraint prevents high-res images from blowing out flex items */
+  .rounded-full img,
+  [data-radix-avatar-image] {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+  }
 }
