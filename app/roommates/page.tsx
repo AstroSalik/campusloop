@@ -168,7 +168,13 @@ export default function RoommatesPage() {
     try {
       const convId = await getOrCreateRoommateConversation(
         currentUser.id,
-        profileUser.user_id
+        profileUser.user_id,
+        {
+          initiatorName: currentUser.name,
+          initiatorEmail: currentUser.email,
+          targetName: profileUser.user_name,
+          targetEmail: profileUser.user_email,
+        }
       );
       toast.success(`Connected with ${profileUser.user_name}! Opening chat...`);
       router.push(`/messages/${convId}`);

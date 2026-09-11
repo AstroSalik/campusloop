@@ -227,14 +227,29 @@ export async function fetchRoomsFromSupabase(): Promise<HousingRoom[]> {
       return getRooms();
     }
 
-    if (data && data.length > 0) {
+    if (data) {
       const cloudRooms = data.map(mapSupabaseRoom);
       if (typeof window !== "undefined") {
         try {
           localStorage.setItem(ROOMS_KEY, JSON.stringify(cloudRooms));
         } catch (e) {}
       }
-      return cloudRooms;
+
+      const deletedRaw = typeof window !== "undefined" ? localStorage.getItem("campusloop_deleted_rooms") : null;
+      const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
+      const activeInitials = INITIAL_ROOMS.filter((r) => !deletedIds.includes(r.id));
+
+      const combined = [...cloudRooms.filter((r) => !deletedIds.includes(r.id))];
+      const presentIds = new Set(combined.map((r) => r.id));
+
+      for (const init of activeInitials) {
+        if (!presentIds.has(init.id)) {
+          presentIds.add(init.id);
+          combined.push(cleanRoom(init));
+        }
+      }
+
+      return combined;
     }
   } catch (err) {
     console.warn("[Network Exception] fetchRoomsFromSupabase:", err);

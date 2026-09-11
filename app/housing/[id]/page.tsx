@@ -209,7 +209,16 @@ export default function RoomDetailPage({
       const conversationId = await getOrCreateRoomConversation(
         room.id,
         currentUser.id,
-        room.owner_id
+        room.owner_id,
+        {
+          userName: currentUser.name,
+          userEmail: currentUser.email,
+          ownerName: room.owner?.name || "Host",
+          ownerEmail: room.owner?.email,
+          roomTitle: room.title,
+          rent: room.rent,
+          location: room.location_label,
+        }
       );
 
       toast.success(res.message);

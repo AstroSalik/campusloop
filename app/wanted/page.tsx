@@ -64,8 +64,17 @@ function WantedBrowseContent() {
     }
     loadCloudWanted();
 
+    const handleRefresh = () => {
+      loadCloudWanted();
+    };
+
+    window.addEventListener("focus", handleRefresh);
+    window.addEventListener("campusloop_wanted_updated", handleRefresh);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("focus", handleRefresh);
+      window.removeEventListener("campusloop_wanted_updated", handleRefresh);
     };
   }, []);
 

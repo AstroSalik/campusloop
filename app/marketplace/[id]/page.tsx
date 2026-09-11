@@ -99,11 +99,11 @@ export default function ListingDetailPage({
     };
   }, [params.id]);
 
-  const handleDeleteListing = () => {
+  const handleDeleteListing = async () => {
     if (!listing) return;
     const confirmed = window.confirm(`Are you sure you want to delete "${listing.title}"? This cannot be undone.`);
     if (confirmed) {
-      deleteListing(listing.id);
+      await deleteListing(listing.id);
       toast.success("Listing deleted successfully.");
       router.push("/marketplace");
     }
@@ -123,7 +123,16 @@ export default function ListingDetailPage({
       const conversationId = await getOrCreateMarketplaceConversation(
         listing.id,
         currentUser.id,
-        listing.seller_id
+        listing.seller_id,
+        {
+          buyerName: currentUser.name,
+          buyerEmail: currentUser.email,
+          sellerName: listing.seller_name,
+          sellerEmail: listing.seller_email,
+          listingTitle: listing.title,
+          price: listing.price,
+          location: listing.location_label,
+        }
       );
 
       toast.success(`Connected with ${listing.seller_name}! Opening conversation...`);

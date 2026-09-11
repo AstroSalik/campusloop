@@ -185,14 +185,29 @@ export async function fetchListingsFromSupabase(): Promise<MarketplaceListing[]>
       return getListings();
     }
 
-    if (data && data.length > 0) {
+    if (data) {
       const cloudListings = data.map(mapSupabaseListing);
       if (typeof window !== "undefined") {
         try {
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudListings));
         } catch (e) {}
       }
-      return cloudListings;
+
+      const deletedRaw = typeof window !== "undefined" ? localStorage.getItem("campusloop_deleted_listings") : null;
+      const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
+      const activeInitials = INITIAL_LISTINGS.filter((l) => !deletedIds.includes(l.id));
+
+      const combined = [...cloudListings.filter((l) => !deletedIds.includes(l.id))];
+      const presentIds = new Set(combined.map((l) => l.id));
+
+      for (const init of activeInitials) {
+        if (!presentIds.has(init.id)) {
+          presentIds.add(init.id);
+          combined.push(init);
+        }
+      }
+
+      return combined;
     }
   } catch (err) {
     console.warn("[Network Exception] fetchListingsFromSupabase:", err);
@@ -283,6 +298,8 @@ export async function saveListing(newListing: typeof INITIAL_LISTINGS[0]) {
     } catch (err) {
       console.error("[Network Exception] Supabase listing save:", err);
     }
+
+    window.dispatchEvent(new Event("campusloop_marketplace_updated"));
   }
 }
 
@@ -328,6 +345,8 @@ export async function updateListing(id: string, updatedFields: Partial<typeof IN
     } catch (err) {
       console.error("[Network Exception] Supabase listing update:", err);
     }
+
+    window.dispatchEvent(new Event("campusloop_marketplace_updated"));
   }
 }
 
@@ -355,6 +374,8 @@ export async function deleteListing(id: string) {
     } catch (err) {
       console.error("[Network Exception] Supabase listing delete:", err);
     }
+
+    window.dispatchEvent(new Event("campusloop_marketplace_updated"));
   }
 }
 

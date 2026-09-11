@@ -73,7 +73,16 @@ export function WantedCard({ wanted }: WantedCardProps) {
       const convId = await getOrCreateWantedConversation(
         wanted.id,
         currentUser.id,
-        wanted.requester_id
+        wanted.requester_id,
+        {
+          providerName: currentUser.name,
+          providerEmail: currentUser.email,
+          requesterName: wanted.requester_name,
+          requesterEmail: wanted.requester_email,
+          wantedTitle: wanted.title,
+          budgetMax: wanted.budget_max,
+          category: wanted.category,
+        }
       );
       toast.success(`Connected with ${wanted.requester_name}! Opening chat...`);
       router.push(`/messages/${convId}`);

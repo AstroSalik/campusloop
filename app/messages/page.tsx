@@ -2,18 +2,23 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { MessageSquare, MessagesSquare, ShieldCheck, Sparkles, Store } from "lucide-react";
+import { MessagesSquare } from "lucide-react";
 import { ConversationList } from "@/components/chat/ConversationList";
-import { getConversations, StoredConversation } from "@/lib/conversations";
+import { 
+  fetchUserConversationsFromSupabase, 
+  getConversations, 
+  StoredConversation 
+} from "@/lib/conversations";
 import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
 export default function MessagesPage() {
   const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
   const [conversations, setConversations] = useState<StoredConversation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserConversations = () => {
+  const syncLocalConversations = () => {
     const all = getConversations();
     const myConvs = all.filter((c) =>
       c.members.some((m) => m.user_id === currentUser.id)
@@ -22,23 +27,62 @@ export default function MessagesPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchUserConversations();
+  const syncCloudConversations = async () => {
+    try {
+      const cloudConvs = await fetchUserConversationsFromSupabase(currentUser.id);
+      setConversations(cloudConvs);
+    } catch (e) {
+      syncLocalConversations();
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // 1. Storage event listener for instant cross-tab live synchronization
+  useEffect(() => {
+    // 1. Initial load from local cache + Supabase cloud
+    syncLocalConversations();
+    syncCloudConversations();
+
+    // 2. Storage & internal event listener
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "campusloop_conversations") {
-        fetchUserConversations();
+        syncLocalConversations();
       }
     };
-    window.addEventListener("storage", handleStorage);
+    const handleCustomUpdate = () => {
+      syncLocalConversations();
+    };
 
-    // 2. Fallback polling per Project-Context.md Section 7
-    const interval = setInterval(fetchUserConversations, 2500);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("campusloop_conversations_updated", handleCustomUpdate);
+
+    // 3. Fallback periodic sync with cloud
+    const interval = setInterval(() => {
+      syncCloudConversations();
+    }, 3000);
+
+    // 4. Supabase Realtime listener
+    const supabase = createClient();
+    const channel = supabase
+      .channel("messages-live-page")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        () => {
+          syncCloudConversations();
+        }
+      )
+      .subscribe();
 
     return () => {
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("campusloop_conversations_updated", handleCustomUpdate);
       clearInterval(interval);
+      supabase.removeChannel(channel);
     };
   }, [currentUser.id]);
 
@@ -63,7 +107,7 @@ export default function MessagesPage() {
               Select a conversation
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Choose a marketplace listing inquiry or housing roommate group from the sidebar to start chatting.
+              Choose a marketplace listing inquiry, housing roommate group, or wanted item response from the sidebar to start chatting.
             </p>
           </div>
 

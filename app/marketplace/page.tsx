@@ -86,8 +86,17 @@ function MarketplaceContent() {
     }
     loadCloudData();
 
+    const handleRefresh = () => {
+      loadCloudData();
+    };
+
+    window.addEventListener("focus", handleRefresh);
+    window.addEventListener("campusloop_marketplace_updated", handleRefresh);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("focus", handleRefresh);
+      window.removeEventListener("campusloop_marketplace_updated", handleRefresh);
     };
   }, []);
 

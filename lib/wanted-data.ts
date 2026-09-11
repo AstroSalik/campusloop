@@ -137,14 +137,29 @@ export async function fetchWantedListingsFromSupabase(): Promise<StoredWantedLis
       }
     } catch (e) {}
 
-    if (results.length > 0) {
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(results));
-        } catch (e) {}
-      }
-      return results;
+    // Always update local cache with the exact cloud items (even if empty, to propagate deletions!)
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(results));
+      } catch (e) {}
     }
+
+    const deletedRaw = typeof window !== "undefined" ? localStorage.getItem(DELETED_STORAGE_KEY) : null;
+    const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
+    const activeInitials = INITIAL_WANTED_LISTINGS.filter((w) => !deletedIds.includes(w.id));
+
+    // Combine: user items from cloud + sample initial items
+    const combined: StoredWantedListing[] = [...results.filter((w) => !deletedIds.includes(w.id))];
+    const presentIds = new Set(combined.map((w) => w.id));
+
+    for (const init of activeInitials) {
+      if (!presentIds.has(init.id)) {
+        presentIds.add(init.id);
+        combined.push(init);
+      }
+    }
+
+    return combined;
   } catch (err) {
     console.warn("[Network Exception] fetchWantedListingsFromSupabase:", err);
   }
@@ -268,6 +283,8 @@ export async function saveWantedListing(newWanted: StoredWantedListing) {
     } catch (err) {
       console.warn("Supabase wanted_listings insert warning:", err);
     }
+
+    window.dispatchEvent(new Event("campusloop_wanted_updated"));
   }
 }
 
@@ -317,6 +334,8 @@ export async function updateWantedListing(id: string, updatedFields: Partial<Sto
         await supabase.from("listings").update(listPayload).eq("id", id);
       }
     } catch (err) {}
+
+    window.dispatchEvent(new Event("campusloop_wanted_updated"));
   }
 }
 
@@ -342,5 +361,7 @@ export async function deleteWantedListing(id: string) {
       await supabase.from("wanted_listings").delete().eq("id", id);
       await supabase.from("listings").delete().eq("id", id);
     } catch (err) {}
+
+    window.dispatchEvent(new Event("campusloop_wanted_updated"));
   }
 }

@@ -4,13 +4,15 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MessageSquare, MessagesSquare, Sparkles } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { ChatContextHeader } from "@/components/chat/ChatContextHeader";
 import { MessageThread } from "@/components/chat/MessageThread";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { 
+  fetchConversationByIdFromSupabase,
+  fetchUserConversationsFromSupabase,
   getConversationById, 
   getConversations, 
   sendMessage, 
@@ -29,36 +31,62 @@ export default function ConversationDetailPage() {
   const [allConversations, setAllConversations] = useState<StoredConversation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = () => {
+  const syncLocal = () => {
     const conv = getConversationById(conversationId);
-    setConversation(conv ? { ...conv } : null);
-
+    if (conv) {
+      setConversation({ ...conv });
+    }
     const all = getConversations();
     const myConvs = all.filter((c) =>
       c.members.some((m) => m.user_id === currentUser.id)
     );
     setAllConversations(myConvs);
-    setLoading(false);
+  };
+
+  const syncCloud = async () => {
+    try {
+      // 1. Fetch current conversation details & messages from Supabase
+      const cloudConv = await fetchConversationByIdFromSupabase(conversationId);
+      if (cloudConv) {
+        setConversation({ ...cloudConv });
+      }
+
+      // 2. Fetch all user conversations for sidebar
+      const cloudUserConvs = await fetchUserConversationsFromSupabase(currentUser.id);
+      setAllConversations(cloudUserConvs);
+    } catch (e) {
+      syncLocal();
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    loadData();
+    syncLocal();
+    syncCloud();
 
-    // 1. Storage Event for instantaneous cross-tab live synchronization
+    // Storage & custom event listeners
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "campusloop_conversations") {
-        loadData();
+        syncLocal();
       }
     };
+    const handleCustomUpdate = () => {
+      syncLocal();
+    };
+
     window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("campusloop_conversations_updated", handleCustomUpdate);
 
-    // 2. 2-Second Polling Fallback per Project-Context.md Section 7
-    const pollInterval = setInterval(loadData, 2000);
+    // Periodic cloud poll (every 2.5s for snappy multi-device sync)
+    const pollInterval = setInterval(() => {
+      syncCloud();
+    }, 2500);
 
-    // 3. Supabase Realtime channel (if connected)
+    // Supabase Realtime channel for instant push on new message
     const supabase = createClient();
     const channel = supabase
-      .channel(`chat-${conversationId}`)
+      .channel(`chat-room-${conversationId}`)
       .on(
         "postgres_changes",
         {
@@ -68,13 +96,14 @@ export default function ConversationDetailPage() {
           filter: `conversation_id=eq.${conversationId}`,
         },
         () => {
-          loadData();
+          syncCloud();
         }
       )
       .subscribe();
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("campusloop_conversations_updated", handleCustomUpdate);
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
@@ -83,10 +112,10 @@ export default function ConversationDetailPage() {
   const handleSend = async (text: string) => {
     if (!conversation) return;
     await sendMessage(conversation.id, currentUser.id, text);
-    loadData();
+    syncLocal();
   };
 
-  if (loading) {
+  if (loading && !conversation) {
     return (
       <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100vh-8.5rem)] min-h-[500px]">
         <div className="h-full rounded-none sm:rounded-2xl border-0 sm:border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse flex items-center justify-center">

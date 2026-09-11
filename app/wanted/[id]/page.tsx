@@ -90,11 +90,11 @@ export default function WantedDetailPage({
     };
   }, [params.id]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!wanted) return;
     const confirmed = window.confirm(`Are you sure you want to delete "${wanted.title}"? This cannot be undone.`);
     if (confirmed) {
-      deleteWantedListing(wanted.id);
+      await deleteWantedListing(wanted.id);
       toast.success("Wanted request removed.");
       router.push("/wanted");
     }
@@ -113,7 +113,16 @@ export default function WantedDetailPage({
       const conversationId = await getOrCreateWantedConversation(
         wanted.id,
         currentUser.id,
-        wanted.requester_id
+        wanted.requester_id,
+        {
+          providerName: currentUser.name,
+          providerEmail: currentUser.email,
+          requesterName: wanted.requester_name,
+          requesterEmail: wanted.requester_email,
+          wantedTitle: wanted.title,
+          budgetMax: wanted.budget_max,
+          category: wanted.category,
+        }
       );
 
       toast.success(`Connected with ${wanted.requester_name}! Opening conversation...`);
