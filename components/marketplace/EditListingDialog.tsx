@@ -111,11 +111,11 @@ export function EditListingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-white">
             <Edit3 className="h-5 w-5 text-primary" />
             Edit Listing
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-500 dark:text-slate-400">
             Update details, pricing, condition, or photos for this item.
           </DialogDescription>
         </DialogHeader>
@@ -123,7 +123,7 @@ export function EditListingDialog({
         <form onSubmit={handleSave} className="space-y-4 pt-2">
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">Listing Title *</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Listing Title *</label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -134,7 +134,7 @@ export function EditListingDialog({
           {/* Type & Category Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Listing Type</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Listing Type</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {(["sell", "rent", "buy"] as ListingType[]).map((t) => (
                   <button
@@ -143,8 +143,8 @@ export function EditListingDialog({
                     onClick={() => setType(t)}
                     className={`py-2 text-xs font-semibold rounded-lg border capitalize transition-all ${
                       type === t
-                        ? "bg-primary text-white border-primary shadow-xs"
-                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                        ? "bg-primary text-slate-950 font-bold border-primary shadow-xs"
+                        : "bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60"
                     }`}
                   >
                     {t === "sell" ? "For Sale" : t === "rent" ? "For Rent" : "Wanted"}
@@ -154,7 +154,7 @@ export function EditListingDialog({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Category</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Category</label>
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select Category" />
@@ -173,8 +173,8 @@ export function EditListingDialog({
 
           {/* Custom Category Input if Other */}
           {category === "Other" && (
-            <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80">
-              <label className="text-xs font-semibold text-slate-700">Custom Category Name *</label>
+            <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Custom Category Name *</label>
               <Input
                 placeholder="e.g. Musical Instrument, Sports Gear..."
                 value={customCategory}
@@ -187,7 +187,7 @@ export function EditListingDialog({
           {/* Price & Condition */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Price (₹ INR) *</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Price (₹ INR) *</label>
               <div className="relative">
                 <span className="absolute left-3 top-2 text-sm font-semibold text-slate-400">₹</span>
                 <Input
@@ -201,7 +201,7 @@ export function EditListingDialog({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Condition</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Condition</label>
               <Select value={condition} onValueChange={setCondition}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select Condition" />
@@ -219,7 +219,7 @@ export function EditListingDialog({
           {/* Location with GPS Detection */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 Pickup Spot / Campus Location *
               </label>
               <button
@@ -239,14 +239,14 @@ export function EditListingDialog({
                 placeholder="e.g. Hostel 3, Main Gate PG, or GPS spot..."
                 value={locationLabel}
                 onChange={(e) => setLocationLabel(e.target.value)}
-                className="pl-9 bg-white text-xs h-9 font-medium"
+                className="pl-9 bg-white dark:bg-slate-900 text-xs h-9 font-medium"
                 required
               />
             </div>
 
             {/* Quick Preset Location Chips */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[10px] text-slate-400 font-medium">Quick Select:</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-400 font-medium">Quick Select:</span>
               {["Hostel 3", "Hostel 1", "Hostel 2", "Hostel 5", "Main Gate PG", "Lovely Nagar PG"].map((spot) => (
                 <button
                   key={spot}
@@ -254,8 +254,8 @@ export function EditListingDialog({
                   onClick={() => setLocationLabel(spot)}
                   className={`text-[11px] px-2 py-0.5 rounded-md border transition-all ${
                     locationLabel === spot
-                      ? "bg-primary/10 text-primary border-primary/30 font-semibold"
-                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      ? "bg-primary/15 text-primary border-primary/40 font-semibold"
+                      : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }`}
                 >
                   {spot}
@@ -265,9 +265,9 @@ export function EditListingDialog({
           </div>
 
           {/* Photo upload from device or URL */}
-          <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+          <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                 <ImageIcon className="h-3.5 w-3.5 text-primary" />
                 Item Photo (Upload or Paste URL)
               </label>
@@ -275,7 +275,7 @@ export function EditListingDialog({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label className="flex items-center justify-center gap-2 h-9 px-3 rounded-lg border border-dashed border-slate-300 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-primary cursor-pointer transition-colors">
+              <label className="flex items-center justify-center gap-2 h-9 px-3 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-primary cursor-pointer transition-colors">
                 <Plus className="h-3.5 w-3.5 text-primary" />
                 Upload New Photo
                 <input
@@ -307,12 +307,12 @@ export function EditListingDialog({
                 placeholder="Or paste image URL (https://...)"
                 value={imageUrl.startsWith("data:") ? "" : imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
-                className="text-xs bg-white h-9"
+                className="text-xs bg-white dark:bg-slate-900 h-9"
               />
             </div>
 
             {imageUrl && (
-              <div className="relative mt-2 h-32 w-full rounded-lg overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
+              <div className="relative mt-2 h-32 w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center">
                 <img
                   src={imageUrl}
                   alt="Preview"
@@ -332,9 +332,9 @@ export function EditListingDialog({
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">Description *</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Description *</label>
             <textarea
-              className="flex min-h-[90px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-xs placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="flex min-h-[90px] w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-3 py-2 text-sm shadow-xs placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -342,7 +342,7 @@ export function EditListingDialog({
             />
           </div>
 
-          <DialogFooter className="gap-2 pt-2 border-t border-slate-100">
+          <DialogFooter className="gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="outline"

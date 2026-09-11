@@ -230,7 +230,7 @@ export function MobileNavDrawer({
                 {detectingLocation ? "Detecting GPS..." : locationLabel}
               </span>
             </button>
-            <span className="text-[10px] text-slate-400 uppercase font-semibold">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold">
               GPS
             </span>
           </div>
@@ -252,7 +252,7 @@ export function MobileNavDrawer({
 
           {/* Main Navigation Links */}
           <div className="p-2 space-y-1">
-            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Campus Features
             </div>
             {mainLinks.map((link) => {
@@ -284,7 +284,7 @@ export function MobileNavDrawer({
                     <span>{link.label}</span>
                   </div>
                   {link.badge && (
-                    <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                       {link.badge}
                     </span>
                   )}
@@ -295,7 +295,7 @@ export function MobileNavDrawer({
 
           {/* Quick Actions / Create */}
           <div className="p-3 pt-1 border-t border-slate-100 dark:border-slate-800 space-y-2">
-            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Quick Actions
             </div>
             <div className="grid grid-cols-1 gap-1.5">
@@ -329,7 +329,7 @@ export function MobileNavDrawer({
 
         {/* Bottom Drawer Footer */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-center">
-          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
             CampusLoop &bull; Student Living & Marketplace
           </p>
         </div>

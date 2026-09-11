@@ -152,7 +152,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
 
         {/* Category Filter Chips */}
         <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs overflow-x-auto">
-          <span className="text-slate-400 dark:text-slate-500 font-medium mr-1">Filter:</span>
+          <span className="text-slate-500 dark:text-slate-400 font-medium mr-1">Filter:</span>
           {(
             [
               { id: "all", label: "All Results" },
@@ -167,7 +167,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
               onClick={() => setActiveCategory(tab.id)}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
                 activeCategory === tab.id
-                  ? "bg-primary text-white shadow-2xs"
+                  ? "bg-primary text-slate-950 font-bold shadow-2xs"
                   : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
               }`}
             >
@@ -181,14 +181,14 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
           {totalResults === 0 && (
             <div className="py-12 text-center space-y-2">
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No results found for &ldquo;{query}&rdquo;</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">Try searching for &quot;cycle&quot;, &quot;table&quot;, &quot;calculator&quot;, or &quot;Main Gate&quot;.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Try searching for &quot;cycle&quot;, &quot;table&quot;, &quot;calculator&quot;, or &quot;Main Gate&quot;.</p>
             </div>
           )}
 
           {/* 1. Marketplace Results */}
           {(activeCategory === "all" || activeCategory === "marketplace") && filteredListings.length > 0 && (
             <div className="space-y-2 pt-2 first:pt-0">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
                 <span className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300">
                   <ShoppingBag className="h-3.5 w-3.5" />
                   Marketplace Items
@@ -217,7 +217,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                         <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-primary dark:group-hover:text-teal-300 transition-colors truncate">
                           {item.title}
                         </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                           {item.category} • {item.location_label} • <span className="font-medium text-slate-600 dark:text-slate-300">{item.condition}</span>
                         </p>
                       </div>
@@ -226,7 +226,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                       <span className="text-sm font-extrabold text-slate-900 dark:text-white">
                         ₹{item.price.toLocaleString("en-IN")}
                       </span>
-                      <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight className="h-4 w-4 text-slate-400 dark:text-slate-500 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
                 ))}
@@ -237,7 +237,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
           {/* 1b. Wanted Requests Results */}
           {(activeCategory === "all" || activeCategory === "wanted") && filteredWanted.length > 0 && (
             <div className="space-y-2 pt-4 first:pt-0">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
                 <span className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300">
                   <Sparkles className="h-3.5 w-3.5" />
                   Wanted Requests (Buyer Needs)
@@ -266,7 +266,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                         <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-primary dark:group-hover:text-teal-300 transition-colors truncate">
                           {item.title}
                         </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                           {item.category} • Requested by {item.requester_name}
                         </p>
                       </div>
@@ -275,7 +275,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                       <span className="text-xs font-bold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/80 px-2 py-0.5 rounded-full border border-teal-200/60 dark:border-teal-800/60">
                         Up to ₹{item.budget_max.toLocaleString("en-IN")}
                       </span>
-                      <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight className="h-4 w-4 text-slate-400 dark:text-slate-500 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
                 ))}
@@ -286,7 +286,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
           {/* 2. Housing Results */}
           {(activeCategory === "all" || activeCategory === "housing") && filteredRooms.length > 0 && (
             <div className="space-y-2 pt-4 first:pt-0">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
                 <span className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300">
                   <Building2 className="h-3.5 w-3.5" />
                   Accommodations & Flats
@@ -315,7 +315,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                         <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-primary dark:group-hover:text-teal-300 transition-colors truncate">
                           {room.title}
                         </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                           {room.bedrooms} BHK • {room.location_label} • Available {room.available_from}
                         </p>
                       </div>
@@ -324,7 +324,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                       <span className="text-sm font-extrabold text-slate-900 dark:text-white">
                         ₹{room.rent.toLocaleString("en-IN")}/mo
                       </span>
-                      <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight className="h-4 w-4 text-slate-400 dark:text-slate-500 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
                 ))}
@@ -335,7 +335,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
           {/* 3. Roommate Results */}
           {(activeCategory === "all" || activeCategory === "roommates") && filteredRoommates.length > 0 && (
             <div className="space-y-2 pt-4 first:pt-0">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
                 <span className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300">
                   <Users2 className="h-3.5 w-3.5" />
                   Roommate Profiles
@@ -362,7 +362,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                         <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-primary dark:group-hover:text-teal-300 transition-colors truncate">
                           {prof.user_name}
                         </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-400 truncate">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                           Prefers {prof.preferred_location} • Move-in: {prof.move_in_month}
                         </p>
                       </div>
@@ -371,7 +371,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                       <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60">
                         ₹{prof.budget_min.toLocaleString("en-IN")} - ₹{prof.budget_max.toLocaleString("en-IN")}
                       </span>
-                      <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight className="h-4 w-4 text-slate-400 dark:text-slate-500 group-hover:text-primary dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
                 ))}
@@ -381,7 +381,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
 
           {/* Quick Page Jump Shortcuts */}
           <div className="pt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-slate-400 dark:text-slate-500 mr-1">Quick Links:</span>
+            <span className="font-semibold text-slate-500 dark:text-slate-400 mr-1">Quick Links:</span>
             <button
               onClick={() => handleNavigate("/marketplace?type=buy")}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
@@ -414,7 +414,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
         </div>
 
         {/* Footer info */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
           <span>Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] text-slate-600 dark:text-slate-300 shadow-2xs">ESC</kbd> to close</span>
           <span>Press <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] text-slate-600 dark:text-slate-300 shadow-2xs">Enter ↵</kbd> to search marketplace</span>
         </div>

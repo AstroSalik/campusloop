@@ -158,7 +158,7 @@ export function SetupAllowanceDialog({
 
             {/* Quick Presets */}
             <div className="space-y-1.5">
-              <span className="text-[11px] font-medium text-slate-400 block">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
                 Common Student Allowances:
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -171,7 +171,7 @@ export function SetupAllowanceDialog({
                       onClick={() => setValue(String(preset))}
                       className={`text-xs px-2.5 py-1 rounded-lg border font-semibold transition-all ${
                         isSelected
-                          ? "bg-primary text-white border-primary shadow-2xs"
+                          ? "bg-primary text-slate-950 font-bold border-primary shadow-2xs"
                           : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-primary/50"
                       }`}
                     >
@@ -182,7 +182,7 @@ export function SetupAllowanceDialog({
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-400 pt-1">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1">
               Note: This will also automatically update your student profile budget.
             </p>
 
@@ -199,7 +199,7 @@ export function SetupAllowanceDialog({
               <Button
                 type="submit"
                 disabled={saving || !value}
-                className="bg-primary hover:bg-primary/90 text-white text-xs font-semibold gap-1.5"
+                className="bg-primary hover:bg-primary/90 text-slate-950 font-bold text-xs gap-1.5 shadow-xs"
               >
                 {saving ? "Saving..." : "Save Allowance"}
                 <ArrowRight className="h-3.5 w-3.5" />

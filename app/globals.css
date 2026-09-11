@@ -33,38 +33,70 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 174 78% 26%;
 
+    /* Standard Slate for Light Mode */
+    --slate-50: 210 40% 98%;
+    --slate-100: 210 40% 96.1%;
+    --slate-200: 214.3 31.8% 91.4%;
+    --slate-300: 212.7 26.8% 83.9%;
+    --slate-400: 215 20.2% 65.1%;
+    --slate-500: 215.4 16.3% 46.9%;
+    --slate-600: 215.3 19.3% 34.5%;
+    --slate-700: 215.3 25% 26.7%;
+    --slate-800: 217.2 32.6% 17.5%;
+    --slate-850: 218 36% 13%;
+    --slate-900: 222.2 47.4% 11.2%;
+    --slate-950: 222.2 84% 4.9%;
+
     --radius: 0.625rem;
   }
 
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
+    /* Pure Black Base */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
 
-    --card: 222 47% 10%;
-    --card-foreground: 210 40% 98%;
+    /* Pure Charcoal/Black Surfaces */
+    --card: 0 0% 3.5%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222 47% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 3.5%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Vibrant Teal for Dark Mode */
-    --primary: 174 78% 42%;
-    --primary-foreground: 222 47% 11%;
+    /* Crisp, High-Contrast Electric Teal for Pure Black Backgrounds */
+    --primary: 174 85% 46%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217 33% 16%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 0 0% 9%;
+    --muted-foreground: 220 14% 76%;
 
-    --accent: 174 50% 18%;
-    --accent-foreground: 174 78% 70%;
+    --accent: 174 65% 15%;
+    --accent-foreground: 174 95% 75%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 85% 62%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
-    --ring: 174 78% 42%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 174 85% 46%;
+
+    /* Pure Black OLED Palette mapping for slate utilities */
+    --slate-950: 0 0% 0%;
+    --slate-900: 0 0% 2.5%;
+    --slate-850: 0 0% 5%;
+    --slate-800: 0 0% 9%;
+    --slate-700: 0 0% 18%;
+    --slate-600: 0 0% 28%;
+
+    /* High-contrast text values across text-slate-* */
+    --slate-500: 0 0% 70%;
+    --slate-400: 0 0% 82%;
+    --slate-300: 0 0% 90%;
+    --slate-200: 0 0% 96%;
+    --slate-100: 0 0% 98%;
+    --slate-50: 0 0% 5%;
   }
 }
 
@@ -83,6 +115,20 @@
   body {
     @apply bg-background text-foreground antialiased transition-colors duration-200;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Ensure headings and inputs maintain crisp high contrast in dark mode */
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6 {
+    color: hsl(var(--foreground));
+  }
+  .dark ::placeholder {
+    color: hsl(var(--slate-400));
+    opacity: 0.85;
   }
 }
 

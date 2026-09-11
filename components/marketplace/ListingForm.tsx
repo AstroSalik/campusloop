@@ -110,12 +110,12 @@ export function ListingForm() {
   };
 
   return (
-    <Card className="border-slate-200/80 bg-white shadow-sm">
+    <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
       <CardHeader className="pb-4">
-        <CardTitle className="text-xl font-bold text-slate-900">
+        <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
           Post Item to Campus Marketplace
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
           List student essentials for sale, rent, or post a wanted request.
         </CardDescription>
       </CardHeader>
@@ -124,13 +124,14 @@ export function ListingForm() {
         <CardContent className="space-y-4">
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
               Listing Title *
             </label>
             <Input
               placeholder="e.g. Firefox Single Speed Cycle"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700"
               required
             />
           </div>
@@ -138,7 +139,7 @@ export function ListingForm() {
           {/* Type & Category Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Listing Type</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Listing Type</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {(["sell", "rent", "buy"] as ListingType[]).map((t) => (
                   <button
@@ -147,8 +148,8 @@ export function ListingForm() {
                     onClick={() => setType(t)}
                     className={`py-2 text-xs font-semibold rounded-lg border capitalize transition-all ${
                       type === t
-                        ? "bg-primary text-white border-primary shadow-xs"
-                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
+                        : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
                     }`}
                   >
                     {t === "sell" ? "For Sale" : t === "rent" ? "For Rent" : "Wanted"}
@@ -158,12 +159,12 @@ export function ListingForm() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Category</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Category</label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700">
                   <SelectValue placeholder="Select Category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
                   <SelectItem value="Furniture">Furniture</SelectItem>
                   <SelectItem value="Cycles">Cycles</SelectItem>
                   <SelectItem value="Electronics">Electronics</SelectItem>
@@ -177,16 +178,16 @@ export function ListingForm() {
 
           {/* Dynamic Custom Category Textbox when "Other" is selected */}
           {category === "Other" && (
-            <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 animate-in fade-in-50 duration-200">
-              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+            <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200/80 dark:border-slate-700 animate-in fade-in-50 duration-200">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
                 <span>Custom Category Name *</span>
-                <span className="text-[10px] text-primary font-normal">Specify category</span>
+                <span className="text-[10px] text-primary dark:text-teal-400 font-normal">Specify category</span>
               </label>
               <Input
                 placeholder="e.g. Lab Equipment, Musical Instrument, Sports Gear..."
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
-                className="bg-white"
+                className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700"
                 required
                 autoFocus
               />
@@ -196,7 +197,7 @@ export function ListingForm() {
           {/* Price & Condition */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 Price (₹ INR) *
               </label>
               <div className="relative">
@@ -208,19 +209,19 @@ export function ListingForm() {
                   placeholder="3500"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="pl-7 font-semibold"
+                  className="pl-7 font-semibold bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Condition</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Condition</label>
               <Select value={condition} onValueChange={setCondition}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700">
                   <SelectValue placeholder="Select Condition" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
                   <SelectItem value="Brand New">Brand New (Unopened / Unused)</SelectItem>
                   <SelectItem value="Like New">Like New (Mint condition)</SelectItem>
                   <SelectItem value="Good">Good (Minor wear)</SelectItem>
@@ -233,14 +234,14 @@ export function ListingForm() {
           {/* Campus Location with GPS & Current Location Detection */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 Pickup Spot / Campus Location *
               </label>
               <button
                 type="button"
                 onClick={handleUseCurrentLocation}
                 disabled={detectingLoc}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary dark:text-teal-400 hover:text-primary/80 transition-colors"
               >
                 <MapPin className="h-3 w-3" />
                 {detectingLoc ? "Detecting GPS..." : "📍 Use Current Location"}
@@ -253,7 +254,7 @@ export function ListingForm() {
                 placeholder="e.g. Hostel 3, Main Gate PG, or GPS location..."
                 value={locationLabel}
                 onChange={(e) => setLocationLabel(e.target.value)}
-                className="pl-9 bg-white text-xs h-9 font-medium"
+                className="pl-9 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 text-xs h-9 font-medium"
                 required
               />
             </div>
@@ -268,8 +269,8 @@ export function ListingForm() {
                   onClick={() => setLocationLabel(spot)}
                   className={`text-[11px] px-2 py-0.5 rounded-md border transition-all ${
                     locationLabel === spot
-                      ? "bg-primary/10 text-primary border-primary/30 font-semibold"
-                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      ? "bg-primary/15 dark:bg-primary/25 text-primary dark:text-teal-300 border-primary/30 dark:border-teal-500/40 font-semibold"
+                      : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }`}
                 >
                   {spot}
@@ -279,10 +280,10 @@ export function ListingForm() {
           </div>
 
           {/* Image Upload & URL with Live Preview */}
-          <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+          <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200/80 dark:border-slate-700">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <ImageIcon className="h-3.5 w-3.5 text-primary" />
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                <ImageIcon className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
                 Item Photo (Upload or Paste URL)
               </label>
               <span className="text-[11px] text-slate-400">Optional</span>
@@ -290,8 +291,8 @@ export function ListingForm() {
 
             {/* Direct File Upload & URL input */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label className="flex items-center justify-center gap-2 h-9 px-3 rounded-lg border border-dashed border-slate-300 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-primary cursor-pointer transition-colors">
-                <Plus className="h-3.5 w-3.5 text-primary" />
+              <label className="flex items-center justify-center gap-2 h-9 px-3 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-primary cursor-pointer transition-colors">
+                <Plus className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
                 Upload Photo from Device
                 <input
                   type="file"
@@ -324,14 +325,14 @@ export function ListingForm() {
                   placeholder="Or paste image URL (e.g. https://...)"
                   value={imageUrl.startsWith("data:") ? "" : imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  className="pl-9 text-xs bg-white h-9"
+                  className="pl-9 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 h-9"
                 />
               </div>
             </div>
 
             {/* Live Preview Box */}
             {imageUrl && (
-              <div className="relative mt-2 h-36 w-full rounded-lg overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
+              <div className="relative mt-2 h-36 w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center">
                 <img
                   src={imageUrl}
                   alt="Preview"
@@ -359,11 +360,11 @@ export function ListingForm() {
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
               Item Description *
             </label>
             <textarea
-              className="flex min-h-[100px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-xs placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="flex min-h-[100px] w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm shadow-xs placeholder:text-slate-400 text-slate-900 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               placeholder="Describe condition, age, accessories included, reason for selling..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -373,16 +374,17 @@ export function ListingForm() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex items-center justify-between border-t border-slate-100 p-5 bg-slate-50/50">
+        <CardFooter className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 p-5 bg-slate-50/50 dark:bg-slate-900/50">
           <Button
             type="button"
             variant="outline"
+            className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
             onClick={() => router.back()}
             disabled={loading}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading} className="bg-primary text-primary-foreground font-bold">
             <Plus className="mr-2 h-4 w-4" />
             {loading ? "Posting..." : "Publish Listing"}
           </Button>

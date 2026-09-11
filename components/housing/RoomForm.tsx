@@ -135,12 +135,12 @@ export function RoomForm() {
   };
 
   return (
-    <Card className="border-slate-200/80 bg-white shadow-sm">
+    <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
       <CardHeader className="pb-4">
-        <CardTitle className="text-xl font-bold text-slate-900">
+        <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
           List Flat, Room, or PG
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-slate-500 dark:text-slate-400">
           Post available accommodation to find verified student flatmates.
         </CardDescription>
       </CardHeader>
@@ -149,7 +149,7 @@ export function RoomForm() {
         <CardContent className="space-y-4">
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
               Accommodation Title *
             </label>
             <Input
@@ -163,7 +163,7 @@ export function RoomForm() {
           {/* Pricing Row: Rent, Utilities, Maintenance */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 Monthly Total Rent (₹) *
               </label>
               <div className="relative">
@@ -180,7 +180,7 @@ export function RoomForm() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 Est. Utilities (₹)
               </label>
               <div className="relative">
@@ -196,7 +196,7 @@ export function RoomForm() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 Maintenance (₹)
               </label>
               <div className="relative">
@@ -215,7 +215,7 @@ export function RoomForm() {
           {/* Bedrooms & Occupancy */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Bedrooms</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Bedrooms</label>
               <Select value={bedrooms} onValueChange={setBedrooms}>
                 <SelectTrigger>
                   <SelectValue placeholder="Bedrooms" />
@@ -230,7 +230,7 @@ export function RoomForm() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Total Occupancy Capacity</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Total Occupancy Capacity</label>
               <Input
                 type="number"
                 min={1}
@@ -241,7 +241,7 @@ export function RoomForm() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Available From</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Available From</label>
               <Input
                 placeholder="e.g. Sept 1st"
                 value={availableFrom}
@@ -253,7 +253,7 @@ export function RoomForm() {
           {/* Accommodation Location with GPS Detection */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 Accommodation Location / Area *
               </label>
               <button
@@ -273,14 +273,14 @@ export function RoomForm() {
                 placeholder="e.g. Main Gate PG, Lovely Nagar, or GPS detected area..."
                 value={locationLabel}
                 onChange={(e) => setLocationLabel(e.target.value)}
-                className="pl-9 bg-white text-xs h-9 font-medium"
+                className="pl-9 bg-white dark:bg-slate-900 text-xs h-9 font-medium"
                 required
               />
             </div>
 
             {/* Quick Preset Location Chips */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[10px] text-slate-400 font-medium">Quick Select:</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-400 font-medium">Quick Select:</span>
               {["Main Gate PG", "Lovely Nagar PG", "Hostel 1 area", "Hostel 2 area", "Hostel 3", "Hostel 5"].map((spot) => (
                 <button
                   key={spot}
@@ -288,8 +288,8 @@ export function RoomForm() {
                   onClick={() => setLocationLabel(spot)}
                   className={`text-[11px] px-2 py-0.5 rounded-md border transition-all ${
                     locationLabel === spot
-                      ? "bg-primary/10 text-primary border-primary/30 font-semibold"
-                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      ? "bg-primary/15 text-primary border-primary/40 font-semibold"
+                      : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }`}
                 >
                   {spot}
@@ -299,16 +299,16 @@ export function RoomForm() {
           </div>
 
           {/* Room Photo Upload / URL Paste with Live Preview */}
-          <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+          <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                 <span>Room / Flat Photo</span>
               </label>
               <span className="text-[11px] text-slate-400">Optional</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label className="flex items-center justify-center gap-2 h-9 px-3 rounded-lg border border-dashed border-slate-300 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-primary cursor-pointer transition-colors">
+              <label className="flex items-center justify-center gap-2 h-9 px-3 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-primary cursor-pointer transition-colors">
                 <Plus className="h-3.5 w-3.5 text-primary" />
                 Upload Photo from Device
                 <input
@@ -340,12 +340,12 @@ export function RoomForm() {
                 placeholder="Or paste image URL (https://...)"
                 value={imageUrl.startsWith("data:") ? "" : imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
-                className="text-xs bg-white h-9"
+                className="text-xs bg-white dark:bg-slate-900 h-9"
               />
             </div>
 
             {imageUrl && (
-              <div className="relative mt-2 h-36 w-full rounded-lg overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
+              <div className="relative mt-2 h-36 w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center">
                 <img
                   src={imageUrl}
                   alt="Room Preview"
@@ -370,7 +370,7 @@ export function RoomForm() {
 
           {/* Amenities Multi-Select Tag Chips */}
           <div className="space-y-2 pt-1">
-            <label className="text-xs font-semibold text-slate-700">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
               Amenities & Features (Click to toggle)
             </label>
             <div className="flex flex-wrap gap-1.5">
@@ -383,8 +383,8 @@ export function RoomForm() {
                     onClick={() => toggleAmenity(amenity)}
                     className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                       isSelected
-                        ? "bg-primary text-white border-primary shadow-2xs font-semibold"
-                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                        ? "bg-primary text-slate-950 border-primary shadow-2xs font-semibold"
+                        : "bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60"
                     }`}
                   >
                     {isSelected && <Check className="h-3 w-3" />}
@@ -396,7 +396,7 @@ export function RoomForm() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex items-center justify-between border-t border-slate-100 p-5 bg-slate-50/50">
+        <CardFooter className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 p-5 bg-slate-50/50 dark:bg-slate-900/50">
           <Button
             type="button"
             variant="outline"

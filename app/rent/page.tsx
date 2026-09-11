@@ -174,21 +174,21 @@ function RentCalculatorContent() {
   return (
     <div className="container mx-auto max-w-5xl px-4 py-6 sm:px-6 space-y-6">
       {/* Top Breadcrumb / Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
               <Percent className="h-6 w-6 text-primary" />
               Rent Health & Affordability Calculator
             </h1>
           </div>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Instant split calculations and financial burden benchmarking against student monthly allowances.
           </p>
         </div>
 
         {linkedRoom && (
-          <Button asChild variant="outline" size="sm" className="self-start sm:self-auto gap-1 border-slate-200">
+          <Button asChild variant="outline" size="sm" className="self-start sm:self-auto gap-1 border-slate-200 dark:border-slate-700">
             <Link href={`/housing/${linkedRoom.id}`}>
               <ExternalLink className="h-3.5 w-3.5" />
               Back to {linkedRoom.title}
@@ -199,26 +199,26 @@ function RentCalculatorContent() {
 
       {/* Linked Room Context Banner (When pre-filled from room / chat) */}
       {linkedRoom && (
-        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/[0.04] dark:bg-primary/10 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-xs">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-slate-950 font-bold shadow-xs">
               <Building2 className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                   Pre-filled from: {linkedRoom.title}
                 </h3>
-                <Badge variant="outline" className="bg-white text-xs">
+                <Badge variant="outline" className="bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700">
                   {linkedRoom.location_label}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Base Rent: ₹{linkedRoom.rent.toLocaleString("en-IN")} • Utilities: ₹{linkedRoom.utilities.toLocaleString("en-IN")} • Maintenance: ₹{linkedRoom.maintenance.toLocaleString("en-IN")} • {linkedRoom.occupancy_total} Occupants
               </p>
             </div>
           </div>
-          <Badge variant="secondary" className="bg-white text-slate-700 font-semibold shadow-2xs">
+          <Badge variant="secondary" className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold shadow-2xs border border-slate-200 dark:border-slate-700">
             Auto Loaded
           </Badge>
         </div>

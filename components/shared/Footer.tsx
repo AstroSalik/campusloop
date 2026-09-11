@@ -39,7 +39,7 @@ export function Footer() {
                 <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">
                   Campus<span className="text-primary">Loop</span>
                 </span>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Student Living & Marketplace
                 </span>
               </div>
@@ -144,7 +144,7 @@ export function Footer() {
                 </Link>
               </li>
               <li className="pt-2">
-                <span className="text-[11px] text-slate-400 dark:text-slate-500 block leading-tight">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">
                   LPU Student Welfare Dept. &bull; astrosalikriyaz@gmail.com
                 </span>
               </li>
@@ -153,22 +153,22 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar: Copyright */}
-        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 dark:text-slate-500">
+        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
           <p>© {new Date().getFullYear()} CampusLoop. Built for students, by students.</p>
           <div className="flex items-center gap-4">
-            <Link href="/contact" className="hover:underline hover:text-slate-600 dark:hover:text-slate-300">
+            <Link href="/contact" className="hover:underline hover:text-slate-900 dark:hover:text-white">
               Contact
             </Link>
             <span>•</span>
-            <Link href="/terms" className="hover:underline hover:text-slate-600 dark:hover:text-slate-300">
+            <Link href="/terms" className="hover:underline hover:text-slate-900 dark:hover:text-white">
               Terms
             </Link>
             <span>•</span>
-            <Link href="/privacy" className="hover:underline hover:text-slate-600 dark:hover:text-slate-300">
+            <Link href="/privacy" className="hover:underline hover:text-slate-900 dark:hover:text-white">
               Privacy
             </Link>
             <span>•</span>
-            <Link href="/messages" className="hover:underline hover:text-slate-600 dark:hover:text-slate-300">
+            <Link href="/messages" className="hover:underline hover:text-slate-900 dark:hover:text-white">
               Support Chat
             </Link>
           </div>

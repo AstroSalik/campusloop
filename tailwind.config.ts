@@ -43,6 +43,20 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        slate: {
+          50: "hsl(var(--slate-50) / <alpha-value>)",
+          100: "hsl(var(--slate-100) / <alpha-value>)",
+          200: "hsl(var(--slate-200) / <alpha-value>)",
+          300: "hsl(var(--slate-300) / <alpha-value>)",
+          400: "hsl(var(--slate-400) / <alpha-value>)",
+          500: "hsl(var(--slate-500) / <alpha-value>)",
+          600: "hsl(var(--slate-600) / <alpha-value>)",
+          700: "hsl(var(--slate-700) / <alpha-value>)",
+          800: "hsl(var(--slate-800) / <alpha-value>)",
+          850: "hsl(var(--slate-850) / <alpha-value>)",
+          900: "hsl(var(--slate-900) / <alpha-value>)",
+          950: "hsl(var(--slate-950) / <alpha-value>)",
+        },
         flag: {
           comfortable: "#059669", // Emerald Green (distinct from Teal primary)
           moderate: "#D97706",    // Warm Amber

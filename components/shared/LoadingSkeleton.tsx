@@ -19,7 +19,7 @@ export function LoadingSkeleton({
         {Array.from({ length: count }).map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-4 rounded-xl border border-slate-200/80 bg-white p-4"
+            className="flex items-center gap-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
           >
             <Skeleton className="h-12 w-12 rounded-full" />
             <div className="flex-1 space-y-2">
@@ -41,7 +41,7 @@ export function LoadingSkeleton({
       )}
     >
       {Array.from({ length: count }).map((_, i) => (
-        <Card key={i} className="overflow-hidden border-slate-200/80 bg-white shadow-xs">
+        <Card key={i} className="overflow-hidden border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <Skeleton className="h-48 w-full rounded-none" />
           <CardHeader className="p-4 pb-2 space-y-2">
             <div className="flex items-center justify-between">
@@ -52,7 +52,7 @@ export function LoadingSkeleton({
           </CardHeader>
           <CardContent className="p-4 pt-1 space-y-2.5">
             <Skeleton className="h-4 w-1/2" />
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
               <Skeleton className="h-6 w-24" />
               <Skeleton className="h-8 w-20 rounded-lg" />
             </div>
