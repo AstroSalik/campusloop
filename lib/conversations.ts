@@ -146,11 +146,21 @@ export function getConversations(): StoredConversation[] {
             }
           }
 
+          // Self-heal members and messages if Aman Verma was mistakenly associated with another user's ID
+          const sellerOrTarget = members.find((m) => m.role === "seller");
+          if (c.type === "roommate_dm" && sellerOrTarget) {
+            if (sellerOrTarget.user_id === "4898495c-0953-432c-8041-9efdc1eeab5f" && sellerOrTarget.user_name === "Aman Verma") {
+              sellerOrTarget.user_name = "Salik Riyaz";
+              sellerOrTarget.user_email = "astrosalikriyaz@gmail.com";
+              sellerOrTarget.user_initials = "SR";
+            }
+          }
+
+          const targetMemberName = sellerOrTarget?.user_name || "Campus Student";
+
           const cleanedTitle =
-            c.title?.includes("undefined") || c.title === "Marketplace Listing"
-              ? c.members.find((m) => m.role === "seller")?.user_name
-                ? `${c.members.find((m) => m.role === "seller")?.user_name} (Roommate)`
-                : "CampusLoop Chat"
+            c.title?.includes("undefined") || c.title === "Marketplace Listing" || (c.type === "roommate_dm" && c.title?.includes("Aman Verma") && sellerOrTarget?.user_id === "4898495c-0953-432c-8041-9efdc1eeab5f")
+              ? `${targetMemberName} (Roommate)`
               : c.title;
 
           const cleanedSubtitle =
@@ -159,13 +169,17 @@ export function getConversations(): StoredConversation[] {
               : c.subtitle;
 
           const cleanedMessages = (c.messages || []).map((m) => {
-            if (m.content && m.content.includes("undefined")) {
-              return {
-                ...m,
-                content: m.content.replace('"undefined"', "your listing").replace(': "undefined".', "."),
-              };
+            let content = m.content;
+            if (content && content.includes("undefined")) {
+              content = content.replace('"undefined"', "your listing").replace(': "undefined".', ".");
             }
-            return m;
+            if (content && content.includes("Hi Aman Verma") && sellerOrTarget && sellerOrTarget.user_id === "4898495c-0953-432c-8041-9efdc1eeab5f") {
+              content = content.replace("Hi Aman Verma", `Hi ${targetMemberName}`);
+            }
+            return {
+              ...m,
+              content,
+            };
           });
 
           return {
@@ -378,8 +392,38 @@ export async function getOrCreateRoommateConversation(
   );
 
   if (existing) {
+    // If existing had outdated targetName, repair it
+    if (extraHints?.targetName) {
+      const targetMember = existing.members.find((m) => m.user_id === targetUserId);
+      if (targetMember && targetMember.user_name !== extraHints.targetName) {
+        targetMember.user_name = extraHints.targetName;
+        existing.title = `${extraHints.targetName} (Roommate)`;
+        saveConversations([...all]);
+      }
+    }
     return existing.id;
   }
+
+  // Check Supabase cloud cache
+  try {
+    const supabase = createClient();
+    const { data: memberData } = await supabase
+      .from("conversation_members")
+      .select("conversation_id, user_id, role, conversations(id, type)")
+      .in("user_id", [initiatorId, targetUserId]);
+
+    if (memberData && memberData.length >= 2) {
+      const initConvs = new Set(
+        memberData
+          .filter((m: any) => m.user_id === initiatorId && (m.conversations?.type === "roommate_dm" || !m.conversations?.type))
+          .map((m: any) => m.conversation_id)
+      );
+      const sharedId = memberData.find((m: any) => m.user_id === targetUserId && initConvs.has(m.conversation_id))?.conversation_id;
+      if (sharedId) {
+        return sharedId;
+      }
+    }
+  } catch (e) {}
 
   const initiator = await resolveUserForChat(initiatorId, {
     name: extraHints?.initiatorName,

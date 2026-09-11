@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Dialog, 
   DialogContent, 
@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { getRoommateProfiles, saveRoommateProfile } from "@/lib/housing-data";
+import { getRoommateProfiles, saveRoommateProfile, fetchRoommateProfilesFromSupabase } from "@/lib/housing-data";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { getOrCreateRoommateConversation } from "@/lib/conversations";
 
@@ -78,6 +78,9 @@ export default function RoommatesPage() {
   useEffect(() => {
     const handleAuth = () => {
       setCurrentUser(getClientDemoSession());
+      fetchRoommateProfilesFromSupabase().then((cp) => {
+        if (cp) setProfiles(cp);
+      });
     };
     window.addEventListener("campusloop_auth_changed", handleAuth);
     return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
@@ -104,11 +107,37 @@ export default function RoommatesPage() {
   ]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let isMounted = true;
+    // 1. Initial fast local render
+    setProfiles(getRoommateProfiles());
+    setLoading(false);
+
+    // 2. Fetch fresh cloud profiles from Supabase
+    fetchRoommateProfilesFromSupabase().then((cloudProfiles) => {
+      if (isMounted && cloudProfiles) {
+        setProfiles(cloudProfiles);
+      }
+    });
+
+    const handleRoommatesUpdated = () => {
       setProfiles(getRoommateProfiles());
-      setLoading(false);
-    }, 150);
-    return () => clearTimeout(timer);
+    };
+    window.addEventListener("campusloop_roommates_updated", handleRoommatesUpdated);
+
+    // Periodic cloud poll (every 5s) for instant cross-device updates
+    const interval = setInterval(() => {
+      fetchRoommateProfilesFromSupabase().then((cloudProfiles) => {
+        if (isMounted && cloudProfiles) {
+          setProfiles(cloudProfiles);
+        }
+      });
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("campusloop_roommates_updated", handleRoommatesUpdated);
+      clearInterval(interval);
+    };
   }, []);
 
   const toggleTag = (tag: string) => {
@@ -119,7 +148,7 @@ export default function RoommatesPage() {
     }
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) {
       toast.error("Please sign in to publish your roommate profile.");
@@ -127,12 +156,17 @@ export default function RoommatesPage() {
       return;
     }
 
+    const validId = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `prof-${Date.now().toString(36)}`;
+
     const newProfile = {
-      id: `prof-${Date.now().toString(36)}`,
+      id: validId,
       user_id: currentUser.id,
       user_name: currentUser.name,
       user_email: currentUser.email,
       user_initials: currentUser.initials,
+      user_avatar: currentUser.avatar,
       budget_min: Number(budgetMin) || 5000,
       budget_max: Number(budgetMax) || 9000,
       preferred_location: preferredLocation,
@@ -141,10 +175,11 @@ export default function RoommatesPage() {
       created_at: new Date().toISOString(),
     };
 
-    saveRoommateProfile(newProfile);
-    setProfiles([newProfile, ...profiles]);
+    await saveRoommateProfile(newProfile);
+    const updated = await fetchRoommateProfilesFromSupabase();
+    setProfiles(updated);
     setIsDialogOpen(false);
-    toast.success("Roommate preference profile published!");
+    toast.success("Roommate preference profile published to campus cloud!");
   };
 
   // Plain filtering (no scoring engine)
@@ -421,6 +456,7 @@ export default function RoommatesPage() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filteredProfiles.map((p) => {
             const isMe = currentUser ? p.user_id === currentUser.id : false;
+            const avatarSrc = (isMe && currentUser?.avatar) ? currentUser.avatar : (p.user_avatar || (p as any).user?.avatar);
             return (
               <Card
                 key={p.id}
@@ -430,7 +466,10 @@ export default function RoommatesPage() {
                   <CardHeader className="p-4 pb-3 border-b border-slate-100 dark:border-slate-700/70 bg-gradient-to-br from-transparent to-slate-50/50 dark:to-slate-900/40">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12 border-2 border-primary/20 dark:border-teal-400/40 shadow-xs">
+                        <Avatar className="h-12 w-12 border-2 border-primary/20 dark:border-teal-400/40 shadow-xs overflow-hidden">
+                          {avatarSrc && (
+                            <AvatarImage src={avatarSrc} alt={p.user_name} className="object-cover h-full w-full" />
+                          )}
                           <AvatarFallback className="bg-primary/10 dark:bg-teal-950/90 text-primary dark:text-teal-300 font-extrabold text-sm">
                             {p.user_initials || p.user_name[0]}
                           </AvatarFallback>

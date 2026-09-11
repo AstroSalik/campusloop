@@ -17,6 +17,33 @@ export const DEMO_USERS: DemoUser[] = [
     initials: "SR",
     role_desc: "Student Account (Primary)",
   },
+  {
+    id: "00000000-0000-0000-0000-000000000003",
+    name: "Aman Verma",
+    email: "aman.student@campusloop.app",
+    campus_id: DEMO_CAMPUS_ID,
+    avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80",
+    initials: "AV",
+    role_desc: "Student Account",
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000004",
+    name: "Priya Nair",
+    email: "priya.student@campusloop.app",
+    campus_id: DEMO_CAMPUS_ID,
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    initials: "PN",
+    role_desc: "Student Account",
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000005",
+    name: "Vikram Iyer",
+    email: "vikram.student@campusloop.app",
+    campus_id: DEMO_CAMPUS_ID,
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+    initials: "VI",
+    role_desc: "Student Account",
+  },
 ];
 
 export const PRIMARY_DEMO_USER = DEMO_USERS[0];

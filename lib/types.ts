@@ -115,6 +115,7 @@ export interface RoommateProfile {
   lifestyle_tags: string[];
   created_at?: string;
   user?: User;
+  user_avatar?: string | null;
 }
 
 export type ConversationType = "marketplace_dm" | "housing_group" | "roommate_dm" | "wanted_response";

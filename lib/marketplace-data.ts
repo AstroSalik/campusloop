@@ -46,7 +46,7 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
       {
         id: "img-l02",
         listing_id: "l02-bajaj-lamp",
-        image_url: "https://images.unsplash.com/photo-1534353436294-0dbd4bdac845?auto=format&fit=crop&w=800&q=80",
+        image_url: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80",
       },
     ],
   },
@@ -94,7 +94,79 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
       {
         id: "img-l05",
         listing_id: "l05-scientific-calc",
-        image_url: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=800&q=80",
+        image_url: "https://images.unsplash.com/photo-1587145820266-a5951ee6f620?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
+  },
+  {
+    id: "l06-electric-kettle",
+    seller_id: "00000000-0000-0000-0000-000000000003",
+    seller_name: "Aman Verma",
+    seller_email: "aman.student@campusloop.app",
+    seller_initials: "AV",
+    campus_id: DEMO_CAMPUS_ID,
+    title: "Pigeon 1.5L Electric Kettle",
+    description: "Stainless steel electric kettle for tea, coffee, and instant noodles. Auto cut-off protection.",
+    category: "Electronics",
+    type: "sell",
+    price: 550,
+    condition: "Good",
+    location_label: "Hostel 3",
+    status: "active",
+    created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
+    images: [
+      {
+        id: "img-l06",
+        listing_id: "l06-electric-kettle",
+        image_url: "https://images.unsplash.com/photo-1588854337236-6889d631faa8?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
+  },
+  {
+    id: "l07-clrs-algorithms",
+    seller_id: "00000000-0000-0000-0000-000000000004",
+    seller_name: "Priya Nair",
+    seller_email: "priya.student@campusloop.app",
+    seller_initials: "PN",
+    campus_id: DEMO_CAMPUS_ID,
+    title: "Introduction to Algorithms (CLRS 3rd Ed)",
+    description: "Essential computer science handbook for DSA exams and placements. Clean pages, no torn sheets.",
+    category: "Books",
+    type: "sell",
+    price: 650,
+    condition: "Like New",
+    location_label: "Hostel 1",
+    status: "active",
+    created_at: new Date(Date.now() - 3600000 * 24 * 1.5).toISOString(),
+    images: [
+      {
+        id: "img-l07",
+        listing_id: "l07-clrs-algorithms",
+        image_url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
+  },
+  {
+    id: "l08-ergonomic-chair",
+    seller_id: "00000000-0000-0000-0000-000000000005",
+    seller_name: "Vikram Iyer",
+    seller_email: "vikram.student@campusloop.app",
+    seller_initials: "VI",
+    campus_id: DEMO_CAMPUS_ID,
+    title: "Ergonomic Mesh Study Chair",
+    description: "Breathable back support with height adjustment and smooth caster wheels. Perfect for late study sessions.",
+    category: "Furniture",
+    type: "sell",
+    price: 1800,
+    condition: "Good",
+    location_label: "Lovely Nagar PG",
+    status: "active",
+    created_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
+    images: [
+      {
+        id: "img-l08",
+        listing_id: "l08-ergonomic-chair",
+        image_url: "https://images.unsplash.com/photo-1580481077194-469b27521e1a?auto=format&fit=crop&w=800&q=80",
       },
     ],
   },
@@ -123,6 +195,47 @@ export function getListings(): typeof INITIAL_LISTINGS {
 
 export type MarketplaceListing = typeof INITIAL_LISTINGS[0];
 
+export function getDefaultListingImage(title: string = "", category: string = ""): string {
+  const t = (title || "").toLowerCase();
+  const c = (category || "").toLowerCase();
+
+  if (t.includes("macbook") || t.includes("apple laptop") || t.includes("laptop") || t.includes("notebook") || t.includes("mac")) {
+    return "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80"; // MacBook Pro
+  }
+  if (t.includes("lamp") || t.includes("light") || t.includes("led") || t.includes("bajaj")) {
+    return "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80"; // LED Desk Study Lamp
+  }
+  if (t.includes("kettle") || t.includes("pigeon") || t.includes("water heater") || t.includes("tea maker")) {
+    return "https://images.unsplash.com/photo-1588854337236-6889d631faa8?auto=format&fit=crop&w=800&q=80"; // Electric Kettle
+  }
+  if (t.includes("calc") || t.includes("casio") || t.includes("scientific") || t.includes("fx-")) {
+    return "https://images.unsplash.com/photo-1587145820266-a5951ee6f620?auto=format&fit=crop&w=800&q=80"; // Casio scientific calculator
+  }
+  if (t.includes("cycle") || t.includes("bike") || t.includes("firefox") || t.includes("hero") || c.includes("cycle")) {
+    return "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&q=80"; // Bicycle
+  }
+  if (t.includes("chair") || t.includes("seat") || t.includes("stool")) {
+    return "https://images.unsplash.com/photo-1580481077194-469b27521e1a?auto=format&fit=crop&w=800&q=80"; // Desk Chair
+  }
+  if (t.includes("table") || t.includes("desk") || c.includes("furniture")) {
+    return "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=800&q=80"; // Study Table
+  }
+  if (t.includes("fridge") || t.includes("refrigerator") || t.includes("cooler")) {
+    return "https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?auto=format&fit=crop&w=800&q=80"; // Mini Fridge
+  }
+  if (t.includes("speaker") || t.includes("audio") || t.includes("sound") || t.includes("headphone") || t.includes("earphone")) {
+    return "https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=800&q=80"; // Bluetooth Speaker
+  }
+  if (c.includes("book") || t.includes("book") || t.includes("notes") || t.includes("clrs") || t.includes("algorithms") || t.includes("engineering")) {
+    return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80"; // CS Textbook
+  }
+  if (c.includes("electronic")) {
+    return "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80";
+  }
+
+  return "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=800&q=80";
+}
+
 export function mapSupabaseListing(row: any): MarketplaceListing {
   const sellerName = row.users?.name || "Student";
   const sellerEmail = row.users?.email || "";
@@ -135,19 +248,35 @@ export function mapSupabaseListing(row: any): MarketplaceListing {
       .substring(0, 2)
       .toUpperCase() || "ST";
 
+  const normalizeImageUrl = (url: string, title: string = "", category: string = "") => {
+    if (!url) return getDefaultListingImage(title, category);
+    if (url.includes("photo-1534353436294-0dbd4bdac845")) {
+      return "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80";
+    }
+    if (url.includes("photo-1611162617213-7d7a39e9b1d7")) {
+      return "https://images.unsplash.com/photo-1587145820266-a5951ee6f620?auto=format&fit=crop&w=800&q=80";
+    }
+    if (url.includes("photo-1594213114663-d94db9b17125")) {
+      return "https://images.unsplash.com/photo-1588854337236-6889d631faa8?auto=format&fit=crop&w=800&q=80";
+    }
+    if (url.includes("photo-1526738549149-8e07eca6c147")) {
+      return getDefaultListingImage(title, category);
+    }
+    return url;
+  };
+
   const images =
     Array.isArray(row.listing_images) && row.listing_images.length > 0
       ? row.listing_images.map((img: any) => ({
           id: img.id || `img-${row.id}`,
           listing_id: row.id,
-          image_url: img.image_url,
+          image_url: normalizeImageUrl(img.image_url, row.title, row.category),
         }))
       : [
           {
             id: `img-${row.id}`,
             listing_id: row.id,
-            image_url:
-              "https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=800&q=80",
+            image_url: getDefaultListingImage(row.title, row.category),
           },
         ];
 

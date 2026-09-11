@@ -79,13 +79,14 @@ export const INITIAL_ROOMS: (Room & {
   },
 ];
 
-export const INITIAL_ROOMMATE_PROFILES: (RoommateProfile & { user_name: string; user_email: string; user_initials: string })[] = [
+export const INITIAL_ROOMMATE_PROFILES: (RoommateProfile & { user_name: string; user_email: string; user_initials: string; user_avatar?: string | null })[] = [
   {
     id: "prof-01",
     user_id: DEMO_USERS[0].id, // Salik Riyaz
     user_name: DEMO_USERS[0].name,
     user_email: DEMO_USERS[0].email,
     user_initials: DEMO_USERS[0].initials,
+    user_avatar: DEMO_USERS[0].avatar,
     budget_min: 6000,
     budget_max: 9000,
     preferred_location: "Main Gate PG",
@@ -94,15 +95,42 @@ export const INITIAL_ROOMMATE_PROFILES: (RoommateProfile & { user_name: string; 
   },
   {
     id: "prof-02",
-    user_id: DEMO_USERS[0].id,
+    user_id: "00000000-0000-0000-0000-000000000003",
     user_name: "Aman Verma",
     user_email: "aman.student@campusloop.app",
     user_initials: "AV",
+    user_avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80",
     budget_min: 5000,
     budget_max: 8000,
     preferred_location: "Hostel 3",
     move_in_month: "September",
     lifestyle_tags: ["Vegetarian", "Clean & Tidy", "Studious", "Non-Smoker"],
+  },
+  {
+    id: "prof-03",
+    user_id: "00000000-0000-0000-0000-000000000004",
+    user_name: "Priya Nair",
+    user_email: "priya.student@campusloop.app",
+    user_initials: "PN",
+    user_avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    budget_min: 5500,
+    budget_max: 8500,
+    preferred_location: "Hostel 1",
+    move_in_month: "October",
+    lifestyle_tags: ["Clean & Tidy", "Early Bird", "Non-Smoker", "Vegetarian"],
+  },
+  {
+    id: "prof-04",
+    user_id: "00000000-0000-0000-0000-000000000005",
+    user_name: "Vikram Iyer",
+    user_email: "vikram.student@campusloop.app",
+    user_initials: "VI",
+    user_avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+    budget_min: 7000,
+    budget_max: 10000,
+    preferred_location: "Lovely Nagar PG",
+    move_in_month: "September",
+    lifestyle_tags: ["Studious", "Quiet Study", "Non-Smoker", "Veg/Non-Veg OK"],
   },
 ];
 
@@ -596,25 +624,175 @@ export function getUserActiveBookings(userId: string): {
   return results;
 }
 
-export function getRoommateProfiles(): typeof INITIAL_ROOMMATE_PROFILES {
-  if (typeof window === "undefined") return INITIAL_ROOMMATE_PROFILES;
-  try {
-    const custom = localStorage.getItem(PROFILES_KEY);
-    if (custom) {
-      const parsed = JSON.parse(custom);
-      return [...parsed, ...INITIAL_ROOMMATE_PROFILES];
-    }
-  } catch (e) {}
-  return INITIAL_ROOMMATE_PROFILES;
+function generateProfileUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
-export function saveRoommateProfile(newProfile: typeof INITIAL_ROOMMATE_PROFILES[0]) {
+export function mapSupabaseRoommateProfile(row: any): typeof INITIAL_ROOMMATE_PROFILES[0] {
+  const userName = row.users?.name || "Campus Student";
+  const userEmail = row.users?.email || "";
+  const userInitials =
+    userName
+      .split(" ")
+      .map((w: string) => w[0])
+      .filter(Boolean)
+      .join("")
+      .substring(0, 2)
+      .toUpperCase() || "CS";
+
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    user_name: userName,
+    user_email: userEmail,
+    user_initials: userInitials,
+    user_avatar: row.users?.avatar || null,
+    budget_min: Number(row.budget_min) || 5000,
+    budget_max: Number(row.budget_max) || 9000,
+    preferred_location: row.preferred_location || "Campus",
+    move_in_month: row.move_in_month || "Any Month",
+    lifestyle_tags: Array.isArray(row.lifestyle_tags) ? row.lifestyle_tags : [],
+    created_at: row.created_at,
+  };
+}
+
+export async function fetchRoommateProfilesFromSupabase(): Promise<typeof INITIAL_ROOMMATE_PROFILES> {
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("roommate_profiles")
+      .select("*, users(id, name, email, avatar)")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("[Supabase] Failed to fetch cloud roommate profiles:", error.message);
+      return getRoommateProfiles();
+    }
+
+    if (data) {
+      const cloudProfiles = data.map(mapSupabaseRoommateProfile);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(PROFILES_KEY, JSON.stringify(cloudProfiles));
+        } catch (e) {}
+      }
+
+      // Merge cloud profiles with seed profiles without duplicates
+      const cloudUserIds = new Set(cloudProfiles.map((p) => p.user_id));
+      const activeInitials = INITIAL_ROOMMATE_PROFILES.filter((p) => !cloudUserIds.has(p.user_id));
+      let combined = [...cloudProfiles, ...activeInitials];
+
+      // Synchronize with active user session
+      if (typeof window !== "undefined") {
+        try {
+          const currentUserRaw = localStorage.getItem("campusloop_user");
+          if (currentUserRaw) {
+            const currentUser = JSON.parse(currentUserRaw);
+            combined = combined.map((p) => {
+              if (p.user_id === currentUser.id) {
+                return {
+                  ...p,
+                  user_name: currentUser.name || p.user_name,
+                  user_avatar: currentUser.avatar || p.user_avatar,
+                  user_initials: currentUser.initials || p.user_initials,
+                };
+              }
+              return p;
+            });
+          }
+        } catch (e) {}
+      }
+
+      return combined;
+    }
+  } catch (err) {
+    console.warn("[Network Exception] fetchRoommateProfilesFromSupabase:", err);
+  }
+  return getRoommateProfiles();
+}
+
+export function getRoommateProfiles(): typeof INITIAL_ROOMMATE_PROFILES {
+  let list = INITIAL_ROOMMATE_PROFILES;
   if (typeof window !== "undefined") {
+    try {
+      const custom = localStorage.getItem(PROFILES_KEY);
+      if (custom) {
+        const parsed = JSON.parse(custom);
+        const customUserIds = new Set(parsed.map((p: any) => p.user_id));
+        const filteredInitials = INITIAL_ROOMMATE_PROFILES.filter((p) => !customUserIds.has(p.user_id));
+        list = [...parsed, ...filteredInitials];
+      }
+    } catch (e) {}
+
+    try {
+      const currentUserRaw = localStorage.getItem("campusloop_user");
+      if (currentUserRaw) {
+        const currentUser = JSON.parse(currentUserRaw);
+        list = list.map((p) => {
+          if (p.user_id === currentUser.id) {
+            return {
+              ...p,
+              user_name: currentUser.name || p.user_name,
+              user_avatar: currentUser.avatar || p.user_avatar,
+              user_initials: currentUser.initials || p.user_initials,
+            };
+          }
+          return p;
+        });
+      }
+    } catch (e) {}
+  }
+  return list;
+}
+
+export async function saveRoommateProfile(newProfile: typeof INITIAL_ROOMMATE_PROFILES[0]) {
+  if (typeof window !== "undefined") {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newProfile.id);
+    const validId = isUuid ? newProfile.id : generateProfileUUID();
+    const profileToSave = { ...newProfile, id: validId };
+
     try {
       const customRaw = localStorage.getItem(PROFILES_KEY);
       const customList = customRaw ? JSON.parse(customRaw) : [];
-      customList.unshift(newProfile);
+      const existingIdx = customList.findIndex((p: any) => p.user_id === profileToSave.user_id || p.id === profileToSave.id);
+      if (existingIdx >= 0) {
+        customList[existingIdx] = profileToSave;
+      } else {
+        customList.unshift(profileToSave);
+      }
       localStorage.setItem(PROFILES_KEY, JSON.stringify(customList));
+      window.dispatchEvent(new Event("campusloop_roommates_updated"));
     } catch (e) {}
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+
+      const payload = {
+        id: validId,
+        user_id: profileToSave.user_id,
+        budget_min: Number(profileToSave.budget_min) || 5000,
+        budget_max: Number(profileToSave.budget_max) || 9000,
+        preferred_location: profileToSave.preferred_location,
+        move_in_month: profileToSave.move_in_month,
+        lifestyle_tags: profileToSave.lifestyle_tags || [],
+      };
+
+      const { error } = await supabase.from("roommate_profiles").upsert(payload, { onConflict: "id" });
+      if (error) {
+        console.warn("[Supabase] Roommate profile upsert notice, retrying insert:", error.message);
+        await supabase.from("roommate_profiles").insert(payload);
+      }
+    } catch (err) {
+      console.error("[Network Exception] Supabase saveRoommateProfile:", err);
+    }
   }
 }

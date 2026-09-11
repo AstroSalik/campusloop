@@ -33,7 +33,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { getClientDemoSession, DemoUser, DEMO_CAMPUS_ID } from "@/lib/auth";
-import { saveListing } from "@/lib/marketplace-data";
+import { saveListing, getDefaultListingImage } from "@/lib/marketplace-data";
 import { ListingType } from "@/lib/types";
 import { useUserLocation } from "@/lib/useUserLocation";
 
@@ -100,7 +100,13 @@ export function ListingForm() {
       location_label: locationLabel,
       status: "active" as const,
       created_at: new Date().toISOString(),
-      images: imageUrl.trim() ? [{ id: `img-${newId}`, listing_id: newId, image_url: imageUrl.trim() }] : [],
+      images: [
+        {
+          id: `img-${newId}`,
+          listing_id: newId,
+          image_url: imageUrl.trim() || getDefaultListingImage(title.trim(), finalCategory),
+        },
+      ],
     };
 
     await saveListing(newListing);
