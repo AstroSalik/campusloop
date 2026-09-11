@@ -36,13 +36,13 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ModeToggle } from "@/components/shared/ModeToggle";
 import { getListings } from "@/lib/marketplace-data";
 import { getRooms } from "@/lib/housing-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { evaluateRentHealth } from "@/lib/rent-engine";
 import { useAppMode } from "@/lib/useAppMode";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState(PRIMARY_DEMO_USER);
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
   const [mounted, setMounted] = useState(false);
   const [appMode, setAppMode] = useAppMode();
 
@@ -53,16 +53,26 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setMounted(true);
-    const user = getClientDemoSession();
-    if (user) {
+    const syncUser = () => {
+      const user = getClientDemoSession();
       setCurrentUser(user);
-    }
+    };
+    syncUser();
+
+    window.addEventListener("campusloop_auth_changed", syncUser);
+    window.addEventListener("storage", syncUser);
+
     const timer = setTimeout(() => {
       setListings(getListings());
       setRooms(getRooms());
       setLoading(false);
     }, 150);
-    return () => clearTimeout(timer);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("campusloop_auth_changed", syncUser);
+      window.removeEventListener("storage", syncUser);
+    };
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -80,7 +90,7 @@ export default function DashboardPage() {
     1500,
     900,
     3,
-    currentUser.monthly_income || 15000
+    currentUser?.monthly_income || 15000
   );
 
   return (
@@ -98,7 +108,11 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center gap-3 text-sm font-semibold">
               <span className="text-primary bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20 flex items-center gap-1.5 shadow-sm">
                 <Sparkles className="w-4 h-4" />
-                {mounted ? `Welcome back, ${currentUser.name.split(" ")[0]} 👋` : "Welcome to CampusLoop"}
+                {mounted && currentUser ? (
+                  `Welcome back, ${currentUser.name.split(" ")[0]} 👋`
+                ) : (
+                  "Welcome to CampusLoop ✨"
+                )}
               </span>
             </div>
 
@@ -384,7 +398,15 @@ export default function DashboardPage() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Based on your monthly allowance of <strong>₹{currentUser.monthly_income?.toLocaleString("en-IN") || "15,000"}</strong>, a 3-person flat split (₹18,000 rent + utilities) takes <strong>{sampleAssessment.housingRatioPct}%</strong> of your budget.
+              {currentUser ? (
+                <>
+                  Based on your monthly allowance of <strong>₹{currentUser.monthly_income?.toLocaleString("en-IN") || "15,000"}</strong>, a 3-person flat split (₹18,000 rent + utilities) takes <strong>{sampleAssessment.housingRatioPct}%</strong> of your budget.
+                </>
+              ) : (
+                <>
+                  Based on a typical student allowance of <strong>₹15,000</strong>, a 3-person flat split (₹18,000 rent + utilities) takes <strong>{sampleAssessment.housingRatioPct}%</strong> of the budget.
+                </>
+              )}
             </p>
           </div>
 
