@@ -3,6 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json().catch(() => ({}));
+    const { email, password, name } = body;
+
     const cleanEmail = (email || "").trim().toLowerCase();
     const cleanPassword = typeof password === "string" ? password : "";
     const userName = (name || cleanEmail.split("@")[0] || "Student").trim();
