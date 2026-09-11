@@ -27,8 +27,8 @@ import { CategoryFilter } from "@/components/marketplace/CategoryFilter";
 import { ModeToggle } from "@/components/shared/ModeToggle";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { getListings } from "@/lib/marketplace-data";
-import { getWantedListings, StoredWantedListing } from "@/lib/wanted-data";
+import { getListings, fetchListingsFromSupabase } from "@/lib/marketplace-data";
+import { getWantedListings, fetchWantedListingsFromSupabase, StoredWantedListing } from "@/lib/wanted-data";
 import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
 import { useAppMode } from "@/lib/useAppMode";
 
@@ -63,12 +63,32 @@ function MarketplaceContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setListings(getListings());
-      setWantedListings(getWantedListings());
-      setLoading(false);
-    }, 150);
-    return () => clearTimeout(timer);
+    // Fast initial load from local cache
+    setListings(getListings());
+    setWantedListings(getWantedListings());
+
+    // Asynchronous cloud fetch to update with live listings from all devices
+    let isMounted = true;
+    async function loadCloudData() {
+      try {
+        const [cloudListings, cloudWanted] = await Promise.all([
+          fetchListingsFromSupabase(),
+          fetchWantedListingsFromSupabase(),
+        ]);
+        if (isMounted) {
+          setListings(cloudListings);
+          setWantedListings(cloudWanted);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadCloudData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const isWantedView = selectedType === "buy";

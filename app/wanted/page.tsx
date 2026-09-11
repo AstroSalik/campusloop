@@ -24,7 +24,7 @@ import { WantedCard } from "@/components/wanted/WantedCard";
 import { WantedFilter } from "@/components/wanted/WantedFilter";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { getWantedListings, StoredWantedListing } from "@/lib/wanted-data";
+import { getWantedListings, fetchWantedListingsFromSupabase, StoredWantedListing } from "@/lib/wanted-data";
 import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
 
 function WantedBrowseContent() {
@@ -46,11 +46,27 @@ function WantedBrowseContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setWantedListings(getWantedListings());
-      setLoading(false);
-    }, 150);
-    return () => clearTimeout(timer);
+    // Initial local cache
+    setWantedListings(getWantedListings());
+
+    // Live cloud fetch from Supabase
+    let isMounted = true;
+    async function loadCloudWanted() {
+      try {
+        const cloudData = await fetchWantedListingsFromSupabase();
+        if (isMounted) {
+          setWantedListings(cloudData);
+          setLoading(false);
+        }
+      } catch (e) {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadCloudWanted();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Filter listings by search query and category

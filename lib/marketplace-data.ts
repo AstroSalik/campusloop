@@ -121,9 +121,121 @@ export function getListings(): typeof INITIAL_LISTINGS {
   return INITIAL_LISTINGS;
 }
 
-export function getListingById(id: string) {
+export type MarketplaceListing = typeof INITIAL_LISTINGS[0];
+
+export function mapSupabaseListing(row: any): MarketplaceListing {
+  const sellerName = row.users?.name || "Student";
+  const sellerEmail = row.users?.email || "";
+  const sellerInitials =
+    sellerName
+      .split(" ")
+      .map((w: string) => w[0])
+      .filter(Boolean)
+      .join("")
+      .substring(0, 2)
+      .toUpperCase() || "ST";
+
+  const images =
+    Array.isArray(row.listing_images) && row.listing_images.length > 0
+      ? row.listing_images.map((img: any) => ({
+          id: img.id || `img-${row.id}`,
+          listing_id: row.id,
+          image_url: img.image_url,
+        }))
+      : [
+          {
+            id: `img-${row.id}`,
+            listing_id: row.id,
+            image_url:
+              "https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=800&q=80",
+          },
+        ];
+
+  return {
+    id: row.id,
+    seller_id: row.seller_id,
+    seller_name: sellerName,
+    seller_email: sellerEmail,
+    seller_initials: sellerInitials,
+    campus_id: row.campus_id || DEMO_CAMPUS_ID,
+    title: row.title,
+    description: row.description,
+    category: row.category,
+    type: row.type || "sell",
+    price: Number(row.price),
+    condition: row.condition || "Good",
+    location_label: row.location_label || "Campus",
+    status: row.status || "active",
+    created_at: row.created_at,
+    images: images,
+  };
+}
+
+export async function fetchListingsFromSupabase(): Promise<MarketplaceListing[]> {
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("listings")
+      .select("*, listing_images(*), users(name, email)")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("[Supabase] Failed to fetch cloud listings:", error.message);
+      return getListings();
+    }
+
+    if (data && data.length > 0) {
+      const cloudListings = data.map(mapSupabaseListing);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudListings));
+        } catch (e) {}
+      }
+      return cloudListings;
+    }
+  } catch (err) {
+    console.warn("[Network Exception] fetchListingsFromSupabase:", err);
+  }
+  return getListings();
+}
+
+export function getListingById(id: string): MarketplaceListing | undefined {
   const all = getListings();
   return all.find((l) => l.id === id);
+}
+
+export async function fetchListingByIdFromSupabase(id: string): Promise<MarketplaceListing | null> {
+  const cached = getListingById(id);
+  if (cached) return cached;
+
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("listings")
+      .select("*, listing_images(*), users(name, email)")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (data && !error) {
+      const mapped = mapSupabaseListing(data);
+      if (typeof window !== "undefined") {
+        try {
+          const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
+          const customList = customRaw ? JSON.parse(customRaw) : [];
+          if (!customList.some((l: any) => l.id === id)) {
+            customList.unshift(mapped);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(customList));
+          }
+        } catch (e) {}
+      }
+      return mapped;
+    }
+  } catch (err) {
+    console.warn("[Network Exception] fetchListingByIdFromSupabase:", err);
+  }
+  return null;
 }
 
 export async function saveListing(newListing: typeof INITIAL_LISTINGS[0]) {

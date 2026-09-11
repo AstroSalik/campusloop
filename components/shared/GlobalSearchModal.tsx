@@ -39,10 +39,18 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<"all" | "marketplace" | "wanted" | "housing" | "roommates">("all");
 
-  const listings = useMemo(() => getListings(), []);
-  const wantedListings = useMemo(() => getWantedListings(), []);
-  const rooms = useMemo(() => getRooms(), []);
+  const [listings, setListings] = useState(getListings);
+  const [wantedListings, setWantedListings] = useState(getWantedListings);
+  const [rooms, setRooms] = useState(getRooms);
   const roommateProfiles = useMemo(() => getRoommateProfiles(), []);
+
+  useEffect(() => {
+    if (open) {
+      setListings(getListings());
+      setWantedListings(getWantedListings());
+      setRooms(getRooms());
+    }
+  }, [open]);
 
   // Filter listings
   const filteredListings = useMemo(() => {

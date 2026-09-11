@@ -122,7 +122,7 @@ export function RoomForm() {
       images: imageUrl.trim() ? [{ id: `img-${newRoomId}`, room_id: newRoomId, image_url: imageUrl.trim() }] : [],
     };
 
-    saveRoom(newRoom);
+    await saveRoom(newRoom);
     toast.success("Housing listing posted! Ready for roommate inquiries.");
     router.push(`/housing/${newRoomId}`);
     setLoading(false);

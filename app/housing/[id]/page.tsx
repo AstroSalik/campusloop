@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   getRoomById, 
+  fetchRoomByIdFromSupabase,
   markUserInterested, 
   withdrawUserInterest, 
   bookRoomSpot, 
@@ -86,18 +87,46 @@ export default function RoomDetailPage({
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const refreshRoom = () => {
+  const refreshRoom = async () => {
     const item = getRoomById(params.id);
-    setRoom(item || null);
+    if (item) setRoom(item);
+    const cloudItem = await fetchRoomByIdFromSupabase(params.id);
+    if (cloudItem) setRoom(cloudItem);
   };
 
   useEffect(() => {
-    refreshRoom();
-    setLoading(false);
+    // Check local cache first
+    const cached = getRoomById(params.id);
+    if (cached) {
+      setRoom(cached);
+      setLoading(false);
+    }
 
-    const handleUpdate = () => refreshRoom();
+    // Live cloud fetch from Supabase
+    let isMounted = true;
+    async function loadCloudRoom() {
+      try {
+        const cloudItem = await fetchRoomByIdFromSupabase(params.id);
+        if (isMounted) {
+          if (cloudItem) {
+            setRoom(cloudItem);
+          }
+          setLoading(false);
+        }
+      } catch (e) {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadCloudRoom();
+
+    const handleUpdate = () => {
+      refreshRoom();
+    };
     window.addEventListener("campusloop_housing_updated", handleUpdate);
-    return () => window.removeEventListener("campusloop_housing_updated", handleUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("campusloop_housing_updated", handleUpdate);
+    };
   }, [params.id]);
 
   if (loading) {

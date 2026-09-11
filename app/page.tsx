@@ -23,8 +23,8 @@ import { RoomCard } from "@/components/housing/RoomCard";
 import { AffordabilityBadge } from "@/components/rent/AffordabilityBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ModeToggle } from "@/components/shared/ModeToggle";
-import { getListings } from "@/lib/marketplace-data";
-import { getRooms } from "@/lib/housing-data";
+import { getListings, fetchListingsFromSupabase } from "@/lib/marketplace-data";
+import { getRooms, fetchRoomsFromSupabase } from "@/lib/housing-data";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { evaluateRentHealth } from "@/lib/rent-engine";
 import { useAppMode } from "@/lib/useAppMode";
@@ -49,14 +49,31 @@ export default function DashboardPage() {
     window.addEventListener("campusloop_auth_changed", syncUser);
     window.addEventListener("storage", syncUser);
 
-    const timer = setTimeout(() => {
-      setListings(getListings());
-      setRooms(getRooms());
-      setLoading(false);
-    }, 150);
+    // Initial cache render
+    setListings(getListings());
+    setRooms(getRooms());
+
+    // Live cloud fetch from Supabase
+    let isMounted = true;
+    async function loadCloudDashboard() {
+      try {
+        const [cloudListings, cloudRooms] = await Promise.all([
+          fetchListingsFromSupabase(),
+          fetchRoomsFromSupabase(),
+        ]);
+        if (isMounted) {
+          setListings(cloudListings);
+          setRooms(cloudRooms);
+          setLoading(false);
+        }
+      } catch (e) {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadCloudDashboard();
 
     return () => {
-      clearTimeout(timer);
+      isMounted = false;
       window.removeEventListener("campusloop_auth_changed", syncUser);
       window.removeEventListener("storage", syncUser);
     };

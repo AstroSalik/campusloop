@@ -97,7 +97,7 @@ export function ListingForm() {
       images: imageUrl.trim() ? [{ id: `img-${newId}`, listing_id: newId, image_url: imageUrl.trim() }] : [],
     };
 
-    saveListing(newListing);
+    await saveListing(newListing);
     toast.success("Listing posted successfully to campus marketplace!");
     router.push(`/marketplace/${newId}`);
     setLoading(false);

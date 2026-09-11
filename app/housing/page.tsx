@@ -32,7 +32,7 @@ import { RoomCard } from "@/components/housing/RoomCard";
 import { ModeToggle } from "@/components/shared/ModeToggle";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { getRooms, getUserActiveInterests, getUserActiveBookings } from "@/lib/housing-data";
+import { getRooms, fetchRoomsFromSupabase, getUserActiveInterests, getUserActiveBookings } from "@/lib/housing-data";
 import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
 import { useAppMode } from "@/lib/useAppMode";
 
@@ -52,12 +52,33 @@ function HousingContent() {
   };
 
   useEffect(() => {
+    // Initial load from local cache
     refreshHousing();
-    setLoading(false);
 
-    const handleUpdate = () => refreshHousing();
+    // Live cloud fetch from Supabase
+    let isMounted = true;
+    async function loadCloudRooms() {
+      try {
+        const cloudRooms = await fetchRoomsFromSupabase();
+        if (isMounted) {
+          setRooms(cloudRooms);
+          setLoading(false);
+        }
+      } catch (e) {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadCloudRooms();
+
+    const handleUpdate = () => {
+      refreshHousing();
+      loadCloudRooms();
+    };
     window.addEventListener("campusloop_housing_updated", handleUpdate);
-    return () => window.removeEventListener("campusloop_housing_updated", handleUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("campusloop_housing_updated", handleUpdate);
+    };
   }, []);
 
   const myInterests = useMemo(() => getUserActiveInterests(currentUser.id), [rooms, currentUser.id]);

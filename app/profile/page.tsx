@@ -47,8 +47,8 @@ import {
   clearClientDemoSession,
   PRIMARY_DEMO_USER 
 } from "@/lib/auth";
-import { getListings, deleteListing } from "@/lib/marketplace-data";
-import { getRooms, deleteRoom } from "@/lib/housing-data";
+import { getListings, fetchListingsFromSupabase, deleteListing } from "@/lib/marketplace-data";
+import { getRooms, fetchRoomsFromSupabase, deleteRoom } from "@/lib/housing-data";
 import { getTransactionsByUserId, PaymentTransaction } from "@/lib/razorpay-service";
 import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -67,13 +67,22 @@ export default function ProfilePage() {
   const [editingListing, setEditingListing] = useState<any | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
-  const loadUserData = (user: DemoUser) => {
+  const loadUserData = async (user: DemoUser) => {
     const allListings = getListings();
     const allRooms = getRooms();
     const txs = getTransactionsByUserId(user.id);
     setMyListings(allListings.filter((l) => l.seller_id === user.id));
     setMyRooms(allRooms.filter((r) => r.owner_id === user.id));
     setMyTransactions(txs);
+
+    try {
+      const [cloudListings, cloudRooms] = await Promise.all([
+        fetchListingsFromSupabase(),
+        fetchRoomsFromSupabase(),
+      ]);
+      setMyListings(cloudListings.filter((l) => l.seller_id === user.id));
+      setMyRooms(cloudRooms.filter((r) => r.owner_id === user.id));
+    } catch (e) {}
   };
 
   useEffect(() => {

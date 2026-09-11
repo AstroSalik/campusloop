@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getListingById, deleteListing, updateListing } from "@/lib/marketplace-data";
+import { getListingById, fetchListingByIdFromSupabase, deleteListing, updateListing } from "@/lib/marketplace-data";
 import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
 import { getOrCreateMarketplaceConversation } from "@/lib/conversations";
 import { EditListingDialog } from "@/components/marketplace/EditListingDialog";
@@ -62,14 +62,41 @@ export default function ListingDetailPage({
   const [receiptTx, setReceiptTx] = useState<PaymentTransaction | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
-  const refreshListing = () => {
+  const refreshListing = async () => {
     const item = getListingById(params.id);
-    setListing(item || null);
+    if (item) setListing(item);
+    const cloudItem = await fetchListingByIdFromSupabase(params.id);
+    if (cloudItem) setListing(cloudItem);
   };
 
   useEffect(() => {
-    refreshListing();
-    setLoading(false);
+    // Check local cache first
+    const cached = getListingById(params.id);
+    if (cached) {
+      setListing(cached);
+      setLoading(false);
+    }
+
+    // Fetch live from Supabase cloud (essential for cross-device visibility)
+    let isMounted = true;
+    async function loadCloudListing() {
+      try {
+        const cloudItem = await fetchListingByIdFromSupabase(params.id);
+        if (isMounted) {
+          if (cloudItem) {
+            setListing(cloudItem);
+          }
+          setLoading(false);
+        }
+      } catch (e) {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadCloudListing();
+
+    return () => {
+      isMounted = false;
+    };
   }, [params.id]);
 
   const handleDeleteListing = () => {

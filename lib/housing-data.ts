@@ -158,9 +158,126 @@ export function getRooms(): typeof INITIAL_ROOMS {
   return INITIAL_ROOMS.map(cleanRoom);
 }
 
-export function getRoomById(id: string) {
+export type HousingRoom = typeof INITIAL_ROOMS[0];
+
+export function mapSupabaseRoom(row: any): HousingRoom {
+  const ownerName = row.users?.name || "Student";
+  const ownerEmail = row.users?.email || "";
+  const ownerInitials =
+    ownerName
+      .split(" ")
+      .map((w: string) => w[0])
+      .filter(Boolean)
+      .join("")
+      .substring(0, 2)
+      .toUpperCase() || "ST";
+
+  const initialMatch = INITIAL_ROOMS.find((r) => r.id === row.id);
+
+  const images =
+    initialMatch?.images && initialMatch.images.length > 0
+      ? initialMatch.images
+      : [
+          {
+            id: `img-${row.id}`,
+            room_id: row.id,
+            image_url:
+              "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1000&q=80",
+          },
+        ];
+
+  const rawRoom = {
+    id: row.id,
+    owner_id: row.owner_id,
+    owner_name: ownerName,
+    owner_email: ownerEmail,
+    owner_initials: ownerInitials,
+    campus_id: row.campus_id || DEMO_CAMPUS_ID,
+    title: row.title,
+    rent: Number(row.rent),
+    utilities: Number(row.utilities) || 0,
+    maintenance: Number(row.maintenance) || 0,
+    bedrooms: Number(row.bedrooms) || 1,
+    occupancy_total: Number(row.occupancy_total) || 1,
+    occupancy_filled: Number(row.occupancy_filled) || 0,
+    amenities: Array.isArray(row.amenities) ? row.amenities : [],
+    location_label: row.location_label || "Campus Area",
+    available_from: row.available_from || "Immediate",
+    status: (row.status || "available") as "available" | "occupied" | "archived",
+    created_at: row.created_at,
+    images: images,
+    booked_users: initialMatch?.booked_users || [],
+    interested_users: initialMatch?.interested_users || [],
+  };
+
+  return cleanRoom(rawRoom);
+}
+
+export async function fetchRoomsFromSupabase(): Promise<HousingRoom[]> {
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("rooms")
+      .select("*, users(name, email)")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("[Supabase] Failed to fetch cloud rooms:", error.message);
+      return getRooms();
+    }
+
+    if (data && data.length > 0) {
+      const cloudRooms = data.map(mapSupabaseRoom);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(ROOMS_KEY, JSON.stringify(cloudRooms));
+        } catch (e) {}
+      }
+      return cloudRooms;
+    }
+  } catch (err) {
+    console.warn("[Network Exception] fetchRoomsFromSupabase:", err);
+  }
+  return getRooms();
+}
+
+export function getRoomById(id: string): HousingRoom | undefined {
   const all = getRooms();
   return all.find((r) => r.id === id);
+}
+
+export async function fetchRoomByIdFromSupabase(id: string): Promise<HousingRoom | null> {
+  const cached = getRoomById(id);
+  if (cached) return cached;
+
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("rooms")
+      .select("*, users(name, email)")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (data && !error) {
+      const mapped = mapSupabaseRoom(data);
+      if (typeof window !== "undefined") {
+        try {
+          const customRaw = localStorage.getItem(ROOMS_KEY);
+          const customList = customRaw ? JSON.parse(customRaw) : [];
+          if (!customList.some((r: any) => r.id === id)) {
+            customList.unshift(mapped);
+            localStorage.setItem(ROOMS_KEY, JSON.stringify(customList));
+          }
+        } catch (e) {}
+      }
+      return mapped;
+    }
+  } catch (err) {
+    console.warn("[Network Exception] fetchRoomByIdFromSupabase:", err);
+  }
+  return null;
 }
 
 export async function saveRoom(newRoom: typeof INITIAL_ROOMS[0]) {

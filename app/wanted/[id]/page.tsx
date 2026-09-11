@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   getWantedListingById, 
+  fetchWantedListingByIdFromSupabase,
   deleteWantedListing, 
   StoredWantedListing 
 } from "@/lib/wanted-data";
@@ -60,9 +61,33 @@ export default function WantedDetailPage({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
+    // Check local cache first
     const item = getWantedListingById(params.id);
-    setWanted(item || null);
-    setLoading(false);
+    if (item) {
+      setWanted(item);
+      setLoading(false);
+    }
+
+    // Live cloud fetch from Supabase
+    let isMounted = true;
+    async function loadCloudWanted() {
+      try {
+        const cloudItem = await fetchWantedListingByIdFromSupabase(params.id);
+        if (isMounted) {
+          if (cloudItem) {
+            setWanted(cloudItem);
+          }
+          setLoading(false);
+        }
+      } catch (e) {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadCloudWanted();
+
+    return () => {
+      isMounted = false;
+    };
   }, [params.id]);
 
   const handleDelete = () => {

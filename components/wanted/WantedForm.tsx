@@ -94,7 +94,7 @@ export function WantedForm() {
       created_at: new Date().toISOString(),
     };
 
-    saveWantedListing(newWantedListing);
+    await saveWantedListing(newWantedListing);
     toast.success("Wanted request published! Sellers across campus will be able to contact you.");
     router.push(`/wanted/${newId}`);
     setLoading(false);
