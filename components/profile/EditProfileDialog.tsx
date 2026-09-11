@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { 
-  Building2, 
-  DollarSign, 
+  Camera, 
+  Check, 
   Edit3, 
-  Image as ImageIcon, 
-  Mail, 
-  Sparkles, 
+  Link as LinkIcon, 
+  Trash2, 
+  Upload, 
   User as UserIcon, 
   Wallet 
 } from "lucide-react";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DemoUser, setClientDemoSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 
@@ -33,20 +33,75 @@ interface EditProfileDialogProps {
   onProfileUpdated: (updated: DemoUser) => void;
 }
 
+// Client-side lightweight image compression for snappy avatar storage & rendering
+async function processImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 400;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        } else {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export function EditProfileDialog({
   user,
   open,
   onOpenChange,
   onProfileUpdated,
 }: EditProfileDialogProps) {
-  const [name, setName] = useState(user.name);
-  const [monthlyIncome, setMonthlyIncome] = useState(String(user.monthly_income || 15000));
+  const [name, setName] = useState(user.name || "");
+  const [monthlyIncome, setMonthlyIncome] = useState(user.monthly_income ? String(user.monthly_income) : "");
   const [avatarUrl, setAvatarUrl] = useState(user.avatar || "");
+  const [showUrlInput, setShowUrlInput] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [processingImage, setProcessingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setName(user.name || "");
+      setMonthlyIncome(user.monthly_income ? String(user.monthly_income) : "");
+      setAvatarUrl(user.avatar || "");
+      setShowUrlInput(false);
+    }
+  }, [open, user]);
 
   const calculateInitials = (n: string) => {
+    if (!n || !n.trim()) return "S";
     return n
-      .split(" ")
+      .trim()
+      .split(/\s+/)
       .filter(Boolean)
       .map((part) => part[0])
       .join("")
@@ -54,48 +109,91 @@ export function EditProfileDialog({
       .toUpperCase() || "S";
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.error("Please provide a valid name.");
+  const handleDeviceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose a valid image file (PNG, JPG, WEBP).");
       return;
     }
 
-    const incomeVal = Number(monthlyIncome);
-    if (isNaN(incomeVal) || incomeVal < 0) {
-      toast.error("Please enter a valid monthly allowance.");
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image file is too large (max 8MB).");
       return;
+    }
+
+    setProcessingImage(true);
+    try {
+      const compressedDataUrl = await processImageFile(file);
+      setAvatarUrl(compressedDataUrl);
+      toast.success("Profile photo selected from device!");
+    } catch (err) {
+      toast.error("Could not process selected image. Please try another.");
+    } finally {
+      setProcessingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarUrl("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    toast.info("Avatar removed. Initials will be used.");
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error("Please provide your full name.");
+      return;
+    }
+
+    let incomeVal: number | undefined = undefined;
+    if (monthlyIncome.trim()) {
+      const parsedNum = Number(monthlyIncome);
+      if (isNaN(parsedNum) || parsedNum < 0) {
+        toast.error("Please enter a valid monthly allowance.");
+        return;
+      }
+      incomeVal = parsedNum;
     }
 
     setSaving(true);
     const newInitials = calculateInitials(name.trim());
+    const finalAvatar = avatarUrl.trim() || undefined;
+
     const updatedUser: DemoUser = {
       ...user,
       name: name.trim(),
       monthly_income: incomeVal,
-      avatar: avatarUrl.trim() || undefined,
+      avatar: finalAvatar,
       initials: newInitials,
     };
 
     try {
-      // 1. Update Supabase if authenticated
+      // 1. Update Supabase users table
       const supabase = createClient();
-      await supabase
+      const { error } = await supabase
         .from("users")
         .update({
           name: updatedUser.name,
-          monthly_income: updatedUser.monthly_income,
-          avatar: updatedUser.avatar,
+          monthly_income: updatedUser.monthly_income != null ? updatedUser.monthly_income : null,
+          avatar: updatedUser.avatar || null,
         })
         .eq("id", user.id);
+
+      if (error) {
+        console.error("Supabase profile update warning:", error);
+      }
     } catch (err) {
-      // Offline/demo fallback continues gracefully
+      console.error("Profile update exception:", err);
     }
 
-    // 2. Update client session & localStorage
+    // 2. Update client session & broadcast to listeners (ProfilePage, Navbar, Dashboard)
     setClientDemoSession(updatedUser);
     onProfileUpdated(updatedUser);
-    toast.success("Profile updated successfully!");
+    toast.success("Profile and avatar updated successfully!");
     setSaving(false);
     onOpenChange(false);
   };
@@ -109,29 +207,99 @@ export function EditProfileDialog({
             Edit Student Profile
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Update your personal info, avatar, and monthly budget for rent calculations.
+            Update your profile details, avatar photo, and monthly budget for rent calculations.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSave} className="space-y-4 pt-2">
-          {/* Avatar Preview & URL */}
-          <div className="flex items-center gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800">
-            <Avatar className="h-14 w-14 border-2 border-white dark:border-slate-700 shadow-sm shrink-0">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
-              <AvatarFallback className="bg-primary text-white font-extrabold text-sm">
-                {calculateInitials(name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 space-y-1">
-              <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                Avatar Image URL (Optional)
-              </label>
-              <Input
-                placeholder="https://..."
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                className="text-xs h-8 bg-white dark:bg-slate-800"
+          {/* Avatar Preview & Device Upload Options */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 flex items-center gap-4">
+            <div className="relative group shrink-0">
+              <Avatar className="h-16 w-16 border-2 border-white dark:border-slate-700 shadow-md">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={name || "Avatar"}
+                    className="aspect-square h-full w-full object-cover rounded-full"
+                  />
+                ) : (
+                  <AvatarFallback className="bg-primary text-white font-extrabold text-lg">
+                    {calculateInitials(name)}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={processingImage}
+                title="Change Photo"
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Camera className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-1.5 min-w-0">
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                Profile Photo
+              </span>
+
+              {/* Hidden device file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png, image/jpeg, image/webp, image/gif"
+                onChange={handleDeviceUpload}
+                className="hidden"
               />
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={processingImage}
+                  className="h-8 text-xs font-semibold gap-1.5 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                >
+                  <Upload className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
+                  {processingImage ? "Processing..." : "Upload from Device"}
+                </Button>
+
+                {avatarUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveAvatar}
+                    className="h-8 text-xs text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1 px-2"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+
+              {!showUrlInput ? (
+                <button
+                  type="button"
+                  onClick={() => setShowUrlInput(true)}
+                  className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-teal-300 underline underline-offset-2 block pt-0.5"
+                >
+                  Or paste an image web link
+                </button>
+              ) : (
+                <div className="relative pt-1">
+                  <LinkIcon className="absolute left-2.5 top-3.5 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    placeholder="https://images.unsplash.com/..."
+                    value={avatarUrl.startsWith("data:") ? "" : avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    className="text-xs h-8 pl-8 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -143,8 +311,8 @@ export function EditProfileDialog({
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your Name"
-              className="bg-white dark:bg-slate-800"
+              placeholder={user.name || "Enter your full name"}
+              className="bg-white dark:bg-slate-800 font-medium"
               required
             />
           </div>
@@ -165,23 +333,22 @@ export function EditProfileDialog({
           {/* Monthly Allowance / Income */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              Monthly Allowance / Income (₹ INR) *
+              Monthly Allowance / Income (₹ INR)
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2 text-sm font-semibold text-slate-400">
+              <span className="absolute left-3 top-2.5 text-sm font-semibold text-slate-400">
                 ₹
               </span>
               <Input
                 type="number"
                 value={monthlyIncome}
                 onChange={(e) => setMonthlyIncome(e.target.value)}
-                placeholder="15000"
+                placeholder="e.g. 15000"
                 className="pl-7 bg-white dark:bg-slate-800 font-semibold"
-                required
               />
             </div>
             <p className="text-[11px] text-slate-400">
-              Used automatically by the Rent Health Engine to benchmark rent split affordability.
+              Used by the Rent Health Engine on the dashboard and room listings to benchmark affordability.
             </p>
           </div>
 

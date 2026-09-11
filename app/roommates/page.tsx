@@ -54,7 +54,7 @@ import {
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { getRoommateProfiles, saveRoommateProfile } from "@/lib/housing-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER, DEMO_USERS } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { getOrCreateRoommateConversation } from "@/lib/conversations";
 
 const AVAILABLE_TAGS = [
@@ -73,7 +73,15 @@ const AVAILABLE_TAGS = [
 
 export default function RoommatesPage() {
   const router = useRouter();
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
+
+  useEffect(() => {
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+    return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
+  }, []);
 
   const [profiles, setProfiles] = useState<ReturnType<typeof getRoommateProfiles>>([]);
   const [loading, setLoading] = useState(true);
@@ -113,6 +121,12 @@ export default function RoommatesPage() {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      toast.error("Please sign in to publish your roommate profile.");
+      router.push("/login?redirect=/roommates");
+      return;
+    }
+
     const newProfile = {
       id: `prof-${Date.now().toString(36)}`,
       user_id: currentUser.id,
@@ -161,6 +175,12 @@ export default function RoommatesPage() {
   };
 
   const handleContactRoommate = async (profileUser: typeof profiles[0]) => {
+    if (!currentUser) {
+      toast.error("Please sign in to message student roommates.");
+      router.push("/login?redirect=/roommates");
+      return;
+    }
+
     if (profileUser.user_id === currentUser.id) {
       toast.info("This is your own roommate profile!");
       return;
@@ -203,12 +223,21 @@ export default function RoommatesPage() {
 
         {/* Create/Edit Profile Modal Trigger */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="shadow-xs self-start sm:self-auto">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Post Roommate Profile
-            </Button>
-          </DialogTrigger>
+          <Button 
+            size="sm" 
+            className="shadow-xs self-start sm:self-auto"
+            onClick={() => {
+              if (!currentUser) {
+                toast.error("Please sign in to post your roommate profile.");
+                router.push("/login?redirect=/roommates");
+                return;
+              }
+              setIsDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Post Roommate Profile
+          </Button>
           <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
             <DialogHeader>
               <DialogTitle className="text-slate-900 dark:text-white">Post Your Roommate Preferences</DialogTitle>
@@ -391,7 +420,7 @@ export default function RoommatesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filteredProfiles.map((p) => {
-            const isMe = p.user_id === currentUser.id;
+            const isMe = currentUser ? p.user_id === currentUser.id : false;
             return (
               <Card
                 key={p.id}
@@ -402,20 +431,9 @@ export default function RoommatesPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-12 w-12 border-2 border-primary/20 dark:border-teal-400/40 shadow-xs">
-                          {(() => {
-                            const matchedUser = DEMO_USERS.find((u) => u.id === p.user_id);
-                            return matchedUser?.avatar ? (
-                              <img
-                                src={matchedUser.avatar}
-                                alt={p.user_name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <AvatarFallback className="bg-primary/10 dark:bg-teal-950/90 text-primary dark:text-teal-300 font-extrabold text-sm">
-                                {p.user_initials || p.user_name[0]}
-                              </AvatarFallback>
-                            );
-                          })()}
+                          <AvatarFallback className="bg-primary/10 dark:bg-teal-950/90 text-primary dark:text-teal-300 font-extrabold text-sm">
+                            {p.user_initials || p.user_name[0]}
+                          </AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="flex items-center gap-1.5">

@@ -159,15 +159,23 @@ export function Navbar() {
                 title={`${currentUser.name} (${currentUser.role_desc})`}
               >
                 <Avatar className="h-9 w-9 border border-slate-200 dark:border-slate-700 ring-2 ring-transparent hover:ring-primary/20 transition-all shadow-2xs">
-                  <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
-                    {currentUser.initials ||
-                      currentUser.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .substring(0, 2)
-                        .toUpperCase()}
-                  </AvatarFallback>
+                  {currentUser.avatar ? (
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
+                      className="aspect-square h-full w-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
+                      {currentUser.initials ||
+                        currentUser.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .substring(0, 2)
+                          .toUpperCase()}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
               </Link>
             ) : (

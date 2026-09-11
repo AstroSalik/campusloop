@@ -62,13 +62,14 @@ import {
   bookRoomSpot, 
   filterActiveInterests
 } from "@/lib/housing-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { getOrCreateRoomConversation } from "@/lib/conversations";
 import { calculateSplit, evaluateRentHealth } from "@/lib/rent-engine";
 import { RazorpayCheckoutModal } from "@/components/payments/RazorpayCheckoutModal";
 import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
 import { CancelBookingDialog } from "@/components/housing/CancelBookingDialog";
 import { PaymentTransaction } from "@/lib/razorpay-service";
+import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
 export default function RoomDetailPage({
   params,
@@ -76,7 +77,7 @@ export default function RoomDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
   const [room, setRoom] = useState<ReturnType<typeof getRoomById> | null>(null);
   const [loading, setLoading] = useState(true);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -123,9 +124,16 @@ export default function RoomDetailPage({
       refreshRoom();
     };
     window.addEventListener("campusloop_housing_updated", handleUpdate);
+
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+
     return () => {
       isMounted = false;
       window.removeEventListener("campusloop_housing_updated", handleUpdate);
+      window.removeEventListener("campusloop_auth_changed", handleAuth);
     };
   }, [params.id]);
 
@@ -152,6 +160,19 @@ export default function RoomDetailPage({
           <Link href="/housing">Browse Housing</Link>
         </Button>
       </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <AuthRequiredGuard
+        title="Student Sign In Required"
+        featureName="Room Accommodation Details"
+        description="To protect campus housing security, prevent non-student visitors, and access full flat specifications, room split calculations, and direct host messaging, please sign in."
+        redirectUrl={`/housing/${params.id}`}
+        backUrl="/housing"
+        backLabel="Back to Housing Catalog"
+      />
     );
   }
 

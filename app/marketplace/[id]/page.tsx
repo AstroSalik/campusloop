@@ -39,12 +39,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getListingById, fetchListingByIdFromSupabase, deleteListing, updateListing } from "@/lib/marketplace-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { getOrCreateMarketplaceConversation } from "@/lib/conversations";
 import { EditListingDialog } from "@/components/marketplace/EditListingDialog";
 import { RazorpayCheckoutModal } from "@/components/payments/RazorpayCheckoutModal";
 import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
 import { PaymentTransaction } from "@/lib/razorpay-service";
+import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
 export default function ListingDetailPage({
   params,
@@ -52,7 +53,7 @@ export default function ListingDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
   const [listing, setListing] = useState<ReturnType<typeof getListingById> | null>(null);
   const [loading, setLoading] = useState(true);
   const [contacting, setContacting] = useState(false);
@@ -99,6 +100,14 @@ export default function ListingDetailPage({
     };
   }, [params.id]);
 
+  useEffect(() => {
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+    return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
+  }, []);
+
   const handleDeleteListing = async () => {
     if (!listing) return;
     const confirmed = window.confirm(`Are you sure you want to delete "${listing.title}"? This cannot be undone.`);
@@ -111,6 +120,11 @@ export default function ListingDetailPage({
 
   const handleMessageSeller = async () => {
     if (!listing) return;
+    if (!currentUser) {
+      toast.error("Please sign in to message this student seller.");
+      router.push(`/login?redirect=${encodeURIComponent(`/marketplace/${params.id}`)}`);
+      return;
+    }
 
     if (listing.seller_id === currentUser.id) {
       toast.info("This is your own listing!");
@@ -187,7 +201,20 @@ export default function ListingDetailPage({
     );
   }
 
-  const isOwner = listing.seller_id === currentUser.id;
+  if (!currentUser) {
+    return (
+      <AuthRequiredGuard
+        title="Student Sign In Required"
+        featureName="Marketplace Itinerary Details"
+        description="To protect campus safety, prevent spam, and access full item specifications, verified student seller details, and campus meetups, please sign in."
+        redirectUrl={`/marketplace/${params.id}`}
+        backUrl="/marketplace"
+        backLabel="Back to Marketplace"
+      />
+    );
+  }
+
+  const isOwner = currentUser ? listing.seller_id === currentUser.id : false;
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-6 sm:px-6 space-y-6">

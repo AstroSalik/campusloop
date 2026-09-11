@@ -41,11 +41,12 @@ import {
   evaluateRentHealth, 
   getAffordabilityFlag 
 } from "@/lib/rent-engine";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { getRoomById } from "@/lib/housing-data";
 import { RazorpayCheckoutModal } from "@/components/payments/RazorpayCheckoutModal";
 import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
 import { PaymentTransaction } from "@/lib/razorpay-service";
+import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
 interface CalculationRecord {
   id: string;
@@ -64,12 +65,20 @@ const HISTORY_KEY = "campusloop_rent_history";
 function RentCalculatorContent() {
   const searchParams = useSearchParams();
   const roomId = searchParams.get("room");
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
+
+  useEffect(() => {
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+    return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
+  }, []);
 
   const [linkedRoom, setLinkedRoom] = useState<ReturnType<typeof getRoomById> | null>(null);
 
   // Form State
-  const [monthlyIncome, setMonthlyIncome] = useState<number>(currentUser.monthly_income || 15000);
+  const [monthlyIncome, setMonthlyIncome] = useState<number>(currentUser?.monthly_income || 15000);
   const [rent, setRent] = useState<number>(18000);
   const [utilities, setUtilities] = useState<number>(1500);
   const [maintenance, setMaintenance] = useState<number>(900);
@@ -111,7 +120,7 @@ function RentCalculatorContent() {
   const assessment = evaluateRentHealth(rent, utilities, maintenance, occupants, monthlyIncome);
 
   const handleReset = () => {
-    setMonthlyIncome(currentUser.monthly_income || 15000);
+    setMonthlyIncome(currentUser?.monthly_income || 15000);
     setRent(18000);
     setUtilities(1500);
     setMaintenance(900);
@@ -148,6 +157,19 @@ function RentCalculatorContent() {
     } catch (e) {}
     toast.info("Cleared calculation history.");
   };
+
+  if (!currentUser) {
+    return (
+      <AuthRequiredGuard
+        title="Student Sign In Required"
+        featureName="Rent Allowance Manager & Split Calculator"
+        description="To access your student rent allowance manager, calculate personal rent health ratios, and save split assessments, please sign in with your student account."
+        redirectUrl="/rent"
+        backUrl="/"
+        backLabel="Back to Home"
+      />
+    );
+  }
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-6 sm:px-6 space-y-6">

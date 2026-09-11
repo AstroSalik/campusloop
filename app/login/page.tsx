@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { 
   Compass, 
@@ -29,9 +29,24 @@ import { Badge } from "@/components/ui/badge";
 import { setClientDemoSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect") || "/";
+  const modeParam = searchParams.get("mode");
+
+  const [authMode, setAuthMode] = useState<"signin" | "signup">(() => 
+    modeParam === "signup" ? "signup" : "signin"
+  );
+
+  useEffect(() => {
+    if (modeParam === "signup") {
+      setAuthMode("signup");
+    } else if (modeParam === "signin") {
+      setAuthMode("signin");
+    }
+  }, [modeParam]);
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -136,7 +151,7 @@ export default function LoginPage() {
           };
           setClientDemoSession(studentUser);
           toast.success(`Welcome back, ${studentUser.name}!`);
-          router.push("/");
+          router.push(redirectParam);
           router.refresh();
           return;
         }
@@ -188,7 +203,7 @@ export default function LoginPage() {
         };
         setClientDemoSession(newStudentUser);
         toast.success(`Account created successfully! Welcome to CampusLoop, ${name}!`);
-        router.push("/");
+        router.push(redirectParam);
         router.refresh();
         return;
       }
@@ -415,5 +430,17 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-8">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

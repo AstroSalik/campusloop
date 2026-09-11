@@ -1,5 +1,5 @@
 import { Conversation, ConversationMember, Message } from "@/lib/types";
-import { DEMO_USERS, getClientDemoSession, getDemoUserById, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { DEMO_USERS, getClientDemoSession, getDemoUserById } from "@/lib/auth";
 import { getListingById } from "@/lib/marketplace-data";
 import { getRoomById } from "@/lib/housing-data";
 import { getWantedListingById } from "@/lib/wanted-data";

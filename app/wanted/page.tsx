@@ -25,7 +25,7 @@ import { WantedFilter } from "@/components/wanted/WantedFilter";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { getWantedListings, fetchWantedListingsFromSupabase, StoredWantedListing } from "@/lib/wanted-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 
 function WantedBrowseContent() {
   const searchParams = useSearchParams();
@@ -36,7 +36,15 @@ function WantedBrowseContent() {
   const [wantedListings, setWantedListings] = useState<StoredWantedListing[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
+
+  useEffect(() => {
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+    return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
+  }, []);
 
   useEffect(() => {
     const q = searchParams.get("q");
@@ -127,7 +135,7 @@ function WantedBrowseContent() {
 
         {/* CTA Button */}
         <Button asChild className="bg-primary hover:bg-primary/90 text-white shadow-xs self-start sm:self-auto gap-1.5 font-semibold">
-          <Link href="/wanted/new">
+          <Link href={currentUser ? "/wanted/new" : "/login?redirect=/wanted/new"}>
             <Plus className="h-4 w-4" />
             Post What You Need
           </Link>

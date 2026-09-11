@@ -9,16 +9,26 @@ import {
   getConversations, 
   StoredConversation 
 } from "@/lib/conversations";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
 export default function MessagesPage() {
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
   const [conversations, setConversations] = useState<StoredConversation[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+    return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
+  }, []);
+
   const syncLocalConversations = () => {
+    if (!currentUser) return;
     const all = getConversations();
     const myConvs = all.filter((c) =>
       c.members.some((m) => m.user_id === currentUser.id)
@@ -28,6 +38,7 @@ export default function MessagesPage() {
   };
 
   const syncCloudConversations = async () => {
+    if (!currentUser) return;
     try {
       const cloudConvs = await fetchUserConversationsFromSupabase(currentUser.id);
       setConversations(cloudConvs);
@@ -84,7 +95,20 @@ export default function MessagesPage() {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [currentUser.id]);
+  }, [currentUser]);
+
+  if (!currentUser) {
+    return (
+      <AuthRequiredGuard
+        title="Student Sign In Required"
+        featureName="Campus Messages & Chat"
+        description="To access your direct student conversations, negotiate marketplace items, and chat with prospective roommates or hosts, please sign in."
+        redirectUrl="/messages"
+        backUrl="/"
+        backLabel="Back to Home"
+      />
+    );
+  }
 
   return (
     <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100vh-8.5rem)] min-h-[500px]">

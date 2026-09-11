@@ -37,17 +37,26 @@ import {
   getTransactions, 
   PaymentTransaction 
 } from "@/lib/razorpay-service";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
 export default function PaymentsPage() {
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
   const [filterType, setFilterType] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+
+  useEffect(() => {
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+    return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
+  }, []);
 
   const refreshTransactions = () => {
     const list = getTransactions();
@@ -58,9 +67,22 @@ export default function PaymentsPage() {
     refreshTransactions();
 
     const handleUpdate = () => refreshTransactions();
-    window.addEventListener("campusloop_transactions_updated", handleUpdate);
-    return () => window.removeEventListener("campusloop_transactions_updated", handleUpdate);
+    window.addEventListener("campusloop_payments_updated", handleUpdate);
+    return () => window.removeEventListener("campusloop_payments_updated", handleUpdate);
   }, []);
+
+  if (!currentUser) {
+    return (
+      <AuthRequiredGuard
+        title="Student Sign In Required"
+        featureName="Payments & Digital Receipts"
+        description="To view your transaction history, download digital receipts, and verify pickup OTPs, please sign in with your student account."
+        redirectUrl="/payments"
+        backUrl="/"
+        backLabel="Back to Home"
+      />
+    );
+  }
 
   // Filter transactions
   const filtered = transactions.filter((tx) => {

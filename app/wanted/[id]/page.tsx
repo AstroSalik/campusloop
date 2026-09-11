@@ -44,9 +44,10 @@ import {
   deleteWantedListing, 
   StoredWantedListing 
 } from "@/lib/wanted-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { getOrCreateWantedConversation } from "@/lib/conversations";
 import { EditWantedDialog } from "@/components/wanted/EditWantedDialog";
+import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
 export default function WantedDetailPage({
   params,
@@ -54,7 +55,7 @@ export default function WantedDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
   const [wanted, setWanted] = useState<StoredWantedListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [contacting, setContacting] = useState(false);
@@ -90,6 +91,14 @@ export default function WantedDetailPage({
     };
   }, [params.id]);
 
+  useEffect(() => {
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+    return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
+  }, []);
+
   const handleDelete = async () => {
     if (!wanted) return;
     const confirmed = window.confirm(`Are you sure you want to delete "${wanted.title}"? This cannot be undone.`);
@@ -102,6 +111,11 @@ export default function WantedDetailPage({
 
   const handleProvideThis = async () => {
     if (!wanted) return;
+    if (!currentUser) {
+      toast.error("Please sign in to connect with this student requester.");
+      router.push(`/login?redirect=${encodeURIComponent(`/wanted/${params.id}`)}`);
+      return;
+    }
 
     if (wanted.requester_id === currentUser.id) {
       toast.info("This is your own wanted request!");
@@ -177,7 +191,20 @@ export default function WantedDetailPage({
     );
   }
 
-  const isOwner = wanted.requester_id === currentUser.id;
+  if (!currentUser) {
+    return (
+      <AuthRequiredGuard
+        title="Student Sign In Required"
+        featureName="Wanted Request Itinerary Details"
+        description="To protect campus students, view verified buyer specifications, and respond with items you have for sale, please sign in."
+        redirectUrl={`/wanted/${params.id}`}
+        backUrl="/marketplace?type=buy"
+        backLabel="Back to Marketplace"
+      />
+    );
+  }
+
+  const isOwner = currentUser ? wanted.requester_id === currentUser.id : false;
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-6 sm:px-6 space-y-6">

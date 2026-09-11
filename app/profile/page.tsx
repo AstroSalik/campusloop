@@ -44,8 +44,7 @@ import {
   DemoUser, 
   getClientDemoSession, 
   setClientDemoSession, 
-  clearClientDemoSession,
-  PRIMARY_DEMO_USER 
+  clearClientDemoSession 
 } from "@/lib/auth";
 import { getListings, fetchListingsFromSupabase, deleteListing } from "@/lib/marketplace-data";
 import { getRooms, fetchRoomsFromSupabase, deleteRoom } from "@/lib/housing-data";
@@ -55,10 +54,11 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { EditListingDialog } from "@/components/marketplace/EditListingDialog";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { createClient } from "@/lib/supabase/client";
+import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<DemoUser>(PRIMARY_DEMO_USER);
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
   const [myListings, setMyListings] = useState<ReturnType<typeof getListings>>([]);
   const [myRooms, setMyRooms] = useState<ReturnType<typeof getRooms>>([]);
   const [myTransactions, setMyTransactions] = useState<PaymentTransaction[]>([]);
@@ -92,14 +92,34 @@ export default function ProfilePage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const clientSession = getClientDemoSession();
+          let cloudIncome: number | undefined = undefined;
+          let cloudName: string | undefined = undefined;
+          let cloudAvatar: string | undefined = undefined;
+
+          try {
+            const { data: dbUser } = await supabase
+              .from("users")
+              .select("monthly_income, name, email, avatar")
+              .eq("id", user.id)
+              .maybeSingle();
+
+            if (dbUser) {
+              if (dbUser.monthly_income != null) cloudIncome = Number(dbUser.monthly_income);
+              if (dbUser.name) cloudName = dbUser.name;
+              if (dbUser.avatar) cloudAvatar = dbUser.avatar;
+            }
+          } catch (e) {}
+
+          const resolvedIncome = cloudIncome != null ? cloudIncome : (clientSession?.monthly_income != null ? clientSession.monthly_income : undefined);
+
           const activeUser: DemoUser = {
             id: user.id,
-            name: clientSession?.name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Student",
+            name: cloudName || clientSession?.name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Student",
             email: user.email || clientSession?.email || "",
             campus_id: clientSession?.campus_id || "00000000-0000-0000-0000-000000000001",
-            monthly_income: clientSession?.monthly_income || 15000,
-            avatar: clientSession?.avatar || user.user_metadata?.avatar || null,
-            initials: (clientSession?.name || user.user_metadata?.full_name || user.email || "S")
+            monthly_income: resolvedIncome,
+            avatar: cloudAvatar || clientSession?.avatar || user.user_metadata?.avatar || null,
+            initials: (cloudName || clientSession?.name || user.user_metadata?.full_name || user.email || "S")
               .split(" ")
               .map((n: string) => n[0])
               .join("")
@@ -107,6 +127,7 @@ export default function ProfilePage() {
               .toUpperCase(),
             role_desc: clientSession?.role_desc || "Student Account",
           };
+          setClientDemoSession(activeUser);
           setCurrentUser(activeUser);
           loadUserData(activeUser);
           return;
@@ -118,7 +139,7 @@ export default function ProfilePage() {
         setCurrentUser(fallback);
         loadUserData(fallback);
       } else {
-        router.push("/login");
+        router.push("/login?redirect=/profile");
       }
     };
 
@@ -155,6 +176,19 @@ export default function ProfilePage() {
     toast.success(`Deleted room accommodation: "${title}"`);
   };
 
+  if (!currentUser) {
+    return (
+      <AuthRequiredGuard
+        title="Student Sign In Required"
+        featureName="Student Profile & Settings"
+        description="To view your profile, manage active listings, check accommodations, and update allowance budgets, please sign in with your student account."
+        redirectUrl="/profile"
+        backUrl="/"
+        backLabel="Back to Home"
+      />
+    );
+  }
+
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 space-y-8">
       {/* Top Profile Header Card */}
@@ -162,10 +196,17 @@ export default function ProfilePage() {
         <div className="bg-gradient-to-r from-primary/10 via-slate-50 to-primary/5 dark:from-teal-950/50 dark:via-slate-800 dark:to-slate-800 p-6 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16 border-2 border-white dark:border-teal-400/40 shadow-sm shrink-0">
-              {currentUser.avatar && <AvatarImage src={currentUser.avatar} alt={currentUser.name} />}
-              <AvatarFallback className="bg-primary dark:bg-teal-950 text-white dark:text-teal-300 text-xl font-extrabold">
-                {currentUser.initials}
-              </AvatarFallback>
+              {currentUser.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  className="aspect-square h-full w-full object-cover rounded-full"
+                />
+              ) : (
+                <AvatarFallback className="bg-primary dark:bg-teal-950 text-white dark:text-teal-300 text-xl font-extrabold">
+                  {currentUser.initials}
+                </AvatarFallback>
+              )}
             </Avatar>
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -225,9 +266,11 @@ export default function ProfilePage() {
               <Edit3 className="h-3 w-3 text-slate-400 group-hover:text-primary dark:group-hover:text-teal-300 transition-colors" />
             </div>
             <span className="text-base font-extrabold text-slate-900 dark:text-white">
-              ₹{currentUser.monthly_income?.toLocaleString("en-IN") || "15,000"}
+              {currentUser.monthly_income ? `₹${currentUser.monthly_income.toLocaleString("en-IN")}` : "Not Set"}
             </span>
-            <span className="text-[10px] text-slate-400 block">Click to update budget</span>
+            <span className="text-[10px] text-slate-400 block">
+              {currentUser.monthly_income ? "Click to update budget" : "Click to set up allowance"}
+            </span>
           </div>
           <div className="rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-900/90 p-3.5 shadow-2xs">
             <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold block">Active Items Listed</span>
@@ -521,8 +564,9 @@ export default function ProfilePage() {
       )}
 
       {/* Edit Profile Modal */}
-      {currentUser && (
+      {currentUser && isEditingProfile && (
         <EditProfileDialog
+          key={`${currentUser.id}-${currentUser.name}-${currentUser.avatar || "no-avatar"}`}
           user={currentUser}
           open={isEditingProfile}
           onOpenChange={setIsEditingProfile}

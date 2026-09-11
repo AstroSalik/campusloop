@@ -18,20 +18,22 @@ import {
   sendMessage, 
   StoredConversation 
 } from "@/lib/conversations";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
+import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
 export default function ConversationDetailPage() {
   const params = useParams();
   const router = useRouter();
   const conversationId = params.conversationId as string;
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
 
   const [conversation, setConversation] = useState<StoredConversation | null>(null);
   const [allConversations, setAllConversations] = useState<StoredConversation[]>([]);
   const [loading, setLoading] = useState(true);
 
   const syncLocal = () => {
+    if (!currentUser) return;
     const conv = getConversationById(conversationId);
     if (conv) {
       setConversation({ ...conv });
@@ -44,6 +46,7 @@ export default function ConversationDetailPage() {
   };
 
   const syncCloud = async () => {
+    if (!currentUser) return;
     try {
       // 1. Fetch current conversation details & messages from Supabase
       const cloudConv = await fetchConversationByIdFromSupabase(conversationId);
@@ -101,19 +104,38 @@ export default function ConversationDetailPage() {
       )
       .subscribe();
 
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("campusloop_conversations_updated", handleCustomUpdate);
+      window.removeEventListener("campusloop_auth_changed", handleAuth);
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, [conversationId, currentUser.id]);
+  }, [conversationId, currentUser]);
 
   const handleSend = async (text: string) => {
-    if (!conversation) return;
+    if (!conversation || !currentUser) return;
     await sendMessage(conversation.id, currentUser.id, text);
     syncLocal();
   };
+
+  if (!currentUser) {
+    return (
+      <AuthRequiredGuard
+        title="Student Sign In Required"
+        featureName="Conversation Details"
+        description="To access this private student message thread, negotiate terms, or send messages, please sign in with your student account."
+        redirectUrl={`/messages/${conversationId}`}
+        backUrl="/messages"
+        backLabel="Back to Messages"
+      />
+    );
+  }
 
   if (loading && !conversation) {
     return (

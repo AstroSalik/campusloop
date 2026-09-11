@@ -13,7 +13,6 @@ export const DEMO_USERS: DemoUser[] = [
     name: "Salik Riyaz",
     email: "astrosalikriyaz@gmail.com",
     campus_id: DEMO_CAMPUS_ID,
-    monthly_income: 18000,
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
     initials: "SR",
     role_desc: "Student Account (Primary)",

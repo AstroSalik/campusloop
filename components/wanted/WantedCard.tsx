@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StoredWantedListing } from "@/lib/wanted-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession } from "@/lib/auth";
 import { getOrCreateWantedConversation } from "@/lib/conversations";
 
 interface WantedCardProps {
@@ -38,7 +38,7 @@ interface WantedCardProps {
 
 export function WantedCard({ wanted }: WantedCardProps) {
   const router = useRouter();
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const currentUser = getClientDemoSession();
   const [connecting, setConnecting] = useState(false);
 
   const getCategoryIcon = (cat: string) => {
@@ -61,6 +61,12 @@ export function WantedCard({ wanted }: WantedCardProps) {
   const handleProvideThis = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!currentUser) {
+      toast.error("Please sign in to connect with this student requester.");
+      router.push(`/login?redirect=${encodeURIComponent(`/wanted/${wanted.id}`)}`);
+      return;
+    }
 
     if (wanted.requester_id === currentUser.id) {
       toast.info("This is your own wanted request!");
@@ -93,7 +99,7 @@ export function WantedCard({ wanted }: WantedCardProps) {
     }
   };
 
-  const isOwner = wanted.requester_id === currentUser.id;
+  const isOwner = currentUser ? wanted.requester_id === currentUser.id : false;
 
   return (
     <Card className="group overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all hover:border-primary/40 dark:hover:border-teal-700/60 hover:shadow-md flex flex-col justify-between rounded-xl">

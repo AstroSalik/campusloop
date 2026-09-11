@@ -33,7 +33,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession } from "@/lib/auth";
 
 interface SupportTicket {
   id: string;
@@ -67,10 +67,10 @@ const FAQ_ITEMS = [
 ];
 
 export default function ContactPage() {
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const currentUser = getClientDemoSession();
 
-  const [name, setName] = useState(currentUser.name || "");
-  const [email, setEmail] = useState(currentUser.email || "astrosalikriyaz@gmail.com");
+  const [name, setName] = useState(currentUser?.name || "");
+  const [email, setEmail] = useState(currentUser?.email || "");
   const [category, setCategory] = useState("marketplace");
   const [priority, setPriority] = useState<"normal" | "urgent">("normal");
   const [subject, setSubject] = useState("");

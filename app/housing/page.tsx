@@ -33,23 +33,30 @@ import { ModeToggle } from "@/components/shared/ModeToggle";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { getRooms, fetchRoomsFromSupabase, getUserActiveInterests, getUserActiveBookings } from "@/lib/housing-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { useAppMode } from "@/lib/useAppMode";
 
 function HousingContent() {
-  const searchParams = useSearchParams();
   const [mode, setMode] = useAppMode();
   const [selectedLocation, setSelectedLocation] = useState("all");
-  const [maxBudget, setMaxBudget] = useState("");
   const [selectedBedrooms, setSelectedBedrooms] = useState("all");
+  const [maxBudget, setMaxBudget] = useState("");
   const [rooms, setRooms] = useState<ReturnType<typeof getRooms>>([]);
   const [loading, setLoading] = useState(true);
 
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
 
   const refreshHousing = () => {
     setRooms(getRooms());
   };
+
+  useEffect(() => {
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+    return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
+  }, []);
 
   useEffect(() => {
     // Initial load from local cache
@@ -81,8 +88,8 @@ function HousingContent() {
     };
   }, []);
 
-  const myInterests = useMemo(() => getUserActiveInterests(currentUser.id), [rooms, currentUser.id]);
-  const myBookings = useMemo(() => getUserActiveBookings(currentUser.id), [rooms, currentUser.id]);
+  const myInterests = useMemo(() => currentUser ? getUserActiveInterests(currentUser.id) : [], [rooms, currentUser]);
+  const myBookings = useMemo(() => currentUser ? getUserActiveBookings(currentUser.id) : [], [rooms, currentUser]);
 
   // Simple plain filtering per PRD Section 3 (no scoring engine)
   const filteredRooms = rooms.filter((room) => {
@@ -142,7 +149,7 @@ function HousingContent() {
           />
 
           <Button asChild size="sm" className="shadow-xs">
-            <Link href="/housing/new">
+            <Link href={currentUser ? "/housing/new" : "/login?redirect=/housing/new"}>
               <Plus className="mr-1.5 h-4 w-4" />
               List Room
             </Link>
@@ -198,7 +205,7 @@ function HousingContent() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                You are in Lister Mode ({currentUser.name})
+                You are in Lister Mode {currentUser ? `(${currentUser.name})` : ""}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Have a vacant spot or flat? List it in 1 minute to receive inquiries in an auto-created group thread.
@@ -206,7 +213,7 @@ function HousingContent() {
             </div>
           </div>
           <Button asChild size="sm">
-            <Link href="/housing/new">
+            <Link href={currentUser ? "/housing/new" : "/login?redirect=/housing/new"}>
               <Plus className="mr-1.5 h-4 w-4" />
               Post Available Room
             </Link>

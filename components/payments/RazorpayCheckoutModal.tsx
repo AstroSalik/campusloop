@@ -35,7 +35,7 @@ import {
   generatePickupOtp, 
   getRazorpayKeyId 
 } from "@/lib/razorpay-service";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession } from "@/lib/auth";
 
 interface RazorpayCheckoutModalProps {
   open: boolean;
@@ -72,7 +72,7 @@ export function RazorpayCheckoutModal({
   onSuccess,
   onFailure,
 }: RazorpayCheckoutModalProps) {
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const currentUser = getClientDemoSession();
 
   const [activeTab, setActiveTab] = useState<"upi" | "card" | "netbanking">("upi");
   const [upiId, setUpiId] = useState("student@oksbi");
@@ -91,6 +91,12 @@ export function RazorpayCheckoutModal({
   }, [open]);
 
   const handleSimulatedPayment = async (method: "upi" | "card" | "netbanking", simulateFailure = false) => {
+    if (!currentUser) {
+      toast.error("Please sign in with your student account to process payments.");
+      onOpenChange(false);
+      return;
+    }
+
     setIsProcessing(true);
     setStep("authenticating");
 

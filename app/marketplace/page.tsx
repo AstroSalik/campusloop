@@ -29,7 +29,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { getListings, fetchListingsFromSupabase } from "@/lib/marketplace-data";
 import { getWantedListings, fetchWantedListingsFromSupabase, StoredWantedListing } from "@/lib/wanted-data";
-import { getClientDemoSession, PRIMARY_DEMO_USER } from "@/lib/auth";
+import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { useAppMode } from "@/lib/useAppMode";
 
 function MarketplaceContent() {
@@ -45,7 +45,15 @@ function MarketplaceContent() {
   const [wantedListings, setWantedListings] = useState<StoredWantedListing[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
+
+  useEffect(() => {
+    const handleAuth = () => {
+      setCurrentUser(getClientDemoSession());
+    };
+    window.addEventListener("campusloop_auth_changed", handleAuth);
+    return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
+  }, []);
 
   // Sync URL search params
   useEffect(() => {
@@ -187,14 +195,14 @@ function MarketplaceContent() {
 
           {isWantedView ? (
             <Button asChild size="sm" className="shadow-xs bg-primary hover:bg-primary/90 text-white font-semibold">
-              <Link href="/wanted/new">
+              <Link href={currentUser ? "/wanted/new" : "/login?redirect=/wanted/new"}>
                 <Plus className="mr-1.5 h-4 w-4" />
                 Post What You Need
               </Link>
             </Button>
           ) : (
             <Button asChild size="sm" className="shadow-xs bg-primary hover:bg-primary/90 text-white font-semibold">
-              <Link href="/marketplace/new">
+              <Link href={currentUser ? "/marketplace/new" : "/login?redirect=/marketplace/new"}>
                 <Plus className="mr-1.5 h-4 w-4" />
                 Post Listing
               </Link>
@@ -212,7 +220,7 @@ function MarketplaceContent() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                You are in Seller Mode ({currentUser.name})
+                You are in Seller Mode {currentUser ? `(${currentUser.name})` : ""}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Moving out or upgrading? Post an item in 30 seconds to reach thousands of campus students.
@@ -220,7 +228,7 @@ function MarketplaceContent() {
             </div>
           </div>
           <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-white">
-            <Link href="/marketplace/new">
+            <Link href={currentUser ? "/marketplace/new" : "/login?redirect=/marketplace/new"}>
               <Plus className="mr-1.5 h-4 w-4" />
               Create New Listing
             </Link>

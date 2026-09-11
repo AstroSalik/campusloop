@@ -32,7 +32,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { getClientDemoSession, PRIMARY_DEMO_USER, DEMO_CAMPUS_ID } from "@/lib/auth";
+import { getClientDemoSession, DemoUser, DEMO_CAMPUS_ID } from "@/lib/auth";
 import { saveRoom } from "@/lib/housing-data";
 import { useUserLocation } from "@/lib/useUserLocation";
 
@@ -54,7 +54,7 @@ const AVAILABLE_AMENITIES = [
 
 export function RoomForm() {
   const router = useRouter();
-  const currentUser = getClientDemoSession() || PRIMARY_DEMO_USER;
+  const [currentUser] = useState<DemoUser | null>(() => getClientDemoSession());
   const { location: userLoc, detectLocation, loading: detectingLoc } = useUserLocation();
 
   const [title, setTitle] = useState("");
@@ -92,6 +92,12 @@ export function RoomForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      toast.error("Please sign in to list a room.");
+      router.push("/login?redirect=/housing/new");
+      return;
+    }
+
     if (!title.trim() || !rent) {
       toast.error("Please enter the room title and monthly rent.");
       return;

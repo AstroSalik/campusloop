@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { 
   ArrowRight, 
   Bike, 
@@ -14,25 +16,30 @@ import {
   ShieldCheck, 
   ShoppingBag, 
   Sparkles, 
-  Users2 
+  Users2,
+  Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListingCard } from "@/components/marketplace/ListingCard";
 import { RoomCard } from "@/components/housing/RoomCard";
 import { AffordabilityBadge } from "@/components/rent/AffordabilityBadge";
+import { SetupAllowanceDialog } from "@/components/rent/SetupAllowanceDialog";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ModeToggle } from "@/components/shared/ModeToggle";
 import { getListings, fetchListingsFromSupabase } from "@/lib/marketplace-data";
 import { getRooms, fetchRoomsFromSupabase } from "@/lib/housing-data";
-import { getClientDemoSession, DemoUser } from "@/lib/auth";
+import { getClientDemoSession, setClientDemoSession, DemoUser } from "@/lib/auth";
 import { evaluateRentHealth } from "@/lib/rent-engine";
 import { useAppMode } from "@/lib/useAppMode";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
   const [mounted, setMounted] = useState(false);
   const [appMode, setAppMode] = useAppMode();
+  const [isSetupAllowanceOpen, setIsSetupAllowanceOpen] = useState(false);
 
   const [listings, setListings] = useState<ReturnType<typeof getListings>>([]);
   const [rooms, setRooms] = useState<ReturnType<typeof getRooms>>([]);
@@ -40,8 +47,28 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setMounted(true);
-    const syncUser = () => {
+    const syncUser = async () => {
       const user = getClientDemoSession();
+      if (user) {
+        try {
+          const supabase = createClient();
+          const { data: dbUser } = await supabase
+            .from("users")
+            .select("monthly_income, name, email")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          if (dbUser && dbUser.monthly_income != null) {
+            const incomeNum = Number(dbUser.monthly_income);
+            if (incomeNum !== user.monthly_income) {
+              const updated: DemoUser = { ...user, monthly_income: incomeNum };
+              setClientDemoSession(updated);
+              setCurrentUser(updated);
+              return;
+            }
+          }
+        } catch (e) {}
+      }
       setCurrentUser(user);
     };
     syncUser();
@@ -79,14 +106,34 @@ export default function DashboardPage() {
     };
   }, []);
 
+  const hasAllowance = Boolean(
+    mounted && currentUser && currentUser.monthly_income != null && currentUser.monthly_income > 0
+  );
+
   // Sample snapshot calculation based on student allowance
   const sampleAssessment = evaluateRentHealth(
     18000,
     1500,
     900,
     3,
-    (mounted && currentUser?.monthly_income) ? currentUser.monthly_income : 15000
+    hasAllowance && currentUser?.monthly_income ? currentUser.monthly_income : 15000
   );
+
+  const handleSetupAllowanceClick = () => {
+    if (!currentUser) {
+      toast.info("Please log in to set up your monthly allowance.");
+      router.push("/login");
+      return;
+    }
+    setIsSetupAllowanceOpen(true);
+  };
+
+  const handleAllowanceSaved = (newAllowance: number) => {
+    if (currentUser) {
+      const updated = { ...currentUser, monthly_income: newAllowance };
+      setCurrentUser(updated);
+    }
+  };
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-8">
@@ -127,11 +174,6 @@ export default function DashboardPage() {
                  <Link href="/marketplace">
                    Start Exploring
                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                 </Link>
-               </Button>
-               <Button variant="outline" size="lg" asChild className="rounded-full h-14 px-8 text-base font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800">
-                 <Link href="/marketplace/new">
-                   Post an Item
                  </Link>
                </Button>
             </div>
@@ -388,43 +430,67 @@ export default function DashboardPage() {
       {/* 4. Rent Health Snapshot Widget */}
       <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
         <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-r from-slate-50/80 dark:from-slate-900 via-white dark:via-slate-900/90 to-primary/[0.02] dark:to-primary/10">
-          <div className="space-y-2 max-w-xl">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white shadow-xs">
-                <Percent className="h-4 w-4" />
+          {hasAllowance && currentUser?.monthly_income ? (
+            <>
+              <div className="space-y-2 max-w-xl">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white shadow-xs">
+                    <Percent className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Rent Health Affordability Snapshot
+                  </h3>
+                  <AffordabilityBadge flag={sampleAssessment.flag} percentage={sampleAssessment.housingRatioPct} />
+                </div>
+
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Based on your monthly allowance of <strong>₹{currentUser.monthly_income.toLocaleString("en-IN")}</strong>, a 3-person flat split (₹18,000 rent + utilities) takes <strong>{sampleAssessment.housingRatioPct}%</strong> of your budget.
+                </p>
               </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Rent Health Affordability Snapshot
-              </h3>
-              <AffordabilityBadge flag={sampleAssessment.flag} percentage={sampleAssessment.housingRatioPct} />
-            </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              {mounted && currentUser ? (
-                <>
-                  Based on your monthly allowance of <strong>₹{currentUser.monthly_income?.toLocaleString("en-IN") || "15,000"}</strong>, a 3-person flat split (₹18,000 rent + utilities) takes <strong>{sampleAssessment.housingRatioPct}%</strong> of your budget.
-                </>
-              ) : (
-                <>
-                  Based on a typical student allowance of <strong>₹15,000</strong>, a 3-person flat split (₹18,000 rent + utilities) takes <strong>{sampleAssessment.housingRatioPct}%</strong> of the budget.
-                </>
-              )}
-            </p>
-          </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/90 p-3 shadow-2xs text-center min-w-[120px]">
+                  <span className="text-[11px] text-slate-400 font-medium block">Est. Monthly Share</span>
+                  <span className="text-lg font-extrabold text-primary">₹{sampleAssessment.perPersonShare.toLocaleString("en-IN")}</span>
+                </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/90 p-3 shadow-2xs text-center min-w-[120px]">
-              <span className="text-[11px] text-slate-400 font-medium block">Est. Monthly Share</span>
-              <span className="text-lg font-extrabold text-primary">₹{sampleAssessment.perPersonShare.toLocaleString("en-IN")}</span>
-            </div>
+                <Button asChild className="shadow-xs">
+                  <Link href="/rent?room=r01-main-gate-2bhk">
+                    Launch Full Calculator
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5 max-w-xl">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white shadow-xs">
+                    <Percent className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Rent Health Affordability Snapshot
+                  </h3>
+                </div>
 
-            <Button asChild className="shadow-xs">
-              <Link href="/rent?room=r01-main-gate-2bhk">
-                Launch Full Calculator
-                <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Set up your monthly allowance to calculate transparent rent splits, assess room affordability, and unlock personalized student budgeting.
+                </p>
+              </div>
+
+              <div className="flex items-center">
+                <Button
+                  onClick={handleSetupAllowanceClick}
+                  className="shadow-xs font-semibold gap-2"
+                >
+                  <Wallet className="h-4 w-4" />
+                  Set Up Monthly Allowance
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 
@@ -489,6 +555,14 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      <SetupAllowanceDialog
+        open={isSetupAllowanceOpen}
+        onOpenChange={setIsSetupAllowanceOpen}
+        currentAllowance={currentUser?.monthly_income}
+        currentUser={currentUser}
+        onAllowanceSaved={handleAllowanceSaved}
+      />
     </div>
   );
 }
