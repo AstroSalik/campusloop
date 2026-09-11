@@ -257,9 +257,9 @@ export default function WantedDetailPage({
       </div>
 
       {/* Main Grid: Details + Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         {/* Left 2 Cols: Item Details */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
           {/* Visual Header Banner */}
           <div className="relative rounded-2xl bg-gradient-to-br from-teal-50/60 via-slate-50 to-emerald-50/40 dark:from-teal-950/30 dark:via-slate-900 dark:to-emerald-950/20 border border-primary/20 dark:border-primary/30 p-8 shadow-xs overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -331,7 +331,7 @@ export default function WantedDetailPage({
         </div>
 
         {/* Right 1 Col: Budget & Action Card */}
-        <div className="space-y-6">
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6">
           <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm sticky top-20">
             <CardHeader className="pb-4">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Buyer Budget Ceiling</span>

@@ -179,7 +179,7 @@ export default function DashboardPage() {
             </div>
             
             {/* Relevant Stats/Trust Indicators */}
-            <div className="pt-8 flex items-center gap-8 border-t border-slate-200/60 dark:border-slate-800/60 w-max pr-8">
+            <div className="pt-8 flex flex-wrap items-center gap-6 sm:gap-8 border-t border-slate-200/60 dark:border-slate-800/60 max-w-md">
               <div>
                 <div className="text-3xl font-black text-slate-900 dark:text-white">100%</div>
                 <div className="text-sm font-semibold text-slate-500 mt-1 uppercase tracking-wider">Student Verified</div>
@@ -193,7 +193,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Right side floating UI showcase */}
-          <div className="w-full max-w-lg lg:w-[45%] relative z-20 mt-8 lg:mt-0 px-4 sm:px-8 lg:px-0">
+          <div className="w-full max-w-lg lg:w-[45%] relative z-20 mt-8 lg:mt-0 px-2 sm:px-8 lg:px-0">
              <div className="relative">
                 {/* Main showcase image (a cool campus or room photo) */}
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-3 shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800 transform lg:rotate-2 hover:rotate-0 transition-transform duration-500">
@@ -207,9 +207,9 @@ export default function DashboardPage() {
                   />
                   
                   {/* Floating elements simulating app UI */}
-                  <div className="absolute -left-4 sm:-left-10 top-12 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3 animate-[bounce_4s_infinite]">
+                  <div className="absolute left-2 sm:-left-8 top-8 sm:top-12 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl p-2.5 sm:p-4 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-2.5 sm:gap-3 animate-[bounce_4s_infinite]">
                     <div className="bg-emerald-100 dark:bg-emerald-900/40 p-2 sm:p-2.5 rounded-xl text-emerald-600 dark:text-emerald-400">
-                      <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6" />
+                      <ShieldCheck className="h-4 w-4 sm:h-6 sm:w-6" />
                     </div>
                     <div>
                       <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Verified Flatmate</div>
@@ -217,9 +217,9 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   
-                  <div className="absolute -right-4 sm:-right-8 bottom-12 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3 animate-[bounce_5s_infinite]" style={{ animationDelay: '1s' }}>
+                  <div className="absolute right-2 sm:-right-8 bottom-6 sm:bottom-12 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-2xl p-2.5 sm:p-4 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-2.5 sm:gap-3 animate-[bounce_5s_infinite]" style={{ animationDelay: '1s' }}>
                     <div className="bg-primary/15 p-2 sm:p-2.5 rounded-xl text-primary">
-                      <Bike className="h-5 w-5 sm:h-6 sm:w-6" />
+                      <Bike className="h-4 w-4 sm:h-6 sm:w-6" />
                     </div>
                     <div>
                       <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">₹3,500</div>

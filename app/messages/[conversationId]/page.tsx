@@ -139,7 +139,7 @@ export default function ConversationDetailPage() {
 
   if (loading && !conversation) {
     return (
-      <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100vh-8.5rem)] min-h-[500px]">
+      <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5.5rem)] min-h-[460px] -mb-16 lg:mb-0">
         <div className="h-full rounded-none sm:rounded-2xl border-0 sm:border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse flex items-center justify-center">
           <MessageSquare className="h-8 w-8 text-slate-300 dark:text-slate-600 animate-spin" />
         </div>
@@ -165,7 +165,7 @@ export default function ConversationDetailPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100vh-8.5rem)] min-h-[500px]">
+    <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5.5rem)] min-h-[460px] -mb-16 lg:mb-0">
       <div className="h-full rounded-none sm:rounded-2xl border-0 sm:border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-none sm:shadow-xs overflow-hidden flex flex-col md:flex-row">
         {/* Left Pane: Conversation List (hidden on mobile when inside thread) */}
         <div className="hidden md:block w-80 lg:w-96 h-full shrink-0">

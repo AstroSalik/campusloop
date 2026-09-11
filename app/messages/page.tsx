@@ -111,7 +111,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100vh-8.5rem)] min-h-[500px]">
+    <div className="container mx-auto max-w-7xl px-0 sm:px-6 py-0 sm:py-6 h-[calc(100dvh-8rem)] md:h-[calc(100dvh-5.5rem)] min-h-[460px]">
       <div className="h-full rounded-none sm:rounded-2xl border-0 sm:border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-none sm:shadow-xs overflow-hidden flex flex-col md:flex-row">
         {/* Left Pane: Conversation List */}
         <div className="w-full md:w-80 lg:w-96 h-full shrink-0">

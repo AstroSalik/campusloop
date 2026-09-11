@@ -340,7 +340,7 @@ export default function RoommatesPage() {
       </div>
 
       {/* Simple Filters Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
         <div className="space-y-1">
           <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Preferred Location

@@ -286,17 +286,17 @@ export default function ProfilePage() {
       {/* Tabs: My Listings, My Rooms, Payments */}
       <Tabs defaultValue="listings" className="w-full space-y-4">
         <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-          <TabsTrigger value="listings" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
-            <Package className="h-3.5 w-3.5" />
-            Listings ({myListings.length})
+          <TabsTrigger value="listings" className="text-[11px] sm:text-xs font-bold px-1 sm:px-3 gap-1 sm:gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
+            <Package className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Listings ({myListings.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="rooms" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
-            <Home className="h-3.5 w-3.5" />
-            Rooms ({myRooms.length})
+          <TabsTrigger value="rooms" className="text-[11px] sm:text-xs font-bold px-1 sm:px-3 gap-1 sm:gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
+            <Home className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Rooms ({myRooms.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="payments" className="text-xs font-bold gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
-            <Receipt className="h-3.5 w-3.5" />
-            Payments ({myTransactions.length})
+          <TabsTrigger value="payments" className="text-[11px] sm:text-xs font-bold px-1 sm:px-3 gap-1 sm:gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400">
+            <Receipt className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Payments ({myTransactions.length})</span>
           </TabsTrigger>
         </TabsList>
 

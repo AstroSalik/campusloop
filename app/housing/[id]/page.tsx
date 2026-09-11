@@ -389,9 +389,9 @@ export default function RoomDetailPage({
       )}
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         {/* Left 2 Cols: Details, Live Spot Itinerary, and Breakdown */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
           {/* Header Banner with Room Photo */}
           <div className="relative h-64 sm:h-80 w-full rounded-2xl bg-gradient-to-br from-primary/10 via-slate-50 dark:via-slate-900/80 to-primary/5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col items-center justify-center p-6 text-center overflow-hidden">
             {room.images && room.images.length > 0 ? (
@@ -718,7 +718,7 @@ export default function RoomDetailPage({
         </div>
 
         {/* Right 1 Col: Booking CTA Sidebar & Lister Info */}
-        <div className="space-y-6">
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6">
           <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm sticky top-20">
             <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Per-Person Split</span>

@@ -266,11 +266,11 @@ export default function ListingDetailPage({
       </div>
 
       {/* Main Grid: Details + Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         {/* Left 2 Cols: Images & Details */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
           {/* Main Visual / Image Hero */}
-          <div className="relative h-72 sm:h-96 w-full rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-center overflow-hidden">
+          <div className="relative h-72 sm:h-96 w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-center overflow-hidden">
             {listing.images && listing.images.length > 0 && !imageError ? (
               <img
                 src={listing.images[0].image_url}
@@ -312,42 +312,42 @@ export default function ListingDetailPage({
           </div>
 
           {/* Description Section */}
-          <Card className="border-slate-200/80 bg-white shadow-xs">
+          <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
             <CardHeader className="pb-3">
-              <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1">
                 <MapPin className="h-3.5 w-3.5 text-slate-400" />
                 <span>Pickup at <strong>{listing.location_label}</strong></span>
                 <span>•</span>
                 <Clock className="h-3.5 w-3.5 text-slate-400" />
                 <span>Posted {new Date(listing.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>
               </div>
-              <CardTitle className="text-2xl font-bold text-slate-900">
+              <CardTitle className="text-2xl font-bold text-slate-900 dark:text-white">
                 {listing.title}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-xl bg-slate-50/70 p-4 border border-slate-100">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+              <div className="rounded-xl bg-slate-50/70 dark:bg-slate-800/60 p-4 border border-slate-100 dark:border-slate-800">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                   Item Description
                 </h4>
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">
                   {listing.description}
                 </p>
               </div>
 
               {/* Key Specs Pills */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                <div className="rounded-lg border border-slate-200 p-2.5">
-                  <span className="text-[11px] text-slate-400 block">Category</span>
-                  <span className="text-sm font-semibold text-slate-800">{listing.category}</span>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-800/80">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-400 block">Category</span>
+                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{listing.category}</span>
                 </div>
-                <div className="rounded-lg border border-slate-200 p-2.5">
-                  <span className="text-[11px] text-slate-400 block">Condition</span>
-                  <span className="text-sm font-semibold text-slate-800">{listing.condition}</span>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-800/80">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-400 block">Condition</span>
+                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{listing.condition}</span>
                 </div>
-                <div className="rounded-lg border border-slate-200 p-2.5 col-span-2 sm:col-span-1">
-                  <span className="text-[11px] text-slate-400 block">Listing Status</span>
-                  <span className="text-sm font-semibold text-emerald-600 capitalize">{listing.status}</span>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 col-span-2 sm:col-span-1 bg-white dark:bg-slate-800/80">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-400 block">Listing Status</span>
+                  <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 capitalize">{listing.status}</span>
                 </div>
               </div>
             </CardContent>
@@ -355,13 +355,13 @@ export default function ListingDetailPage({
         </div>
 
         {/* Right 1 Col: Price & Seller Action Card */}
-        <div className="space-y-6">
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6">
           {/* Price & Primary CTA */}
-          <Card className="border-slate-200/80 bg-white shadow-sm sticky top-20">
+          <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm sticky top-20">
             <CardHeader className="pb-4">
-              <span className="text-xs font-medium text-slate-500">Fixed Asking Price</span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Fixed Asking Price</span>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-3xl font-extrabold text-slate-900">
+                <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
                   ₹{listing.price.toLocaleString("en-IN")}
                 </span>
                 {listing.type === "rent" && (

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { 
   Building2, 
   Compass, 
@@ -15,6 +18,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export function Footer() {
+  const pathname = usePathname();
+
+  // Hide footer on full-height web chat views
+  if (pathname.startsWith("/messages")) {
+    return null;
+  }
+
   return (
     <footer className="w-full border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 mt-auto transition-colors">
       <div className="container mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
