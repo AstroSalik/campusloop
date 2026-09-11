@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, 
   Bike, 
@@ -9,17 +11,29 @@ import {
   ExternalLink, 
   HelpCircle,
   Home, 
+  Loader2,
   MapPin, 
   Package, 
   Percent, 
   ShieldCheck, 
   Sparkles, 
   Tag, 
+  Trash2,
   Users 
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { StoredConversation } from "@/lib/conversations";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { StoredConversation, deleteConversation } from "@/lib/conversations";
+import { getClientDemoSession } from "@/lib/auth";
 import { getListingById } from "@/lib/marketplace-data";
 import { getRoomById } from "@/lib/housing-data";
 import { getWantedListingById } from "@/lib/wanted-data";
@@ -30,11 +44,30 @@ interface ChatContextHeaderProps {
 }
 
 export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
+  const router = useRouter();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const isMarketplace = conversation.type === "marketplace_dm";
   const isWanted = conversation.type === "wanted_response";
   const listing = conversation.listing_id ? getListingById(conversation.listing_id) : null;
   const room = conversation.room_id ? getRoomById(conversation.room_id) : null;
   const wanted = conversation.wanted_listing_id ? getWantedListingById(conversation.wanted_listing_id) : null;
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const user = getClientDemoSession();
+      await deleteConversation(conversation.id, user?.id);
+      toast.success("Thread deleted successfully");
+      router.push("/messages");
+    } catch (e) {
+      toast.error("Failed to delete thread");
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
 
   return (
     <div className="border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-4 py-3 shadow-2xs">
@@ -99,7 +132,7 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
           </div>
         </div>
 
-        {/* Right: Quick Action Buttons (Flow C: Deep-link to Rent Health, Listing, or Wanted Detail) */}
+        {/* Right: Quick Action Buttons */}
         <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
           {room && (
             <Button asChild variant="outline" size="sm" className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1 border-primary/30 text-primary dark:text-teal-300 hover:bg-primary/5 dark:hover:bg-primary/20 bg-transparent">
@@ -136,8 +169,76 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
               </Link>
             </Button>
           )}
+
+          {/* Delete Thread Button */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setDeleteDialogOpen(true)}
+            title="Delete this conversation"
+            aria-label="Delete thread"
+            className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1.5 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-300"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Delete Thread</span>
+          </Button>
         </div>
       </div>
+
+      {/* Delete Thread Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteDialogOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <Trash2 className="h-5 w-5" />
+              Delete Conversation?
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-sm text-slate-600 dark:text-slate-300">
+              Are you sure you want to delete this conversation with{" "}
+              <span className="font-semibold text-slate-900 dark:text-white">
+                &ldquo;{conversation.title || "this chat"}&rdquo;
+              </span>
+              ? All messages in this thread will be permanently deleted and you will be returned to Messages.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="gap-1.5"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Delete Thread
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

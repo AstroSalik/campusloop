@@ -1085,3 +1085,49 @@ export function getTotalUnreadCount(conversations: StoredConversation[], userId:
   }, 0);
 }
 
+/**
+ * Delete a conversation thread (removes locally and from cloud)
+ */
+export async function deleteConversation(conversationId: string, userId?: string): Promise<boolean> {
+  if (!conversationId) return false;
+
+  // 1. Remove from local storage cache
+  const all = getConversations();
+  const filtered = all.filter((c) => c.id !== conversationId);
+  saveConversations(filtered);
+
+  // 2. Remove read receipts for this thread
+  if (userId && typeof window !== "undefined") {
+    try {
+      const receipts = getReadReceipts(userId);
+      if (receipts[conversationId]) {
+        delete receipts[conversationId];
+        localStorage.setItem(`${READ_RECEIPTS_PREFIX}${userId}`, JSON.stringify(receipts));
+        window.dispatchEvent(
+          new CustomEvent("campusloop_read_receipts_updated", {
+            detail: { conversationId, userId },
+          })
+        );
+      }
+    } catch (e) {}
+  }
+
+  // 3. Delete from Supabase cloud
+  try {
+    const supabase = createClient();
+    await supabase.from("messages").delete().eq("conversation_id", conversationId);
+    await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
+    await supabase.from("conversations").delete().eq("id", conversationId);
+  } catch (err) {
+    console.warn("[Supabase] deleteConversation error (proceeded with local deletion):", err);
+  }
+
+  // 4. Dispatch events to notify UI components
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("campusloop_conversations_updated"));
+  }
+
+  return true;
+}
+
+
