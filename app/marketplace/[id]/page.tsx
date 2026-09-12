@@ -93,7 +93,7 @@ export default function ListingDetailPage({
     }
     setIsRequestingRestock(true);
     try {
-      const res = await requestItemRestock(listing.id);
+      const res = await requestItemRestock(listing.id, currentUser.id);
       if (res.success) {
         setListing((prev) =>
           prev
@@ -105,18 +105,26 @@ export default function ListingDetailPage({
             : null
         );
         setHasRequestedRestock(true);
-        toast.success("Restock request sent! The seller has been notified.");
+        toast.success(res.message || "Restock request sent! The seller has been notified.");
       } else {
-        toast.error("Could not submit restock request.");
+        toast.error(res.error || "Could not submit restock request.");
       }
-    } catch (e) {
-      toast.error("Failed to submit request.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to submit request.");
     } finally {
       setIsRequestingRestock(false);
     }
   };
 
   useEffect(() => {
+    // Check if user already requested restock on this device
+    if (typeof window !== "undefined") {
+      const alreadyRequested = localStorage.getItem(`campusloop_restock_requested_${params.id}`);
+      if (alreadyRequested) {
+        setHasRequestedRestock(true);
+      }
+    }
+
     // Check local cache first
     const cached = getListingById(params.id);
     if (cached) {

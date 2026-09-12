@@ -479,13 +479,14 @@ export async function restockListing(
 }
 
 export async function requestItemRestock(
-  listingId: string
-): Promise<{ success: boolean; error?: string; restock_requests_count?: number }> {
+  listingId: string,
+  userId?: string
+): Promise<{ success: boolean; error?: string; restock_requests_count?: number; message?: string }> {
   try {
     const res = await fetch("/api/marketplace/restock-request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ listingId }),
+      body: JSON.stringify({ listingId, userId }),
     });
 
     const data = await res.json().catch(() => ({}));
@@ -495,7 +496,16 @@ export async function requestItemRestock(
           restock_requests_count: data.restock_requests_count,
         });
       }
-      return { success: true, restock_requests_count: data.restock_requests_count };
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(`campusloop_restock_requested_${listingId}`, "true");
+        } catch (e) {}
+      }
+      return { 
+        success: true, 
+        restock_requests_count: data.restock_requests_count,
+        message: data.message,
+      };
     }
 
     return { success: false, error: data.error || "Request failed" };
