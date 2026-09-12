@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { DemoUser } from "@/lib/auth";
 import { useUnreadMessageCount } from "@/lib/useUnreadMessageCount";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from "./NotificationBell";
 
 interface MobileNavDrawerProps {
   open: boolean;
@@ -124,6 +125,7 @@ export function MobileNavDrawer({
             </Link>
 
             <div className="flex items-center gap-1.5">
+              <NotificationBell />
               <ThemeToggle />
               <button
                 type="button"

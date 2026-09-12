@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { getClientDemoSession, clearClientDemoSession, DemoUser } from "@/lib/auth";
 import { GlobalSearchModal } from "./GlobalSearchModal";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from "./NotificationBell";
 import { MobileNavDrawer } from "./MobileNavDrawer";
 import { useUserLocation } from "@/lib/useUserLocation";
 import { useUnreadMessageCount } from "@/lib/useUnreadMessageCount";
@@ -168,6 +169,9 @@ export function Navbar() {
                 ⌘K
               </kbd>
             </button>
+
+            {/* Notifications Alert Bell */}
+            {currentUser && <NotificationBell />}
 
             {/* Light / Dark Mode Theme Toggle */}
             <ThemeToggle />

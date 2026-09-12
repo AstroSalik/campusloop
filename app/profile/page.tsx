@@ -11,6 +11,7 @@ import {
   Edit3, 
   ExternalLink, 
   FileText,
+  Flame,
   GraduationCap,
   Home, 
   Lock,
@@ -504,6 +505,59 @@ export default function ProfilePage() {
 
         {/* Tab 1: My Marketplace Listings */}
         <TabsContent value="listings" className="space-y-4">
+          {/* Prominent Restock Requests Alert for Seller */}
+          {(() => {
+            const restockRequestedListings = myListings.filter(
+              (item) => (item.restock_requests_count ?? 0) > 0 || (isListingSoldOut(item) && (item.restock_requests_count ?? 0) > 0)
+            );
+            if (restockRequestedListings.length === 0) return null;
+            return (
+              <div className="rounded-2xl border-2 border-amber-400/80 dark:border-amber-500/80 bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-amber-950/40 p-4 sm:p-5 shadow-sm space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs animate-bounce">
+                      <Flame className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-extrabold text-amber-950 dark:text-amber-100 flex items-center gap-2">
+                        <span>Student Restock Requests Received!</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 text-[10px] font-black uppercase tracking-wider">
+                          {restockRequestedListings.reduce((sum, item) => sum + (item.restock_requests_count || 1), 0)} Total Request(s)
+                        </span>
+                      </h4>
+                      <p className="text-xs text-amber-800 dark:text-amber-200 mt-0.5">
+                        Students on campus are actively waiting to purchase {restockRequestedListings.length === 1 ? "this item" : "these items"}. Click below to add stock and fulfill demand!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="divide-y divide-amber-200/60 dark:divide-amber-800/60 pt-1">
+                  {restockRequestedListings.map((item) => (
+                    <div key={`alert-${item.id}`} className="py-2.5 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                      <div className="min-w-0">
+                        <span className="font-bold text-xs text-slate-900 dark:text-white block truncate">{item.title}</span>
+                        <span className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold">
+                          🔥 {item.restock_requests_count || 1} student(s) requested back in stock (₹{item.price.toLocaleString("en-IN")})
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setRestockingListing(item);
+                          setRestockQuantity(1);
+                        }}
+                        className="h-8 px-3 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white gap-1.5 shrink-0 shadow-xs"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Quantity / Restock
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               Items You Posted for Sale/Rent
