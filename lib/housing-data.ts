@@ -93,46 +93,14 @@ export const INITIAL_ROOMMATE_PROFILES: (RoommateProfile & { user_name: string; 
     move_in_month: "September",
     lifestyle_tags: ["Quiet Study", "Early Bird", "Non-Smoker", "Veg/Non-Veg OK"],
   },
-  {
-    id: "prof-02",
-    user_id: "00000000-0000-0000-0000-000000000003",
-    user_name: "Aman Verma",
-    user_email: "aman.student@campusloop.app",
-    user_initials: "AV",
-    user_avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80",
-    budget_min: 5000,
-    budget_max: 8000,
-    preferred_location: "Hostel 3",
-    move_in_month: "September",
-    lifestyle_tags: ["Vegetarian", "Clean & Tidy", "Studious", "Non-Smoker"],
-  },
-  {
-    id: "prof-03",
-    user_id: "00000000-0000-0000-0000-000000000004",
-    user_name: "Priya Nair",
-    user_email: "priya.student@campusloop.app",
-    user_initials: "PN",
-    user_avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-    budget_min: 5500,
-    budget_max: 8500,
-    preferred_location: "Hostel 1",
-    move_in_month: "October",
-    lifestyle_tags: ["Clean & Tidy", "Early Bird", "Non-Smoker", "Vegetarian"],
-  },
-  {
-    id: "prof-04",
-    user_id: "00000000-0000-0000-0000-000000000005",
-    user_name: "Vikram Iyer",
-    user_email: "vikram.student@campusloop.app",
-    user_initials: "VI",
-    user_avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
-    budget_min: 7000,
-    budget_max: 10000,
-    preferred_location: "Lovely Nagar PG",
-    move_in_month: "September",
-    lifestyle_tags: ["Studious", "Quiet Study", "Non-Smoker", "Veg/Non-Veg OK"],
-  },
 ];
+
+const DELETED_SAMPLE_ROOMMATE_IDS = new Set(["prof-02", "prof-03", "prof-04"]);
+const DELETED_SAMPLE_USER_IDS = new Set([
+  "00000000-0000-0000-0000-000000000003",
+  "00000000-0000-0000-0000-000000000004",
+  "00000000-0000-0000-0000-000000000005",
+]);
 
 const ROOMS_KEY = "campusloop_custom_rooms";
 const PROFILES_KEY = "campusloop_custom_profiles";
@@ -711,6 +679,16 @@ export async function fetchRoommateProfilesFromSupabase(): Promise<typeof INITIA
         } catch (e) {}
       }
 
+      // Filter out deleted sample roommate profiles
+      combined = combined.filter(
+        (p) =>
+          !DELETED_SAMPLE_ROOMMATE_IDS.has(p.id) &&
+          !DELETED_SAMPLE_USER_IDS.has(p.user_id) &&
+          p.user_name !== "Aman Verma" &&
+          p.user_name !== "Priya Nair" &&
+          p.user_name !== "Vikram Iyer"
+      );
+
       return combined;
     }
   } catch (err) {
@@ -750,7 +728,16 @@ export function getRoommateProfiles(): typeof INITIAL_ROOMMATE_PROFILES {
       }
     } catch (e) {}
   }
-  return list;
+
+  // Filter out deleted sample roommate profiles
+  return list.filter(
+    (p) =>
+      !DELETED_SAMPLE_ROOMMATE_IDS.has(p.id) &&
+      !DELETED_SAMPLE_USER_IDS.has(p.user_id) &&
+      p.user_name !== "Aman Verma" &&
+      p.user_name !== "Priya Nair" &&
+      p.user_name !== "Vikram Iyer"
+  );
 }
 
 export async function saveRoommateProfile(newProfile: typeof INITIAL_ROOMMATE_PROFILES[0]) {

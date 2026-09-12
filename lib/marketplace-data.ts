@@ -98,79 +98,18 @@ export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: s
       },
     ],
   },
-  {
-    id: "l06-electric-kettle",
-    seller_id: "00000000-0000-0000-0000-000000000003",
-    seller_name: "Aman Verma",
-    seller_email: "aman.student@campusloop.app",
-    seller_initials: "AV",
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Pigeon 1.5L Electric Kettle",
-    description: "Stainless steel electric kettle for tea, coffee, and instant noodles. Auto cut-off protection.",
-    category: "Electronics",
-    type: "sell",
-    price: 550,
-    condition: "Good",
-    location_label: "Hostel 3",
-    status: "active",
-    created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
-    images: [
-      {
-        id: "img-l06",
-        listing_id: "l06-electric-kettle",
-        image_url: "https://images.unsplash.com/photo-1588854337236-6889d631faa8?auto=format&fit=crop&w=800&q=80",
-      },
-    ],
-  },
-  {
-    id: "l07-clrs-algorithms",
-    seller_id: "00000000-0000-0000-0000-000000000004",
-    seller_name: "Priya Nair",
-    seller_email: "priya.student@campusloop.app",
-    seller_initials: "PN",
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Introduction to Algorithms (CLRS 3rd Ed)",
-    description: "Essential computer science handbook for DSA exams and placements. Clean pages, no torn sheets.",
-    category: "Books",
-    type: "sell",
-    price: 650,
-    condition: "Like New",
-    location_label: "Hostel 1",
-    status: "active",
-    created_at: new Date(Date.now() - 3600000 * 24 * 1.5).toISOString(),
-    images: [
-      {
-        id: "img-l07",
-        listing_id: "l07-clrs-algorithms",
-        image_url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
-      },
-    ],
-  },
-  {
-    id: "l08-ergonomic-chair",
-    seller_id: "00000000-0000-0000-0000-000000000005",
-    seller_name: "Vikram Iyer",
-    seller_email: "vikram.student@campusloop.app",
-    seller_initials: "VI",
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Ergonomic Mesh Study Chair",
-    description: "Breathable back support with height adjustment and smooth caster wheels. Perfect for late study sessions.",
-    category: "Furniture",
-    type: "sell",
-    price: 1800,
-    condition: "Good",
-    location_label: "Lovely Nagar PG",
-    status: "active",
-    created_at: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
-    images: [
-      {
-        id: "img-l08",
-        listing_id: "l08-ergonomic-chair",
-        image_url: "https://images.unsplash.com/photo-1580481077194-469b27521e1a?auto=format&fit=crop&w=800&q=80",
-      },
-    ],
-  },
 ];
+
+const DELETED_SAMPLE_LISTING_IDS = new Set([
+  "l06-electric-kettle",
+  "l07-clrs-algorithms",
+  "l08-ergonomic-chair",
+]);
+const DELETED_SAMPLE_SELLER_IDS = new Set([
+  "00000000-0000-0000-0000-000000000003",
+  "00000000-0000-0000-0000-000000000004",
+  "00000000-0000-0000-0000-000000000005",
+]);
 
 const LOCAL_STORAGE_KEY = "campusloop_custom_listings";
 
@@ -179,12 +118,31 @@ export function getListings(): typeof INITIAL_LISTINGS {
   try {
     const deletedRaw = localStorage.getItem("campusloop_deleted_listings");
     const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
-    const activeInitials = INITIAL_LISTINGS.filter((l) => !deletedIds.includes(l.id));
+    const activeInitials = INITIAL_LISTINGS.filter(
+      (l) =>
+        !deletedIds.includes(l.id) &&
+        !DELETED_SAMPLE_LISTING_IDS.has(l.id) &&
+        !DELETED_SAMPLE_SELLER_IDS.has(l.seller_id) &&
+        l.seller_name !== "Aman Verma" &&
+        l.seller_name !== "Priya Nair" &&
+        l.seller_name !== "Vikram Iyer"
+    );
 
     const custom = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (custom) {
       const parsed = JSON.parse(custom);
-      return [...parsed.filter((l: any) => !deletedIds.includes(l.id)), ...activeInitials];
+      return [
+        ...parsed.filter(
+          (l: any) =>
+            !deletedIds.includes(l.id) &&
+            !DELETED_SAMPLE_LISTING_IDS.has(l.id) &&
+            !DELETED_SAMPLE_SELLER_IDS.has(l.seller_id) &&
+            l.seller_name !== "Aman Verma" &&
+            l.seller_name !== "Priya Nair" &&
+            l.seller_name !== "Vikram Iyer"
+        ),
+        ...activeInitials,
+      ];
     }
     return activeInitials;
   } catch (e) {
@@ -324,9 +282,27 @@ export async function fetchListingsFromSupabase(): Promise<MarketplaceListing[]>
 
       const deletedRaw = typeof window !== "undefined" ? localStorage.getItem("campusloop_deleted_listings") : null;
       const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
-      const activeInitials = INITIAL_LISTINGS.filter((l) => !deletedIds.includes(l.id));
+      const activeInitials = INITIAL_LISTINGS.filter(
+        (l) =>
+          !deletedIds.includes(l.id) &&
+          !DELETED_SAMPLE_LISTING_IDS.has(l.id) &&
+          !DELETED_SAMPLE_SELLER_IDS.has(l.seller_id) &&
+          l.seller_name !== "Aman Verma" &&
+          l.seller_name !== "Priya Nair" &&
+          l.seller_name !== "Vikram Iyer"
+      );
 
-      const combined = [...cloudListings.filter((l) => !deletedIds.includes(l.id))];
+      const combined = [
+        ...cloudListings.filter(
+          (l) =>
+            !deletedIds.includes(l.id) &&
+            !DELETED_SAMPLE_LISTING_IDS.has(l.id) &&
+            !DELETED_SAMPLE_SELLER_IDS.has(l.seller_id) &&
+            l.seller_name !== "Aman Verma" &&
+            l.seller_name !== "Priya Nair" &&
+            l.seller_name !== "Vikram Iyer"
+        ),
+      ];
       const presentIds = new Set(combined.map((l) => l.id));
 
       for (const init of activeInitials) {
