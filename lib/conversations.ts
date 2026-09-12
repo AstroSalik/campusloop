@@ -1163,8 +1163,14 @@ export function getTotalUnreadCount(conversations: StoredConversation[], userId:
 /**
  * Delete a conversation thread (removes locally and from cloud)
  */
-export async function deleteConversation(conversationId: string, userId?: string): Promise<boolean> {
+export async function deleteConversation(
+  conversationId: string,
+  userId?: string,
+  options?: { deleteForEveryone?: boolean }
+): Promise<boolean> {
   if (!conversationId) return false;
+
+  const deleteForEveryone = options?.deleteForEveryone ?? false;
 
   // 1. Remove from local storage cache
   const all = getConversations();
@@ -1192,22 +1198,30 @@ export async function deleteConversation(conversationId: string, userId?: string
     const res = await fetch("/api/conversations/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, userId }),
+      body: JSON.stringify({ conversationId, userId, deleteForEveryone }),
     });
     const result = await res.json().catch(() => ({}));
     if (!res.ok || result.error) {
       console.warn("[Server Delete] Falling back to direct client delete for conversation:", result.error);
       const supabase = createClient();
-      await supabase.from("messages").delete().eq("conversation_id", conversationId);
-      await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
-      await supabase.from("conversations").delete().eq("id", conversationId);
+      if (deleteForEveryone) {
+        await supabase.from("messages").delete().eq("conversation_id", conversationId);
+        await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
+        await supabase.from("conversations").delete().eq("id", conversationId);
+      } else if (userId) {
+        await supabase.from("conversation_members").delete().eq("conversation_id", conversationId).eq("user_id", userId);
+      }
     }
   } catch (err) {
     try {
       const supabase = createClient();
-      await supabase.from("messages").delete().eq("conversation_id", conversationId);
-      await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
-      await supabase.from("conversations").delete().eq("id", conversationId);
+      if (deleteForEveryone) {
+        await supabase.from("messages").delete().eq("conversation_id", conversationId);
+        await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
+        await supabase.from("conversations").delete().eq("id", conversationId);
+      } else if (userId) {
+        await supabase.from("conversation_members").delete().eq("conversation_id", conversationId).eq("user_id", userId);
+      }
     } catch (e) {}
   }
 

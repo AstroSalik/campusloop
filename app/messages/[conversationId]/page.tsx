@@ -22,6 +22,12 @@ import {
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
+import { 
+  isUserBlocked, 
+  isUserBlockedBy, 
+  unblockUser, 
+  fetchUserBlocks 
+} from "@/lib/blocks";
 
 export default function ConversationDetailPage() {
   const params = useParams();
@@ -32,6 +38,41 @@ export default function ConversationDetailPage() {
   const [conversation, setConversation] = useState<StoredConversation | null>(null);
   const [allConversations, setAllConversations] = useState<StoredConversation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlockedByOther, setIsBlockedByOther] = useState(false);
+
+  // Identify the peer participant in DM conversations
+  const otherMembers = conversation?.members.filter((m) => m.user_id !== currentUser?.id) || [];
+  const peerMember = otherMembers[0] || conversation?.members[0];
+  const peerName = peerMember?.user_name || "this student";
+
+  // Check and refresh block statuses
+  useEffect(() => {
+    if (!currentUser || !peerMember?.user_id) return;
+
+    const checkBlocks = () => {
+      setIsBlocked(isUserBlocked(peerMember.user_id));
+      setIsBlockedByOther(isUserBlockedBy(peerMember.user_id));
+    };
+
+    checkBlocks();
+    fetchUserBlocks(currentUser.id).then(checkBlocks);
+
+    window.addEventListener("campusloop_blocks_changed", checkBlocks);
+    return () => window.removeEventListener("campusloop_blocks_changed", checkBlocks);
+  }, [currentUser?.id, peerMember?.user_id]);
+
+  const handleUnblockPeer = async () => {
+    if (!currentUser || !peerMember?.user_id) return;
+    try {
+      await unblockUser(currentUser.id, peerMember.user_id);
+      toast.success(`Unblocked ${peerName}`);
+      setIsBlocked(false);
+    } catch {
+      toast.error("Failed to unblock student");
+    }
+  };
 
   const syncLocal = () => {
     if (!currentUser) return;
@@ -194,6 +235,10 @@ export default function ConversationDetailPage() {
           <MessageInput
             onSendMessage={handleSend}
             conversationType={conversation.type}
+            isBlocked={isBlocked}
+            isBlockedByOther={isBlockedByOther}
+            peerName={peerName}
+            onUnblock={handleUnblockPeer}
             isOwnerOrSeller={
               conversation.members.some(
                 (m) => m.user_id === currentUser.id && (m.role === "owner" || m.role === "seller")

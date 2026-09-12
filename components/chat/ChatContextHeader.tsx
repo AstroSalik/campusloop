@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, 
+  Ban, 
   Bike, 
   BookOpen, 
   Building2, 
@@ -15,10 +16,13 @@ import {
   MapPin, 
   Package, 
   Percent, 
+  ShieldAlert, 
   ShieldCheck, 
   Sparkles, 
   Tag, 
   Trash2,
+  UserCheck, 
+  UserX, 
   Users 
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,6 +43,13 @@ import { getListingById } from "@/lib/marketplace-data";
 import { getRoomById } from "@/lib/housing-data";
 import { getWantedListingById } from "@/lib/wanted-data";
 import { calculateSplit } from "@/lib/rent-engine";
+import { 
+  isUserBlocked, 
+  isUserBlockedBy, 
+  blockUser, 
+  unblockUser, 
+  fetchUserBlocks 
+} from "@/lib/blocks";
 
 interface ChatContextHeaderProps {
   conversation: StoredConversation;
@@ -47,7 +58,13 @@ interface ChatContextHeaderProps {
 export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
   const router = useRouter();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteForEveryone, setDeleteForEveryone] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlockedByOther, setIsBlockedByOther] = useState(false);
 
   const isMarketplace = conversation.type === "marketplace_dm";
   const isWanted = conversation.type === "wanted_response";
@@ -60,19 +77,63 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
   const otherMembers = conversation.members.filter((m) => m.user_id !== currentSession?.id);
   const peerMember = otherMembers[0] || conversation.members[0];
   const peerAvatar = peerMember?.user_avatar || (peerMember?.user_id ? getDemoUserById(peerMember.user_id)?.avatar : null);
+  const peerName = peerMember?.user_name || "this student";
 
-  const handleDelete = async () => {
+  // Check and synchronize block status
+  useEffect(() => {
+    if (!currentSession || !peerMember?.user_id) return;
+
+    const checkBlocks = () => {
+      setIsBlocked(isUserBlocked(peerMember.user_id));
+      setIsBlockedByOther(isUserBlockedBy(peerMember.user_id));
+    };
+
+    checkBlocks();
+    fetchUserBlocks(currentSession.id).then(checkBlocks);
+
+    window.addEventListener("campusloop_blocks_changed", checkBlocks);
+    return () => window.removeEventListener("campusloop_blocks_changed", checkBlocks);
+  }, [currentSession?.id, peerMember?.user_id]);
+
+  const handleDelete = async (forEveryone: boolean) => {
     setIsDeleting(true);
     try {
       const user = getClientDemoSession();
-      await deleteConversation(conversation.id, user?.id);
-      toast.success("Thread deleted successfully");
+      await deleteConversation(conversation.id, user?.id, { deleteForEveryone: forEveryone });
+      toast.success(forEveryone ? "Chat deleted for both of you" : "Chat deleted for you");
       router.push("/messages");
     } catch (e) {
       toast.error("Failed to delete thread");
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleBlock = async () => {
+    if (!currentSession || !peerMember?.user_id) return;
+    setIsBlocking(true);
+    try {
+      await blockUser(currentSession.id, peerMember.user_id);
+      toast.success(`Blocked ${peerName}`);
+      setBlockDialogOpen(false);
+    } catch (e) {
+      toast.error("Failed to block user");
+    } finally {
+      setIsBlocking(false);
+    }
+  };
+
+  const handleUnblock = async () => {
+    if (!currentSession || !peerMember?.user_id) return;
+    setIsBlocking(true);
+    try {
+      await unblockUser(currentSession.id, peerMember.user_id);
+      toast.success(`Unblocked ${peerName}`);
+    } catch (e) {
+      toast.error("Failed to unblock user");
+    } finally {
+      setIsBlocking(false);
     }
   };
 
@@ -118,61 +179,41 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
               <h2 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
                 {conversation.title}
               </h2>
-              <Badge
-                variant="outline"
-                className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.2 ${
-                  isWanted
-                    ? "bg-teal-50 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800"
-                    : isMarketplace
-                    ? "bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800"
-                    : isRoommate
-                    ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
-                    : "bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
-                }`}
-              >
-                {isWanted ? "Wanted Request" : isMarketplace ? "Marketplace" : isRoommate ? "Roommate Chat" : "Housing Group"}
-              </Badge>
+
+              {isWanted ? (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0 bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold">
+                  Buyer Request
+                </Badge>
+              ) : isMarketplace ? (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0 bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300">
+                  Marketplace
+                </Badge>
+              ) : isRoommate ? (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0 bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 font-bold">
+                  Roommate DM
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                  Housing Group
+                </Badge>
+              )}
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <span>{conversation.subtitle}</span>
-              {!isMarketplace && !isWanted && !isRoommate && (
-                <>
-                  <span>•</span>
-                  <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-semibold">
-                    <Users className="h-3 w-3 text-primary dark:text-teal-400" />
-                    {conversation.members.length} Members
-                  </span>
-                  {room && (
-                    <>
-                      <span>•</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                        {room.occupancy_total - (room.booked_users?.length || room.occupancy_filled)} Open Spot(s)
-                      </span>
-                    </>
-                  )}
-                </>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              {conversation.subtitle && (
+                <span>{conversation.subtitle}</span>
               )}
-            </p>
+            </div>
           </div>
         </div>
 
         {/* Right: Quick Action Buttons */}
-        <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
-          {room && (
-            <Button asChild variant="outline" size="sm" className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1 border-primary/30 text-primary dark:text-teal-300 hover:bg-primary/5 dark:hover:bg-primary/20 bg-transparent">
-              <Link href={`/rent?room=${room.id}`}>
-                <Percent className="h-3 w-3" />
-                Rent Health
-              </Link>
-            </Button>
-          )}
-
+        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
           {listing && (
             <Button asChild variant="outline" size="sm" className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
               <Link href={`/marketplace/${listing.id}`}>
                 <ExternalLink className="h-3 w-3" />
-                View Listing
+                View Item
               </Link>
             </Button>
           )}
@@ -195,23 +236,81 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
             </Button>
           )}
 
-          {/* Delete Thread Button */}
+          {/* Block / Unblock Button */}
+          {peerMember && peerMember.user_id !== currentSession?.id && (
+            isBlocked ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleUnblock}
+                disabled={isBlocking}
+                title="Unblock this student"
+                className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-medium"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>Unblock</span>
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setBlockDialogOpen(true)}
+                disabled={isBlocking}
+                title="Block this student from texting you"
+                className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1.5 border-amber-300 dark:border-amber-800/60 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 font-medium"
+              >
+                <Ban className="h-3.5 w-3.5" />
+                <span>Block</span>
+              </Button>
+            )
+          )}
+
+          {/* Telegram-style Delete Thread Button */}
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setDeleteDialogOpen(true)}
+            onClick={() => {
+              setDeleteForEveryone(false);
+              setDeleteDialogOpen(true);
+            }}
             title="Delete this conversation"
             aria-label="Delete thread"
             className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3 gap-1.5 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-300"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Delete Thread</span>
+            <span className="hidden sm:inline">Delete Chat</span>
           </Button>
         </div>
       </div>
 
-      {/* Delete Thread Confirmation Dialog */}
+      {/* Block Status Banners */}
+      {isBlocked && (
+        <div className="mt-2.5 flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs">
+          <span className="flex items-center gap-1.5">
+            <Ban className="h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400" />
+            <span>You have blocked <strong>{peerName}</strong>. They cannot send you messages.</span>
+          </span>
+          <button
+            type="button"
+            onClick={handleUnblock}
+            className="underline font-semibold hover:text-red-900 dark:hover:text-red-100"
+          >
+            Unblock
+          </button>
+        </div>
+      )}
+
+      {isBlockedByOther && !isBlocked && (
+        <div className="mt-2.5 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-300 text-xs">
+          <Ban className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span>You cannot send messages to this student because they have blocked you.</span>
+        </div>
+      )}
+
+      {/* Telegram-style Delete Chat Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
@@ -222,30 +321,52 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <Trash2 className="h-5 w-5" />
-              Delete Conversation?
+              Delete Chat
             </DialogTitle>
             <DialogDescription className="pt-2 text-sm text-slate-600 dark:text-slate-300">
-              Are you sure you want to delete this conversation with{" "}
+              Are you sure you want to delete this chat with{" "}
               <span className="font-semibold text-slate-900 dark:text-white">
-                &ldquo;{conversation.title || "this chat"}&rdquo;
-              </span>
-              ? All messages in this thread will be permanently deleted and you will be returned to Messages.
+                &ldquo;{peerName}&rdquo;
+              </span>?
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
+          {/* Telegram Checkbox: Also delete for peer */}
+          <div className="my-2">
+            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <input
+                type="checkbox"
+                checked={deleteForEveryone}
+                onChange={(e) => setDeleteForEveryone(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+              />
+              <div className="text-left space-y-0.5">
+                <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                  Also delete for {peerName}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                  {deleteForEveryone
+                    ? "Permanently erase this chat and all messages for both of you."
+                    : "Delete from your inbox only. The other student will keep their full chat history."}
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 mt-3">
             <Button
               type="button"
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isDeleting}
+              className="sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               type="button"
               variant="destructive"
-              onClick={handleDelete}
+              onClick={() => handleDelete(deleteForEveryone)}
               disabled={isDeleting}
               className="gap-1.5"
             >
@@ -257,7 +378,59 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
               ) : (
                 <>
                   <Trash2 className="h-4 w-4" />
-                  Delete Thread
+                  {deleteForEveryone ? "Delete for Both of Us" : "Delete for Me"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Block Student Confirmation Dialog */}
+      <Dialog
+        open={blockDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !isBlocking) setBlockDialogOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <Ban className="h-5 w-5" />
+              Block {peerName}?
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-sm text-slate-600 dark:text-slate-300 space-y-2">
+              <span>
+                Blocked students will not be able to message you or reply to your listings. You can unblock them at any time.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setBlockDialogOpen(false)}
+              disabled={isBlocking}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleBlock}
+              disabled={isBlocking}
+              className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {isBlocking ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Blocking...
+                </>
+              ) : (
+                <>
+                  <Ban className="h-4 w-4" />
+                  Block Student
                 </>
               )}
             </Button>
@@ -267,4 +440,3 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
     </div>
   );
 }
-

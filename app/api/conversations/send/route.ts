@@ -24,6 +24,43 @@ export async function POST(req: NextRequest) {
       auth: { persistSession: false },
     });
 
+    // Check if any recipient has blocked sender or if sender has blocked recipient
+    try {
+      const { data: members } = await supabaseAdmin
+        .from("conversation_members")
+        .select("user_id")
+        .eq("conversation_id", conversationId);
+
+      const otherUserIds = (members || [])
+        .map((m: any) => m.user_id)
+        .filter((uid: string) => uid !== senderId);
+
+      if (otherUserIds.length > 0) {
+        const { data: blockRows } = await supabaseAdmin
+          .from("user_blocks")
+          .select("blocker_id, blocked_id")
+          .or(
+            `and(blocker_id.eq.${senderId},blocked_id.in.(${otherUserIds.join(",")})),and(blocked_id.eq.${senderId},blocker_id.in.(${otherUserIds.join(",")}))`
+          );
+
+        if (blockRows && blockRows.length > 0) {
+          const iBlocked = blockRows.some((b: any) => b.blocker_id === senderId);
+          if (iBlocked) {
+            return NextResponse.json(
+              { error: "You have blocked this student. Unblock them to send messages." },
+              { status: 403 }
+            );
+          }
+          return NextResponse.json(
+            { error: "You cannot send messages to this student because they have blocked you." },
+            { status: 403 }
+          );
+        }
+      }
+    } catch (e) {
+      // Graceful fallback if table is not yet migrated
+    }
+
     const timestamp = created_at || new Date().toISOString();
 
     const { error: msgErr } = await supabaseAdmin.from("messages").insert({

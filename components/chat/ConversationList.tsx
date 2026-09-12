@@ -51,14 +51,15 @@ export function ConversationList({
   const [filterType, setFilterType] = useState<"all" | "marketplace_dm" | "housing_group" | "wanted_response">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [conversationToDelete, setConversationToDelete] = useState<StoredConversation | null>(null);
+  const [deleteForEveryone, setDeleteForEveryone] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = async (forEveryone: boolean) => {
     if (!conversationToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteConversation(conversationToDelete.id, currentUserId);
-      toast.success("Thread deleted successfully");
+      await deleteConversation(conversationToDelete.id, currentUserId, { deleteForEveryone: forEveryone });
+      toast.success(forEveryone ? "Chat deleted for both of you" : "Chat deleted for you");
       if (activeConversationId === conversationToDelete.id) {
         router.push("/messages");
       }
@@ -356,7 +357,7 @@ export function ConversationList({
         )}
       </div>
 
-      {/* Delete Thread Confirmation Dialog */}
+      {/* Telegram-style Delete Conversation Dialog */}
       <Dialog
         open={!!conversationToDelete}
         onOpenChange={(open) => {
@@ -367,18 +368,39 @@ export function ConversationList({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <Trash2 className="h-5 w-5" />
-              Delete Conversation?
+              Delete Chat
             </DialogTitle>
             <DialogDescription className="pt-2 text-sm text-slate-600 dark:text-slate-300">
-              Are you sure you want to delete this conversation with{" "}
+              Are you sure you want to delete this chat with{" "}
               <span className="font-semibold text-slate-900 dark:text-white">
                 &ldquo;{conversationToDelete?.title || "this chat"}&rdquo;
-              </span>
-              ? All messages in this thread will be permanently deleted.
+              </span>?
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
+          {/* Telegram Checkbox: Also delete for peer */}
+          <div className="my-2">
+            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <input
+                type="checkbox"
+                checked={deleteForEveryone}
+                onChange={(e) => setDeleteForEveryone(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+              />
+              <div className="text-left space-y-0.5">
+                <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                  Also delete for other student
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                  {deleteForEveryone
+                    ? "Permanently erase this chat and all messages for both participants."
+                    : "Delete from your inbox only. The other student will keep their full chat history."}
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 mt-3">
             <Button
               type="button"
               variant="outline"
@@ -390,7 +412,7 @@ export function ConversationList({
             <Button
               type="button"
               variant="destructive"
-              onClick={handleDeleteConfirm}
+              onClick={() => handleDeleteConfirm(deleteForEveryone)}
               disabled={isDeleting}
               className="gap-1.5"
             >
@@ -402,7 +424,7 @@ export function ConversationList({
               ) : (
                 <>
                   <Trash2 className="h-4 w-4" />
-                  Delete Thread
+                  {deleteForEveryone ? "Delete for Both of Us" : "Delete for Me"}
                 </>
               )}
             </Button>

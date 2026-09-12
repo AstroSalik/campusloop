@@ -132,4 +132,33 @@ CREATE POLICY "Members can delete messages"
     )
   );
 
+-- 9. User Blocks Table (Telegram-style Block/Unblock)
+CREATE TABLE IF NOT EXISTS public.user_blocks (
+  blocker_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  blocked_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (blocker_id, blocked_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON public.user_blocks(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON public.user_blocks(blocked_id);
+
+ALTER TABLE public.user_blocks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view blocks they are part of" ON public.user_blocks;
+CREATE POLICY "Users can view blocks they are part of"
+  ON public.user_blocks FOR SELECT
+  USING (auth.uid() = blocker_id OR auth.uid() = blocked_id);
+
+DROP POLICY IF EXISTS "Users can insert their own blocks" ON public.user_blocks;
+CREATE POLICY "Users can insert their own blocks"
+  ON public.user_blocks FOR INSERT
+  WITH CHECK (auth.uid() = blocker_id);
+
+DROP POLICY IF EXISTS "Users can delete their own blocks" ON public.user_blocks;
+CREATE POLICY "Users can delete their own blocks"
+  ON public.user_blocks FOR DELETE
+  USING (auth.uid() = blocker_id);
+
 -- Done!
+

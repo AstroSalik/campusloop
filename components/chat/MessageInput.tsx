@@ -13,6 +13,10 @@ interface MessageInputProps {
   isHousing?: boolean;
   conversationType?: ConversationType | "marketplace";
   isOwnerOrSeller?: boolean;
+  isBlocked?: boolean;
+  isBlockedByOther?: boolean;
+  onUnblock?: () => void;
+  peerName?: string;
 }
 
 export function MessageInput({ 
@@ -20,9 +24,54 @@ export function MessageInput({
   disabled, 
   isHousing, 
   conversationType = isHousing ? "housing_group" : "marketplace_dm",
-  isOwnerOrSeller = false 
+  isOwnerOrSeller = false,
+  isBlocked = false,
+  isBlockedByOther = false,
+  onUnblock,
+  peerName = "this student"
 }: MessageInputProps) {
   const [content, setContent] = useState("");
+
+  if (isBlocked) {
+    return (
+      <div className="border-t border-slate-200/80 dark:border-slate-800 bg-amber-50/70 dark:bg-amber-950/20 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Send className="h-4 w-4 rotate-45 opacity-50" />
+          </div>
+          <div>
+            <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
+              You have blocked {peerName}
+            </p>
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+              Unblock them to resume messaging and sending replies.
+            </p>
+          </div>
+        </div>
+        {onUnblock && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onUnblock}
+            className="shrink-0 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-200 text-xs font-semibold"
+          >
+            Unblock {peerName}
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  if (isBlockedByOther) {
+    return (
+      <div className="border-t border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-4 text-center">
+        <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
+          You cannot send messages to this student at this time.
+        </p>
+      </div>
+    );
+  }
 
   const getQuickPrompts = () => {
     if (conversationType === "housing_group") {
