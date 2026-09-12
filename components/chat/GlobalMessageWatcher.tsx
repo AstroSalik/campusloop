@@ -24,25 +24,30 @@ export function GlobalMessageWatcher() {
     pathnameRef.current = pathname;
   }, [pathname]);
 
+  // Mark active conversation as read whenever pathname changes
   useEffect(() => {
     const user = getClientDemoSession();
     if (!user) return;
-
-    // 1. Prime known message IDs with all current messages in local cache
-    const initialConvs = getConversations();
-    initialConvs.forEach((c) => {
-      c.messages?.forEach((m) => {
-        knownMessageIdsRef.current.add(m.id);
-      });
-    });
-
-    // Mark active conversation as read if currently inside one
     if (pathname.startsWith("/messages/") && pathname !== "/messages") {
       const activeConvId = pathname.replace("/messages/", "").split("/")[0];
       if (activeConvId) {
         markConversationAsRead(activeConvId, user.id);
       }
     }
+  }, [pathname]);
+
+  // Long-lived Supabase Realtime Listener + Heartbeat Sync
+  useEffect(() => {
+    const user = getClientDemoSession();
+    if (!user) return;
+
+    // 1. Prime known message IDs with current local cache
+    const initialConvs = getConversations();
+    initialConvs.forEach((c) => {
+      c.messages?.forEach((m) => {
+        knownMessageIdsRef.current.add(m.id);
+      });
+    });
 
     // 2. Synchronization & Detection Routine
     const checkAndSyncMessages = async () => {
@@ -83,10 +88,8 @@ export function GlobalMessageWatcher() {
                   document.visibilityState === "visible";
 
                 if (isLookingAtThisConv) {
-                  // User is actively looking at this conversation: mark as read automatically
                   markConversationAsRead(conv.id, activeUser.id);
                 } else {
-                  // User is on another page, another thread, or app is in background: ALERT!
                   const senderMember = conv.members.find((m) => m.user_id === msg.sender_id);
                   const senderName = senderMember?.user_name || "Campus Student";
 
@@ -110,8 +113,8 @@ export function GlobalMessageWatcher() {
       }
     };
 
-    // Run initial sync
-    checkAndSyncMessages();
+    // Initial background sync with small delay to not compete with page hydration
+    const timeout = setTimeout(checkAndSyncMessages, 1000);
 
     // 3. Setup Supabase Realtime Postgres Changes Listener
     const supabase = createClient();
@@ -124,20 +127,21 @@ export function GlobalMessageWatcher() {
           schema: "public",
           table: "messages",
         },
-        (payload: any) => {
+        () => {
           checkAndSyncMessages();
         }
       )
       .subscribe();
 
-    // 4. Fallback polling every 3.5 seconds
-    const interval = setInterval(checkAndSyncMessages, 3500);
+    // 4. Lightweight fallback heartbeat every 20 seconds (Realtime handles instant delivery)
+    const interval = setInterval(checkAndSyncMessages, 20000);
 
     return () => {
+      clearTimeout(timeout);
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [pathname, router]);
+  }, [router]);
 
   return null;
 }

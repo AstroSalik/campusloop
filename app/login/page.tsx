@@ -158,7 +158,7 @@ function LoginContent() {
           try {
             const { data: dbUser } = await supabase
               .from("users")
-              .select("name, monthly_income, campus_name, city, department, year_of_study, phone, verification_status, aadhaar_last4, avatar")
+              .select("*")
               .eq("id", data.user.id)
               .maybeSingle();
             cloudUser = dbUser;

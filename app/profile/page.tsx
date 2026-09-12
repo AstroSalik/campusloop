@@ -111,7 +111,7 @@ export default function ProfilePage() {
           try {
             const { data: dbUser } = await supabase
               .from("users")
-              .select("monthly_income, name, email, avatar, campus_id, campus_name, city, department, year_of_study, phone, verification_status, aadhaar_last4")
+              .select("*")
               .eq("id", user.id)
               .maybeSingle();
 

@@ -303,21 +303,41 @@ export function ListingForm() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      if (file.size > 5 * 1024 * 1024) {
-                        toast.error("Image file should be under 5MB.");
+                      if (file.size > 8 * 1024 * 1024) {
+                        toast.error("Image file should be under 8MB.");
                         return;
                       }
+                      // 1. Set fast local preview
                       const reader = new FileReader();
                       reader.onload = (ev) => {
                         if (ev.target?.result) {
                           setImageUrl(ev.target.result as string);
-                          toast.success("Photo attached successfully!");
                         }
                       };
                       reader.readAsDataURL(file);
+
+                      // 2. Upload to Supabase Storage 'listings' bucket for lightweight persistent URL
+                      try {
+                        const { createClient } = await import("@/lib/supabase/client");
+                        const supabase = createClient();
+                        const fileExt = file.name.split(".").pop() || "jpg";
+                        const fileName = `item-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+                        const { data, error } = await supabase.storage
+                          .from("listings")
+                          .upload(fileName, file, { upsert: true, contentType: file.type });
+                        if (!error && data) {
+                          const { data: pubData } = supabase.storage.from("listings").getPublicUrl(fileName);
+                          if (pubData?.publicUrl) {
+                            setImageUrl(pubData.publicUrl);
+                          }
+                        }
+                      } catch (err) {
+                        console.warn("Listing image storage upload fallback:", err);
+                      }
+                      toast.success("Photo attached successfully!");
                     }
                   }}
                   className="hidden"

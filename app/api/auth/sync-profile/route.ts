@@ -81,15 +81,35 @@ export async function POST(req: NextRequest) {
         metaUpdates.student_id = normalizedStudentId;
       }
       if (avatar !== undefined) {
-        metaUpdates.avatar = avatar;
+        // CRITICAL: NEVER store base64 data URLs in auth user_metadata.
+        // It gets packed into the Supabase JWT, causing cookies to exceed 16KB and triggering Vercel 494 REQUEST_HEADER_TOO_LARGE.
+        if (avatar && !avatar.startsWith("data:") && avatar.length < 2048) {
+          metaUpdates.avatar = avatar;
+        } else if (!avatar || avatar.startsWith("data:")) {
+          metaUpdates.avatar = null;
+        }
       }
       await supabaseAdmin.auth.admin.updateUserById(sessionUser.id, {
         user_metadata: metaUpdates,
       });
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Auth admin updateUserById warning:", e);
+    }
 
     // 3. Upsert into public.users using the verified sessionUser.id and sessionUser.email
     let data = null;
+    const fallbackPayload: Record<string, any> = {
+      id: sessionUser.id,
+      name: userName,
+      email: (sessionUser.email || "").trim().toLowerCase(),
+      campus_id: defaultCampusId,
+      monthly_income:
+        monthly_income !== undefined ? monthly_income : null,
+    };
+    if (avatar !== undefined) {
+      fallbackPayload.avatar = avatar;
+    }
+
     try {
       const upsertPayload: Record<string, any> = {
         id: sessionUser.id,
@@ -117,29 +137,30 @@ export async function POST(req: NextRequest) {
         .upsert(upsertPayload, { onConflict: "id" })
         .select()
         .single();
-      data = res.data;
-    } catch (upsertErr) {
-      // Fallback in case extended columns aren't yet added to table
-      try {
-        const fallbackPayload: Record<string, any> = {
-          id: sessionUser.id,
-          name: userName,
-          email: (sessionUser.email || "").trim().toLowerCase(),
-          campus_id: defaultCampusId,
-          monthly_income:
-            monthly_income !== undefined ? monthly_income : null,
-        };
-        if (avatar !== undefined) {
-          fallbackPayload.avatar = avatar;
-        }
 
+      if (!res.error && res.data) {
+        data = res.data;
+      } else {
+        console.warn("Primary upsert returned error (missing columns?), attempting core fallback:", res.error?.message);
         const fallbackRes = await supabaseAdmin
           .from("users")
           .upsert(fallbackPayload, { onConflict: "id" })
           .select()
           .single();
-        data = fallbackRes.data;
-      } catch (e) {}
+        data = fallbackRes.data || fallbackPayload;
+      }
+    } catch (upsertErr) {
+      console.warn("Primary upsert threw exception, attempting core fallback:", upsertErr);
+      try {
+        const fallbackRes = await supabaseAdmin
+          .from("users")
+          .upsert(fallbackPayload, { onConflict: "id" })
+          .select()
+          .single();
+        data = fallbackRes.data || fallbackPayload;
+      } catch (e) {
+        data = fallbackPayload;
+      }
     }
 
     return NextResponse.json({ success: true, user: data });

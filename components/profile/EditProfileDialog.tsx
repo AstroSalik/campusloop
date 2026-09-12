@@ -175,9 +175,32 @@ export function EditProfileDialog({
 
     setProcessingImage(true);
     try {
+      // 1. Generate compressed data preview
       const compressedDataUrl = await processImageFile(file);
       setAvatarUrl(compressedDataUrl);
-      toast.success("Profile photo selected from device!");
+
+      // 2. Upload to Supabase Storage 'avatars' bucket so we have a clean, tiny public URL
+      try {
+        const supabase = createClient();
+        const fileExt = file.name.split(".").pop() || "jpg";
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(fileName, file, { upsert: true, contentType: file.type });
+
+        if (!uploadError && uploadData) {
+          const { data: pubUrlData } = supabase.storage
+            .from("avatars")
+            .getPublicUrl(fileName);
+          if (pubUrlData?.publicUrl) {
+            setAvatarUrl(pubUrlData.publicUrl);
+          }
+        }
+      } catch (storageErr) {
+        console.warn("Storage upload fallback:", storageErr);
+      }
+
+      toast.success("Profile photo selected!");
     } catch (err) {
       toast.error("Could not process selected image. Please try another.");
     } finally {
@@ -255,17 +278,24 @@ export function EditProfileDialog({
 
       // 2. Also update Supabase client session metadata & users table directly
       const supabase = createClient();
+      const metaDataUpdates: Record<string, any> = {
+        full_name: updatedUser.name,
+        name: updatedUser.name,
+        campus_name: updatedUser.campus_name,
+        city: updatedUser.city,
+        department: updatedUser.department,
+        year_of_study: updatedUser.year_of_study,
+        phone: updatedUser.phone,
+      };
+      // CRITICAL: NEVER store base64 data URLs in auth metadata.
+      if (updatedUser.avatar && !updatedUser.avatar.startsWith("data:") && updatedUser.avatar.length < 2048) {
+        metaDataUpdates.avatar = updatedUser.avatar;
+      } else if (!updatedUser.avatar || updatedUser.avatar.startsWith("data:")) {
+        metaDataUpdates.avatar = null;
+      }
+
       const { error: authError } = await supabase.auth.updateUser({
-        data: {
-          full_name: updatedUser.name,
-          name: updatedUser.name,
-          campus_name: updatedUser.campus_name,
-          city: updatedUser.city,
-          department: updatedUser.department,
-          year_of_study: updatedUser.year_of_study,
-          phone: updatedUser.phone,
-          avatar: updatedUser.avatar,
-        },
+        data: metaDataUpdates,
       });
 
       if (authError) {
