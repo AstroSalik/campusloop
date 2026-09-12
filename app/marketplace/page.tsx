@@ -27,7 +27,7 @@ import { CategoryFilter } from "@/components/marketplace/CategoryFilter";
 import { ModeToggle } from "@/components/shared/ModeToggle";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { getListings, fetchListingsFromSupabase } from "@/lib/marketplace-data";
+import { getListings, fetchListingsFromSupabase, isListingPubliclyVisible } from "@/lib/marketplace-data";
 import { getWantedListings, fetchWantedListingsFromSupabase, StoredWantedListing } from "@/lib/wanted-data";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { useAppMode } from "@/lib/useAppMode";
@@ -112,6 +112,11 @@ function MarketplaceContent() {
 
   // Filter listings by Search Query and Category
   const filteredListings = listings.filter((item) => {
+    // Only show listings that are active or sold within 3 days (72 hours)
+    if (!isListingPubliclyVisible(item)) {
+      return false;
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = item.title.toLowerCase().includes(q);

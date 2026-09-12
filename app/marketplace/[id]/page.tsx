@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { 
   ArrowLeft, 
+  BellRing,
   Bike, 
   BookOpen, 
   Building2, 
@@ -18,7 +19,9 @@ import {
   Mail, 
   MapPin, 
   MessageSquare, 
+  Minus,
   Package, 
+  Plus,
   Share2, 
   ShieldCheck, 
   Sparkles, 
@@ -38,7 +41,15 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getListingById, fetchListingByIdFromSupabase, deleteListing, updateListing } from "@/lib/marketplace-data";
+import { 
+  getListingById, 
+  fetchListingByIdFromSupabase, 
+  deleteListing, 
+  updateListing,
+  isListingSoldOut,
+  purchaseListing,
+  requestItemRestock
+} from "@/lib/marketplace-data";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { getOrCreateMarketplaceConversation } from "@/lib/conversations";
 import { EditListingDialog } from "@/components/marketplace/EditListingDialog";
@@ -62,12 +73,47 @@ export default function ListingDetailPage({
   const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
   const [receiptTx, setReceiptTx] = useState<PaymentTransaction | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [isRequestingRestock, setIsRequestingRestock] = useState(false);
+  const [hasRequestedRestock, setHasRequestedRestock] = useState(false);
 
   const refreshListing = async () => {
     const item = getListingById(params.id);
     if (item) setListing(item);
     const cloudItem = await fetchListingByIdFromSupabase(params.id);
     if (cloudItem) setListing(cloudItem);
+  };
+
+  const handleRequestRestock = async () => {
+    if (!listing) return;
+    if (!currentUser) {
+      toast.error("Please sign in to request an item restock.");
+      router.push(`/login?redirect=${encodeURIComponent(`/marketplace/${params.id}`)}`);
+      return;
+    }
+    setIsRequestingRestock(true);
+    try {
+      const res = await requestItemRestock(listing.id);
+      if (res.success) {
+        setListing((prev) =>
+          prev
+            ? {
+                ...prev,
+                restock_requests_count:
+                  res.restock_requests_count ?? ((prev.restock_requests_count || 0) + 1),
+              }
+            : null
+        );
+        setHasRequestedRestock(true);
+        toast.success("Restock request sent! The seller has been notified.");
+      } else {
+        toast.error("Could not submit restock request.");
+      }
+    } catch (e) {
+      toast.error("Failed to submit request.");
+    } finally {
+      setIsRequestingRestock(false);
+    }
   };
 
   useEffect(() => {
@@ -338,7 +384,7 @@ export default function ListingDetailPage({
               </div>
 
               {/* Key Specs Pills */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                 <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-800/80">
                   <span className="text-[11px] text-slate-400 dark:text-slate-400 block">Category</span>
                   <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{listing.category}</span>
@@ -347,9 +393,17 @@ export default function ListingDetailPage({
                   <span className="text-[11px] text-slate-400 dark:text-slate-400 block">Condition</span>
                   <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{listing.condition}</span>
                 </div>
-                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 col-span-2 sm:col-span-1 bg-white dark:bg-slate-800/80">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-800/80">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-400 block">Stock Available</span>
+                  <span className={`text-sm font-semibold ${isListingSoldOut(listing) ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-200"}`}>
+                    {isListingSoldOut(listing) ? "0 (Sold Out)" : `${listing.quantity ?? 1} unit${(listing.quantity ?? 1) > 1 ? "s" : ""}`}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-800/80">
                   <span className="text-[11px] text-slate-400 dark:text-slate-400 block">Listing Status</span>
-                  <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 capitalize">{listing.status}</span>
+                  <span className={`text-sm font-semibold capitalize ${isListingSoldOut(listing) ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                    {isListingSoldOut(listing) ? "Out of Stock" : listing.status}
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -376,8 +430,23 @@ export default function ListingDetailPage({
               {/* Message Seller / Interested CTA (PRD Flow A) vs Owner Management */}
               {isOwner ? (
                 <div className="space-y-2.5">
-                  <div className="rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800 p-2.5 text-center text-xs text-teal-800 dark:text-teal-200 font-medium">
-                    You are the seller of this listing.
+                  <div className={`rounded-lg p-2.5 text-center text-xs font-medium ${
+                    isListingSoldOut(listing)
+                      ? "bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200"
+                      : "bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800 text-teal-800 dark:text-teal-200"
+                  }`}>
+                    {isListingSoldOut(listing) ? (
+                      <div>
+                        <span className="font-bold block">This item is Out of Stock</span>
+                        <span className="text-[11px] block mt-0.5">
+                          {(listing.restock_requests_count ?? 0) > 0
+                            ? `${listing.restock_requests_count} student(s) requested restock!`
+                            : "Visible in marketplace for 3 days to collect restock requests."}
+                        </span>
+                      </div>
+                    ) : (
+                      "You are the seller of this listing."
+                    )}
                   </div>
                   <Button
                     variant="outline"
@@ -385,7 +454,7 @@ export default function ListingDetailPage({
                     onClick={() => setIsEditDialogOpen(true)}
                   >
                     <Edit3 className="h-4 w-4 text-primary" />
-                    Edit Listing Details
+                    {isListingSoldOut(listing) ? "Add Quantity / Restock Item" : "Edit Listing Details"}
                   </Button>
                   <Button
                     variant="destructive"
@@ -396,19 +465,42 @@ export default function ListingDetailPage({
                     Delete Listing
                   </Button>
                 </div>
-              ) : listing.status === "sold" ? (
-                <div className="space-y-2.5">
-                  <div className="rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3.5 text-center">
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block">
-                      Item Sold
-                    </span>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      This item has already been purchased and reserved for pickup.
+              ) : isListingSoldOut(listing) ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 p-4 text-center space-y-1.5">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-bold uppercase tracking-wider">
+                      Out of Stock
+                    </div>
+                    <p className="text-xs text-rose-900 dark:text-rose-200 leading-relaxed">
+                      All units have been sold. This item remains visible for 3 days so interested buyers can request a restock from the seller.
                     </p>
+                    {(listing.restock_requests_count ?? 0) > 0 && (
+                      <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">
+                        🔥 {listing.restock_requests_count} {listing.restock_requests_count === 1 ? "student has" : "students have"} requested this back in stock!
+                      </p>
+                    )}
                   </div>
+
+                  <Button
+                    className={`w-full h-11 text-sm font-semibold gap-2 shadow-xs transition-all ${
+                      hasRequestedRestock
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white cursor-default"
+                        : "bg-primary hover:bg-primary/90 text-white"
+                    }`}
+                    onClick={handleRequestRestock}
+                    disabled={isRequestingRestock || hasRequestedRestock}
+                  >
+                    <BellRing className="h-4 w-4" />
+                    {hasRequestedRestock
+                      ? "✓ Restock Requested! Seller Notified"
+                      : isRequestingRestock
+                      ? "Sending Request..."
+                      : "Request Item Restock"}
+                  </Button>
+
                   <Button
                     variant="outline"
-                    className="w-full h-10 text-sm font-semibold"
+                    className="w-full h-10 text-sm font-semibold border-slate-200 dark:border-slate-700"
                     onClick={handleMessageSeller}
                     disabled={contacting}
                   >
@@ -417,12 +509,58 @@ export default function ListingDetailPage({
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-2.5">
+                <div className="space-y-3">
+                  {/* Quantity Selector */}
+                  <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                        Quantity to Buy
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {(listing.quantity ?? 1) === 1 ? "Only 1 unit left in stock" : `${listing.quantity ?? 1} units available`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7 rounded-md"
+                        disabled={selectedQuantity <= 1}
+                        onClick={() => setSelectedQuantity((q) => Math.max(1, q - 1))}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-6 text-center text-sm font-bold text-slate-800 dark:text-slate-100">
+                        {selectedQuantity}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7 rounded-md"
+                        disabled={selectedQuantity >= Math.max(1, listing.quantity ?? 1)}
+                        onClick={() => setSelectedQuantity((q) => Math.min(Math.max(1, listing.quantity ?? 1), q + 1))}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {selectedQuantity > 1 && (
+                    <div className="flex justify-between items-center text-xs px-1 text-slate-600 dark:text-slate-400">
+                      <span>Total for {selectedQuantity} units:</span>
+                      <span className="font-bold text-slate-900 dark:text-white text-sm">
+                        ₹{(listing.price * selectedQuantity).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  )}
+
                   <Button
                     className="w-full h-11 text-base font-semibold bg-[#3395ff] hover:bg-[#287bd5] text-white shadow-xs"
                     onClick={() => setIsRazorpayModalOpen(true)}
                   >
-                    Buy Now
+                    Buy Now {selectedQuantity > 1 ? `(${selectedQuantity} units)` : ""}
                   </Button>
 
                   <Button
@@ -495,7 +633,8 @@ export default function ListingDetailPage({
         <RazorpayCheckoutModal
           open={isRazorpayModalOpen}
           onOpenChange={setIsRazorpayModalOpen}
-          amount={listing.price}
+          amount={listing.price * selectedQuantity}
+          quantity={selectedQuantity}
           title={listing.title}
           description={`${listing.category} • ${listing.location_label}`}
           type="marketplace_purchase"
@@ -507,10 +646,11 @@ export default function ListingDetailPage({
           notes={{
             category: listing.category,
             pickup_location: listing.location_label,
+            units: String(selectedQuantity),
           }}
-          onSuccess={(transaction) => {
-            updateListing(listing.id, { status: "sold" as any });
-            refreshListing();
+          onSuccess={async (transaction) => {
+            await purchaseListing(listing.id, selectedQuantity);
+            await refreshListing();
             toast.success(`Purchase successful! Pickup OTP: ${transaction.pickup_otp}`);
             setReceiptTx(transaction);
             setIsReceiptOpen(true);

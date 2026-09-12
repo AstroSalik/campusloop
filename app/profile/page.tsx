@@ -20,6 +20,7 @@ import {
   Phone,
   Plus, 
   Receipt,
+  Settings,
   ShieldAlert,
   ShieldCheck, 
   Sparkles, 
@@ -49,7 +50,13 @@ import {
   setClientDemoSession, 
   clearClientDemoSession 
 } from "@/lib/auth";
-import { getListings, fetchListingsFromSupabase, deleteListing } from "@/lib/marketplace-data";
+import { 
+  getListings, 
+  fetchListingsFromSupabase, 
+  deleteListing,
+  isListingSoldOut,
+  restockListing
+} from "@/lib/marketplace-data";
 import { getRooms, fetchRoomsFromSupabase, deleteRoom } from "@/lib/housing-data";
 import { getTransactionsByUserId, PaymentTransaction } from "@/lib/razorpay-service";
 import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
@@ -59,6 +66,15 @@ import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { KycVerificationDialog } from "@/components/profile/KycVerificationDialog";
 import { createClient } from "@/lib/supabase/client";
 import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
+import { Input } from "@/components/ui/input";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from "@/components/ui/dialog";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -71,6 +87,9 @@ export default function ProfilePage() {
   const [editingListing, setEditingListing] = useState<any | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isKycOpen, setIsKycOpen] = useState(false);
+  const [restockingListing, setRestockingListing] = useState<any | null>(null);
+  const [restockQuantity, setRestockQuantity] = useState<number>(1);
+  const [isSubmittingRestock, setIsSubmittingRestock] = useState(false);
 
   const loadUserData = async (user: DemoUser) => {
     const allListings = getListings();
@@ -233,6 +252,35 @@ export default function ProfilePage() {
     }
   };
 
+  const handleConfirmRestock = async () => {
+    if (!restockingListing) return;
+    setIsSubmittingRestock(true);
+    try {
+      const res = await restockListing(restockingListing.id, restockQuantity);
+      if (res.success) {
+        toast.success(`Successfully restocked "${restockingListing.title}" with ${restockQuantity} units! Listing is live again.`);
+        const targetId = restockingListing.id;
+        setRestockingListing(null);
+        setMyListings((prev) =>
+          prev.map((item) =>
+            item.id === targetId
+              ? { ...item, status: "active" as any, quantity: restockQuantity, sold_out_at: null }
+              : item
+          )
+        );
+        if (currentUser) {
+          loadUserData(currentUser);
+        }
+      } else {
+        toast.error(res.error || "Failed to restock listing.");
+      }
+    } catch (err) {
+      toast.error("An error occurred while restocking.");
+    } finally {
+      setIsSubmittingRestock(false);
+    }
+  };
+
   const handleDeleteRoom = async (id: string, title: string) => {
     try {
       await deleteRoom(id);
@@ -345,6 +393,17 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="text-xs border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-primary dark:hover:text-teal-300 gap-1.5 font-semibold"
+            >
+              <Link href="/settings">
+                <Settings className="h-3.5 w-3.5 text-slate-500 group-hover:rotate-45 transition-transform" />
+                Settings
+              </Link>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -467,56 +526,112 @@ export default function ProfilePage() {
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {myListings.map((item) => (
-                <Card key={item.id} className="border-slate-200/90 dark:border-slate-700/90 bg-white dark:bg-slate-800/95 shadow-2xs flex flex-col justify-between overflow-hidden">
-                  <CardHeader className="p-4 pb-2 border-b border-slate-100 dark:border-slate-700/60">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <Badge variant="outline" className="text-[10px] mb-1 capitalize bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-teal-300 border-slate-200 dark:border-slate-700">
-                          {item.category} • {item.type}
-                        </Badge>
-                        <CardTitle className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
-                          {item.title}
-                        </CardTitle>
+              {myListings.map((item) => {
+                const isSoldOut = isListingSoldOut(item);
+                return (
+                  <Card
+                    key={item.id}
+                    className={`border-slate-200/90 dark:border-slate-700/90 bg-white dark:bg-slate-800/95 shadow-2xs flex flex-col justify-between overflow-hidden ${
+                      isSoldOut ? "border-amber-400/50 dark:border-amber-600/50 bg-amber-500/[0.02]" : ""
+                    }`}
+                  >
+                    <CardHeader className="p-4 pb-2 border-b border-slate-100 dark:border-slate-700/60">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] capitalize bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-teal-300 border-slate-200 dark:border-slate-700"
+                            >
+                              {item.category} • {item.type}
+                            </Badge>
+                            {isSoldOut ? (
+                              <Badge className="text-[10px] bg-rose-600 hover:bg-rose-700 text-white font-bold uppercase tracking-wider">
+                                Out of Stock
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                              >
+                                {item.quantity ?? 1} in stock
+                              </Badge>
+                            )}
+                          </div>
+                          <CardTitle className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
+                            {item.title}
+                          </CardTitle>
+                        </div>
+                        <span className="text-sm font-extrabold text-primary dark:text-teal-300 shrink-0">
+                          ₹{item.price.toLocaleString("en-IN")}
+                        </span>
                       </div>
-                      <span className="text-sm font-extrabold text-primary dark:text-teal-300 shrink-0">
-                        ₹{item.price.toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-2.5 pb-3 text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
-                    {item.description}
-                  </CardContent>
-                  <CardFooter className="p-3 border-t border-slate-100 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-900/60 flex items-center justify-between">
-                    <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-primary dark:text-teal-300 gap-1 font-semibold">
-                      <Link href={`/marketplace/${item.id}`}>
-                        <ExternalLink className="h-3 w-3" />
-                        View
-                      </Link>
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingListing(item)}
-                        className="h-7 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 gap-1 font-semibold"
-                      >
-                        <Edit3 className="h-3 w-3 text-primary dark:text-teal-400" />
-                        Edit
+                    </CardHeader>
+                    <CardContent className="p-4 pt-2.5 pb-3 text-xs text-slate-600 dark:text-slate-300 space-y-2">
+                      <p className="line-clamp-2">{item.description}</p>
+                      {isSoldOut && (
+                        <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/60 flex items-center justify-between text-[11px]">
+                          <span className="text-amber-800 dark:text-amber-200 font-medium truncate pr-2">
+                            {(item.restock_requests_count ?? 0) > 0
+                              ? `🔥 ${item.restock_requests_count} student(s) requested restock`
+                              : "Sold out. Visible for 3 days to buyers."}
+                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setRestockingListing(item);
+                              setRestockQuantity(1);
+                            }}
+                            className="h-6 px-2 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+                          >
+                            + Add Stock
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                    <CardFooter className="p-3 border-t border-slate-100 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-900/60 flex items-center justify-between">
+                      <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-primary dark:text-teal-300 gap-1 font-semibold">
+                        <Link href={`/marketplace/${item.id}`}>
+                          <ExternalLink className="h-3 w-3" />
+                          View
+                        </Link>
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteListing(item.id, item.title)}
-                        className="h-7 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1 font-semibold"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </Card>
-              ))}
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setRestockingListing(item);
+                            setRestockQuantity(Math.max(1, item.quantity || 1));
+                          }}
+                          className="h-7 text-xs text-primary dark:text-teal-300 hover:bg-primary/10 gap-1 font-semibold"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Restock
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingListing(item)}
+                          className="h-7 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 gap-1 font-semibold"
+                        >
+                          <Edit3 className="h-3 w-3 text-primary dark:text-teal-400" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteListing(item.id, item.title)}
+                          className="h-7 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1 font-semibold"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Delete
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -704,6 +819,62 @@ export default function ProfilePage() {
             setEditingListing(null);
           }}
         />
+      )}
+
+      {/* Quick Restock / Add Quantity Modal */}
+      {restockingListing && (
+        <Dialog open={!!restockingListing} onOpenChange={(open) => !open && setRestockingListing(null)}>
+          <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+                <Package className="h-5 w-5 text-primary" />
+                Restock Item: {restockingListing.title}
+              </DialogTitle>
+              <DialogDescription>
+                Add available stock units. Reactivating this listing will clear the out-of-stock badge and make it immediately discoverable and purchasable in the marketplace.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-3">
+              {(restockingListing.restock_requests_count ?? 0) > 0 && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-200 font-medium">
+                  🔥 <strong>{restockingListing.restock_requests_count} student(s)</strong> have submitted restock requests for this item.
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  New Quantity Available
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="999"
+                  value={restockQuantity}
+                  onChange={(e) => setRestockQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="h-10 text-base font-bold text-slate-900 dark:text-white"
+                />
+                <p className="text-[11px] text-slate-500">
+                  Current stock: {restockingListing.quantity ?? 0} units.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setRestockingListing(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmRestock}
+                disabled={isSubmittingRestock}
+                className="bg-primary hover:bg-primary/90 text-white font-semibold gap-1.5 shadow-xs"
+              >
+                <Check className="h-4 w-4" />
+                {isSubmittingRestock ? "Updating Stock..." : "Save & Make Live"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Edit Profile Modal */}

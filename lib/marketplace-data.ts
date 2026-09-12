@@ -157,6 +157,9 @@ export function mapSupabaseListing(row: any): MarketplaceListing {
     condition: row.condition || "Good",
     location_label: row.location_label || "Campus",
     status: row.status || "active",
+    quantity: typeof row.quantity === "number" ? row.quantity : (row.status === "sold" ? 0 : 1),
+    sold_out_at: row.sold_out_at || (row.status === "sold" ? row.created_at : null),
+    restock_requests_count: typeof row.restock_requests_count === "number" ? row.restock_requests_count : 0,
     created_at: row.created_at,
     images: images,
   };
@@ -255,6 +258,9 @@ export async function saveListing(newListing: typeof INITIAL_LISTINGS[0]) {
         condition: newListing.condition,
         location_label: newListing.location_label,
         status: newListing.status || "active",
+        quantity: typeof newListing.quantity === "number" ? newListing.quantity : 1,
+        sold_out_at: newListing.sold_out_at || null,
+        restock_requests_count: newListing.restock_requests_count || 0,
       });
       if (listErr && listErr.code !== "23505") {
         console.error("[Supabase Error] Listing insert failed:", listErr);
@@ -313,6 +319,9 @@ export async function updateListing(id: string, updatedFields: Partial<typeof IN
       if (updatedFields.condition) payload.condition = updatedFields.condition;
       if (updatedFields.location_label) payload.location_label = updatedFields.location_label;
       if (updatedFields.status) payload.status = updatedFields.status;
+      if (updatedFields.quantity !== undefined) payload.quantity = updatedFields.quantity;
+      if (updatedFields.sold_out_at !== undefined) payload.sold_out_at = updatedFields.sold_out_at;
+      if (updatedFields.restock_requests_count !== undefined) payload.restock_requests_count = updatedFields.restock_requests_count;
 
       if (Object.keys(payload).length > 0) {
         const { error } = await supabase.from("listings").update(payload).eq("id", id);
@@ -323,6 +332,118 @@ export async function updateListing(id: string, updatedFields: Partial<typeof IN
     }
 
     window.dispatchEvent(new Event("campusloop_marketplace_updated"));
+  }
+}
+
+export const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
+export function isListingSoldOut(listing: { quantity?: number; status?: string }): boolean {
+  return listing.status === "sold" || (typeof listing.quantity === "number" && listing.quantity <= 0);
+}
+
+export function isListingPubliclyVisible(listing: {
+  quantity?: number;
+  status?: string;
+  sold_out_at?: string | null;
+  created_at?: string;
+}): boolean {
+  // Active with stock > 0 is always visible
+  if (!isListingSoldOut(listing)) return true;
+
+  // If sold out, check if within 3 days (72 hours) window
+  const soldTime = listing.sold_out_at
+    ? new Date(listing.sold_out_at).getTime()
+    : (listing.created_at ? new Date(listing.created_at).getTime() : 0);
+
+  if (!soldTime) return false;
+
+  const elapsed = Date.now() - soldTime;
+  return elapsed <= THREE_DAYS_MS;
+}
+
+export async function purchaseListing(
+  listingId: string,
+  quantity: number = 1
+): Promise<{ success: boolean; error?: string; remainingQuantity?: number; status?: string; sold_out_at?: string | null }> {
+  try {
+    const res = await fetch("/api/marketplace/purchase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId, quantity }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      // Update local storage cache to reflect new quantity immediately
+      await updateListing(listingId, {
+        quantity: data.remainingQuantity,
+        status: data.status,
+        sold_out_at: data.sold_out_at,
+      });
+      return {
+        success: true,
+        remainingQuantity: data.remainingQuantity,
+        status: data.status,
+        sold_out_at: data.sold_out_at,
+      };
+    }
+
+    return { success: false, error: data.error || "Purchase failed" };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Network error during purchase" };
+  }
+}
+
+export async function restockListing(
+  listingId: string,
+  addedQuantity: number
+): Promise<{ success: boolean; error?: string; quantity?: number }> {
+  try {
+    const res = await fetch("/api/marketplace/restock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId, addedQuantity }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      await updateListing(listingId, {
+        quantity: data.quantity,
+        status: "active",
+        sold_out_at: null,
+      });
+      return { success: true, quantity: data.quantity };
+    }
+
+    return { success: false, error: data.error || "Restock failed" };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Network error during restock" };
+  }
+}
+
+export async function requestItemRestock(
+  listingId: string
+): Promise<{ success: boolean; error?: string; restock_requests_count?: number }> {
+  try {
+    const res = await fetch("/api/marketplace/restock-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      if (typeof data.restock_requests_count === "number") {
+        await updateListing(listingId, {
+          restock_requests_count: data.restock_requests_count,
+        });
+      }
+      return { success: true, restock_requests_count: data.restock_requests_count };
+    }
+
+    return { success: false, error: data.error || "Request failed" };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Network error requesting restock" };
   }
 }
 

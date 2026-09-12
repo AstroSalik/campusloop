@@ -30,6 +30,14 @@ export interface User {
   aadhaar_last4?: string;
   kyc_submitted_at?: string;
   kyc_verified_at?: string;
+  settings?: UserSettings;
+}
+
+export interface UserSettings {
+  email_notifications?: boolean;
+  chat_sound?: boolean;
+  hide_phone_number?: boolean;
+  show_monthly_budget?: boolean;
 }
 
 export type ListingType = "buy" | "sell" | "rent";
@@ -47,6 +55,9 @@ export interface Listing {
   condition: string;
   location_label: string;
   status: ListingStatus;
+  quantity?: number;
+  sold_out_at?: string | null;
+  restock_requests_count?: number;
   created_at: string;
   seller?: User;
   images?: ListingImage[];

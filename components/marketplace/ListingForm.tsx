@@ -45,6 +45,7 @@ export function ListingForm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [category, setCategory] = useState("Furniture");
   const [customCategory, setCustomCategory] = useState("");
   const [type, setType] = useState<ListingType>("sell");
@@ -99,6 +100,9 @@ export function ListingForm() {
       condition,
       location_label: locationLabel,
       status: "active" as const,
+      quantity: Math.max(1, parseInt(quantity, 10) || 1),
+      sold_out_at: null,
+      restock_requests_count: 0,
       created_at: new Date().toISOString(),
       images: [
         {
@@ -200,11 +204,11 @@ export function ListingForm() {
             </div>
           )}
 
-          {/* Price & Condition */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Price, Quantity & Condition Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                Price (₹ INR) *
+                {type === "rent" ? "Monthly Rent *" : "Price *"}
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2 text-sm font-semibold text-slate-400">
@@ -219,6 +223,22 @@ export function ListingForm() {
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                Quantity Available *
+              </label>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                placeholder="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="font-semibold bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700"
+                required
+              />
             </div>
 
             <div className="space-y-1.5">

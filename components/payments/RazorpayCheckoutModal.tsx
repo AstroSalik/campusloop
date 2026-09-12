@@ -41,6 +41,7 @@ interface RazorpayCheckoutModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   amount: number;
+  quantity?: number;
   title: string;
   description: string;
   type: "housing_booking" | "marketplace_purchase" | "rent_split";
@@ -59,6 +60,7 @@ export function RazorpayCheckoutModal({
   open,
   onOpenChange,
   amount,
+  quantity,
   title,
   description,
   type,
@@ -197,7 +199,7 @@ export function RazorpayCheckoutModal({
           {/* Item Mini Strip */}
           <div className="mt-3.5 pt-2.5 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-300">
             <span className="font-medium truncate max-w-[240px] text-slate-200">
-              {title}
+              {title} {quantity && quantity > 1 ? `(x${quantity})` : ""}
             </span>
             <span className="text-[11px] text-slate-400 shrink-0">
               {description}

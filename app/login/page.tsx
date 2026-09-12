@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { DemoUser, setClientDemoSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { MAJOR_CAMPUSES, POPULAR_DEPARTMENTS, STUDY_YEAR_OPTIONS } from "@/lib/campuses";
+import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 
 function LoginContent() {
   const router = useRouter();
@@ -73,6 +74,7 @@ function LoginContent() {
   const [yearOfStudy, setYearOfStudy] = useState(STUDY_YEAR_OPTIONS[0]);
   const [phone, setPhone] = useState("");
   const [monthlyAllowance, setMonthlyAllowance] = useState("15000");
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   const handleCampusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -394,10 +396,18 @@ function LoginContent() {
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Password *
                 </label>
-                {authMode === "signup" && (
+                {authMode === "signup" ? (
                   <span className="text-[10px] text-slate-500 dark:text-slate-400">
                     Min. 8 chars (letters & numbers)
                   </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(true)}
+                    className="text-[11px] font-semibold text-primary hover:underline dark:text-teal-400"
+                  >
+                    Forgot password?
+                  </button>
                 )}
               </div>
               <div className="relative">
@@ -666,6 +676,13 @@ function LoginContent() {
           </div>
         </CardFooter>
       </Card>
+
+      {/* Secure Forgot Password Modal */}
+      <ForgotPasswordModal
+        open={isForgotPasswordOpen}
+        onOpenChange={setIsForgotPasswordOpen}
+        defaultEmail={email}
+      />
     </div>
   );
 }

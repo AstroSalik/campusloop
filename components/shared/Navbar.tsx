@@ -12,6 +12,7 @@ import {
   MessageSquare, 
   Percent, 
   Search, 
+  Settings,
   ShoppingBag, 
   Users2 
 } from "lucide-react";
@@ -170,6 +171,21 @@ export function Navbar() {
 
             {/* Light / Dark Mode Theme Toggle */}
             <ThemeToggle />
+
+            {/* Settings Button */}
+            {currentUser && (
+              <Link
+                href="/settings"
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors shadow-2xs group shrink-0",
+                  pathname === "/settings" && "border-primary text-primary dark:text-teal-300 bg-primary/10"
+                )}
+                title="Account & Security Settings"
+                aria-label="Settings"
+              >
+                <Settings className="h-4 w-4 group-hover:rotate-45 transition-transform duration-300" />
+              </Link>
+            )}
 
             {/* Profile Avatar or Sign In Button */}
             {currentUser ? (

@@ -16,12 +16,14 @@ import {
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Listing } from "@/lib/types";
+import { isListingSoldOut } from "@/lib/marketplace-data";
 
 interface ListingCardProps {
   listing: Listing & { seller_name?: string; seller_initials?: string; seller_email?: string };
 }
 
 export function ListingCard({ listing }: ListingCardProps) {
+  const isSoldOut = isListingSoldOut(listing);
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
       case "cycles":
@@ -54,7 +56,9 @@ export function ListingCard({ listing }: ListingCardProps) {
 
   return (
     <Link href={`/marketplace/${listing.id}`} className="group block">
-      <Card className="h-full overflow-hidden border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-primary/40 dark:hover:border-primary/50 flex flex-col justify-between">
+      <Card className={`h-full overflow-hidden border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-primary/40 dark:hover:border-primary/50 flex flex-col justify-between ${
+        isSoldOut ? "opacity-85 border-dashed" : ""
+      }`}>
         <div>
           {/* Image / Graphic Area */}
           <div className="relative h-44 w-full bg-slate-50 dark:bg-slate-800/80 flex items-center justify-center border-b border-slate-100 dark:border-slate-800 overflow-hidden group-hover:bg-slate-100/70 dark:group-hover:bg-slate-800 transition-colors">
@@ -65,7 +69,9 @@ export function ListingCard({ listing }: ListingCardProps) {
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = "none";
                 }}
-                className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className={`h-full w-full object-cover group-hover:scale-105 transition-transform duration-300 ${
+                  isSoldOut ? "grayscale-30" : ""
+                }`}
               />
             ) : null}
             {(!listing.images || listing.images.length === 0) && (
@@ -103,6 +109,34 @@ export function ListingCard({ listing }: ListingCardProps) {
                 {listing.condition}
               </span>
             </div>
+
+            {/* Out of stock or quantity badge overlay */}
+            {isSoldOut ? (
+              <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-center">
+                <span className="bg-rose-600 text-white font-bold text-xs uppercase px-2.5 py-1 rounded-md shadow-md tracking-wider">
+                  Out of Stock
+                </span>
+                {(listing.restock_requests_count ?? 0) > 0 && (
+                  <span className="mt-1 text-[10px] text-white/90 font-medium bg-black/40 px-2 py-0.5 rounded-full">
+                    {listing.restock_requests_count} requested restock
+                  </span>
+                )}
+              </div>
+            ) : (
+              typeof listing.quantity === "number" && (
+                <div className="absolute bottom-2 left-3">
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-xs ${
+                      listing.quantity <= 2
+                        ? "bg-amber-500 text-white"
+                        : "bg-slate-900/80 text-white backdrop-blur-xs"
+                    }`}
+                  >
+                    {listing.quantity === 1 ? "Only 1 left" : `${listing.quantity} available`}
+                  </span>
+                </div>
+              )
+            )}
           </div>
 
           <CardHeader className="p-4 pb-2 space-y-1">
@@ -132,7 +166,7 @@ export function ListingCard({ listing }: ListingCardProps) {
           </div>
 
           <div className="flex items-center gap-1 text-xs font-semibold text-primary group-hover:translate-x-0.5 transition-transform">
-            <span>View</span>
+            <span>{isSoldOut ? "Request" : "View"}</span>
             <ChevronRight className="h-4 w-4" />
           </div>
         </CardFooter>

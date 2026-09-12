@@ -47,6 +47,7 @@ export function EditListingDialog({
   
   const [title, setTitle] = useState(listing.title);
   const [price, setPrice] = useState(String(listing.price));
+  const [quantity, setQuantity] = useState(String(typeof listing.quantity === "number" ? listing.quantity : 1));
   const [category, setCategory] = useState(isKnownCategory ? listing.category : "Other");
   const [customCategory, setCustomCategory] = useState(isKnownCategory ? "" : listing.category);
   const [type, setType] = useState<ListingType>(listing.type);
@@ -81,10 +82,17 @@ export function EditListingDialog({
 
     setSaving(true);
     const finalCategory = category === "Other" && customCategory.trim() ? customCategory.trim() : category;
+    const parsedQty = parseInt(quantity, 10);
+    const resolvedQty = isNaN(parsedQty) ? 1 : Math.max(0, parsedQty);
+    const newStatus = resolvedQty > 0 ? "active" : "sold";
+    const newSoldOutAt = resolvedQty === 0 ? (listing.sold_out_at || new Date().toISOString()) : null;
 
     const updatedData = {
       title: title.trim(),
       price: Number(price),
+      quantity: resolvedQty,
+      status: newStatus as any,
+      sold_out_at: newSoldOutAt,
       category: finalCategory,
       type,
       condition,
@@ -96,7 +104,7 @@ export function EditListingDialog({
     };
 
     updateListing(listing.id, updatedData as any);
-    toast.success("Listing updated successfully!");
+    toast.success(resolvedQty > 0 && listing.status === "sold" ? "Listing restocked and reactivated!" : "Listing updated successfully!");
     
     const updatedFull = {
       ...listing,
@@ -116,7 +124,7 @@ export function EditListingDialog({
             Edit Listing
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-slate-400">
-            Update details, pricing, condition, or photos for this item.
+            Update details, pricing, stock quantity, condition, or photos for this item.
           </DialogDescription>
         </DialogHeader>
 
@@ -184,10 +192,12 @@ export function EditListingDialog({
             </div>
           )}
 
-          {/* Price & Condition */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Price, Quantity & Condition Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Price (₹ INR) *</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                {type === "rent" ? "Monthly Rent (₹) *" : "Price (₹ INR) *"}
+              </label>
               <div className="relative">
                 <span className="absolute left-3 top-2 text-sm font-semibold text-slate-400">₹</span>
                 <Input
@@ -198,6 +208,24 @@ export function EditListingDialog({
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                Quantity Available *
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="font-semibold"
+                required
+              />
+              <span className="text-[10px] text-slate-400">
+                {parseInt(quantity, 10) === 0 ? "⚠️ Marked as Out of Stock" : "Units available for sale"}
+              </span>
             </div>
 
             <div className="space-y-1.5">

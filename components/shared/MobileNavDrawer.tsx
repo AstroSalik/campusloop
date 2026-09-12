@@ -15,6 +15,7 @@ import {
   Percent,
   Plus,
   Search,
+  Settings,
   ShoppingBag,
   Sparkles,
   User,
@@ -82,6 +83,7 @@ export function MobileNavDrawer({
     { href: "/rent", label: "Rent Health Engine", icon: Percent, badge: "Calculator" },
     { href: "/wanted", label: "Wanted Requests", icon: Sparkles },
     { href: "/messages", label: "Messages & Chat", icon: MessageSquare },
+    { href: "/settings", label: "Account Settings", icon: Settings },
   ];
 
   return (
@@ -179,7 +181,7 @@ export function MobileNavDrawer({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Button
                     asChild
                     size="sm"
@@ -188,18 +190,31 @@ export function MobileNavDrawer({
                     onClick={onClose}
                   >
                     <Link href="/profile">
-                      <User className="mr-1.5 h-3.5 w-3.5" />
-                      View Profile
+                      <User className="mr-1 h-3.5 w-3.5" />
+                      Profile
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-8 flex-1 text-xs font-semibold border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    onClick={onClose}
+                  >
+                    <Link href="/settings">
+                      <Settings className="mr-1 h-3.5 w-3.5" />
+                      Settings
                     </Link>
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    className="h-8 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0"
                     onClick={() => {
                       onSignOut();
                       onClose();
                     }}
+                    title="Sign Out"
                   >
                     <LogOut className="h-3.5 w-3.5" />
                   </Button>
