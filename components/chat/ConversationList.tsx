@@ -34,6 +34,7 @@ import {
   getTotalUnreadCount, 
   markConversationAsRead 
 } from "@/lib/conversations";
+import { getDemoUserById } from "@/lib/auth";
 
 interface ConversationListProps {
   conversations: StoredConversation[];
@@ -225,25 +226,38 @@ export function ConversationList({
                     )}
                     {isGroup ? (
                       <div className="flex -space-x-2 overflow-hidden">
-                        {conv.members.slice(0, 2).map((m, i) => (
-                          <Avatar key={i} className="h-9 w-9 border-2 border-white dark:border-slate-800 shadow-2xs">
-                            <AvatarFallback className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold">
-                              {m.user_initials || m.user_name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                        ))}
+                        {(otherMembers.length > 0 ? otherMembers : conv.members).slice(0, 2).map((m, i) => {
+                          const mAvatar = m.user_avatar || (m.user_id ? getDemoUserById(m.user_id)?.avatar : null);
+                          return (
+                            <Avatar key={i} className="h-9 w-9 border-2 border-white dark:border-slate-800 shadow-2xs overflow-hidden">
+                              {mAvatar ? (
+                                <img
+                                  src={mAvatar}
+                                  alt={m.user_name}
+                                  className="h-full w-full object-cover rounded-full"
+                                />
+                              ) : (
+                                <AvatarFallback className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold">
+                                  {m.user_initials || m.user_name[0]}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                          );
+                        })}
                       </div>
-                    ) : isWanted ? (
-                      <Avatar className="h-10 w-10 border border-slate-200 dark:border-slate-700">
-                        <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
-                          {otherMembers[0]?.user_initials || otherMembers[0]?.user_name?.[0] || "W"}
-                        </AvatarFallback>
-                      </Avatar>
                     ) : (
-                      <Avatar className="h-10 w-10 border border-slate-200 dark:border-slate-700">
-                        <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
-                          {otherMembers[0]?.user_initials || otherMembers[0]?.user_name?.[0] || "S"}
-                        </AvatarFallback>
+                      <Avatar className="h-10 w-10 border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0">
+                        {otherMembers[0]?.user_avatar || (otherMembers[0]?.user_id && getDemoUserById(otherMembers[0].user_id)?.avatar) ? (
+                          <img
+                            src={otherMembers[0]?.user_avatar || getDemoUserById(otherMembers[0].user_id)!.avatar!}
+                            alt={otherMembers[0]?.user_name || "User"}
+                            className="h-full w-full object-cover rounded-full"
+                          />
+                        ) : (
+                          <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300 font-bold text-xs">
+                            {otherMembers[0]?.user_initials || otherMembers[0]?.user_name?.[0] || (isWanted ? "W" : "S")}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                     )}
 

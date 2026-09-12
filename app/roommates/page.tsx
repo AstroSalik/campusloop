@@ -227,8 +227,10 @@ export default function RoommatesPage() {
         {
           initiatorName: currentUser.name,
           initiatorEmail: currentUser.email,
+          initiatorAvatar: currentUser.avatar,
           targetName: profileUser.user_name,
           targetEmail: profileUser.user_email,
+          targetAvatar: profileUser.user_avatar,
         }
       );
       toast.success(`Connected with ${profileUser.user_name}! Opening chat...`);

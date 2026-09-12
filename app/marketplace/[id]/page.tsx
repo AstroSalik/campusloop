@@ -141,8 +141,10 @@ export default function ListingDetailPage({
         {
           buyerName: currentUser.name,
           buyerEmail: currentUser.email,
+          buyerAvatar: currentUser.avatar,
           sellerName: listing.seller_name,
           sellerEmail: listing.seller_email,
+          sellerAvatar: listing.seller?.avatar || (listing as any).seller_avatar,
           listingTitle: listing.title,
           price: listing.price,
           location: listing.location_label,

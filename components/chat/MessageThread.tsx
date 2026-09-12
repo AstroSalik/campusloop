@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StoredConversation } from "@/lib/conversations";
 import { Message } from "@/lib/types";
+import { getClientDemoSession, getDemoUserById } from "@/lib/auth";
 
 interface MessageThreadProps {
   conversation: StoredConversation;
@@ -42,9 +43,13 @@ export function MessageThread({ conversation, currentUserId }: MessageThreadProp
 
   const getMemberInfo = (senderId: string) => {
     const member = conversation.members.find((m) => m.user_id === senderId);
+    const isCurrent = senderId === currentUserId;
+    const currentSession = isCurrent ? getClientDemoSession() : null;
+    const demoUser = !isCurrent ? getDemoUserById(senderId) : null;
     return {
-      name: member?.user_name || "Campus Student",
-      initials: member?.user_initials || member?.user_name?.[0] || "S",
+      name: member?.user_name || currentSession?.name || demoUser?.name || "Campus Student",
+      initials: member?.user_initials || currentSession?.initials || demoUser?.initials || "CS",
+      avatar: member?.user_avatar || (isCurrent ? currentSession?.avatar : demoUser?.avatar) || null,
       role: member?.role || "member",
     };
   };
@@ -77,10 +82,18 @@ export function MessageThread({ conversation, currentUserId }: MessageThreadProp
           >
             {/* Other User Avatar */}
             {!isMe && (
-              <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-teal-500/30 shadow-2xs mb-1">
-                <AvatarFallback className="bg-primary/10 dark:bg-teal-950 text-primary dark:text-teal-300 text-xs font-bold">
-                  {sender.initials}
-                </AvatarFallback>
+              <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-teal-500/30 shadow-2xs mb-1 overflow-hidden">
+                {sender.avatar ? (
+                  <img
+                    src={sender.avatar}
+                    alt={sender.name}
+                    className="h-full w-full object-cover rounded-full"
+                  />
+                ) : (
+                  <AvatarFallback className="bg-primary/10 dark:bg-teal-950 text-primary dark:text-teal-300 text-xs font-bold">
+                    {sender.initials}
+                  </AvatarFallback>
+                )}
               </Avatar>
             )}
 

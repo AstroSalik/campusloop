@@ -22,6 +22,7 @@ import {
   Users 
 } from "lucide-react";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,7 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { StoredConversation, deleteConversation } from "@/lib/conversations";
-import { getClientDemoSession } from "@/lib/auth";
+import { getClientDemoSession, getDemoUserById } from "@/lib/auth";
 import { getListingById } from "@/lib/marketplace-data";
 import { getRoomById } from "@/lib/housing-data";
 import { getWantedListingById } from "@/lib/wanted-data";
@@ -50,9 +51,15 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
 
   const isMarketplace = conversation.type === "marketplace_dm";
   const isWanted = conversation.type === "wanted_response";
+  const isRoommate = conversation.type === "roommate_dm";
   const listing = conversation.listing_id ? getListingById(conversation.listing_id) : null;
   const room = conversation.room_id ? getRoomById(conversation.room_id) : null;
   const wanted = conversation.wanted_listing_id ? getWantedListingById(conversation.wanted_listing_id) : null;
+
+  const currentSession = getClientDemoSession();
+  const otherMembers = conversation.members.filter((m) => m.user_id !== currentSession?.id);
+  const peerMember = otherMembers[0] || conversation.members[0];
+  const peerAvatar = peerMember?.user_avatar || (peerMember?.user_id ? getDemoUserById(peerMember.user_id)?.avatar : null);
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -80,15 +87,31 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
             </Link>
           </Button>
 
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300">
-            {isWanted ? (
-              <Sparkles className="h-5 w-5 text-primary dark:text-teal-400" />
-            ) : isMarketplace ? (
-              <Package className="h-5 w-5" />
-            ) : (
-              <Building2 className="h-5 w-5" />
-            )}
-          </div>
+          {peerAvatar ? (
+            <Avatar className="h-10 w-10 shrink-0 border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
+              <img
+                src={peerAvatar}
+                alt={peerMember?.user_name || "User"}
+                className="h-full w-full object-cover rounded-full"
+              />
+            </Avatar>
+          ) : isRoommate ? (
+            <Avatar className="h-10 w-10 shrink-0 border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
+              <AvatarFallback className="bg-primary/10 dark:bg-teal-950 text-primary dark:text-teal-300 font-bold text-xs">
+                {peerMember?.user_initials || peerMember?.user_name?.[0] || "U"}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/20 text-primary dark:text-teal-300">
+              {isWanted ? (
+                <Sparkles className="h-5 w-5 text-primary dark:text-teal-400" />
+              ) : isMarketplace ? (
+                <Package className="h-5 w-5" />
+              ) : (
+                <Building2 className="h-5 w-5" />
+              )}
+            </div>
+          )}
 
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
@@ -102,16 +125,18 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
                     ? "bg-teal-50 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800"
                     : isMarketplace
                     ? "bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800"
+                    : isRoommate
+                    ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
                     : "bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
                 }`}
               >
-                {isWanted ? "Wanted Request" : isMarketplace ? "Marketplace" : "Housing Group"}
+                {isWanted ? "Wanted Request" : isMarketplace ? "Marketplace" : isRoommate ? "Roommate Chat" : "Housing Group"}
               </Badge>
             </div>
 
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <span>{conversation.subtitle}</span>
-              {!isMarketplace && !isWanted && (
+              {!isMarketplace && !isWanted && !isRoommate && (
                 <>
                   <span>•</span>
                   <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-semibold">

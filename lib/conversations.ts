@@ -6,7 +6,12 @@ import { getWantedListingById } from "@/lib/wanted-data";
 import { createClient } from "@/lib/supabase/client";
 
 export interface StoredConversation extends Conversation {
-  members: (ConversationMember & { user_name: string; user_email: string; user_initials: string })[];
+  members: (ConversationMember & { 
+    user_name: string; 
+    user_email: string; 
+    user_initials: string;
+    user_avatar?: string | null;
+  })[];
   messages: Message[];
   title?: string;
   subtitle?: string;
@@ -39,70 +44,58 @@ export function getInitials(name?: string): string {
  */
 export async function resolveUserForChat(
   userId: string,
-  hints?: { name?: string; email?: string }
-): Promise<{ id: string; name: string; email: string; initials: string }> {
-  // 1. If hints have name provided, prioritize them
-  if (hints?.name && hints.name.trim()) {
-    return {
-      id: userId,
-      name: hints.name.trim(),
-      email: hints.email?.trim() || "",
-      initials: getInitials(hints.name),
-    };
-  }
+  hints?: { name?: string; email?: string; avatar?: string | null }
+): Promise<{ id: string; name: string; email: string; initials: string; avatar?: string | null }> {
+  let name = hints?.name?.trim() || "";
+  let email = hints?.email?.trim() || "";
+  let avatar = hints?.avatar || null;
 
-  // 2. Check current browser session
+  // 1. Check current browser session
   const currentSession = getClientDemoSession();
   if (currentSession && currentSession.id === userId) {
-    return {
-      id: currentSession.id,
-      name: currentSession.name,
-      email: currentSession.email || "",
-      initials: currentSession.initials || getInitials(currentSession.name),
-    };
+    name = name || currentSession.name;
+    email = email || currentSession.email || "";
+    avatar = avatar || currentSession.avatar || null;
   }
 
-  // 3. Check demo users list
-  const demoUser = getDemoUserById(userId);
-  if (demoUser) {
-    return {
-      id: demoUser.id,
-      name: demoUser.name,
-      email: demoUser.email || "",
-      initials: demoUser.initials || getInitials(demoUser.name),
-    };
+  // 2. Check demo users list
+  if (!avatar || !name) {
+    const demoUser = getDemoUserById(userId);
+    if (demoUser) {
+      name = name || demoUser.name;
+      email = email || demoUser.email || "";
+      avatar = avatar || demoUser.avatar || null;
+    }
   }
 
-  // 4. Query Supabase public.users table
-  if (typeof window !== "undefined" && userId) {
+  // 3. Query Supabase public.users table if avatar or name is still missing
+  if (typeof window !== "undefined" && userId && (!avatar || !name)) {
     try {
       const supabase = createClient();
       const { data } = await supabase
         .from("users")
-        .select("id, name, email")
+        .select("id, name, email, avatar")
         .eq("id", userId)
         .maybeSingle();
 
-      if (data && data.name) {
-        return {
-          id: data.id,
-          name: data.name,
-          email: data.email || "",
-          initials: getInitials(data.name),
-        };
+      if (data) {
+        name = name || data.name || "";
+        email = email || data.email || "";
+        avatar = avatar || data.avatar || null;
       }
     } catch (e) {
       // ignore network errors
     }
   }
 
-  // 5. Fallback preserving the actual userId!
-  const fallbackName = hints?.name || (userId ? `Student (${userId.slice(0, 4)})` : "Campus Student");
+  // 4. Final fallback
+  const finalName = name || (userId ? `Student (${userId.slice(0, 4)})` : "Campus Student");
   return {
     id: userId,
-    name: fallbackName,
-    email: hints?.email || "",
-    initials: getInitials(fallbackName),
+    name: finalName,
+    email,
+    initials: getInitials(finalName),
+    avatar: avatar || null,
   };
 }
 
@@ -182,6 +175,23 @@ export function getConversations(): StoredConversation[] {
             };
           });
 
+          // Synchronize avatars from active session or demo users
+          members = members.map((m) => {
+            let userAvatar = m.user_avatar;
+            if (currentSession && m.user_id === currentSession.id && currentSession.avatar) {
+              userAvatar = currentSession.avatar;
+            } else if (!userAvatar) {
+              const demoUser = getDemoUserById(m.user_id);
+              if (demoUser?.avatar) {
+                userAvatar = demoUser.avatar;
+              }
+            }
+            return {
+              ...m,
+              user_avatar: userAvatar,
+            };
+          });
+
           return {
             ...c,
             members,
@@ -224,8 +234,10 @@ export async function getOrCreateMarketplaceConversation(
   extraHints?: {
     buyerName?: string;
     buyerEmail?: string;
+    buyerAvatar?: string | null;
     sellerName?: string;
     sellerEmail?: string;
+    sellerAvatar?: string | null;
     listingTitle?: string;
     price?: number;
     location?: string;
@@ -270,12 +282,14 @@ export async function getOrCreateMarketplaceConversation(
   const buyer = await resolveUserForChat(buyerId, {
     name: extraHints?.buyerName,
     email: extraHints?.buyerEmail,
+    avatar: extraHints?.buyerAvatar,
   });
 
   const listing = getListingById(listingId);
   const seller = await resolveUserForChat(sellerId || listing?.seller_id || "", {
     name: extraHints?.sellerName || listing?.seller_name,
     email: extraHints?.sellerEmail || listing?.seller_email,
+    avatar: extraHints?.sellerAvatar,
   });
 
   // Generate standard valid UUID for Supabase
@@ -309,6 +323,7 @@ export async function getOrCreateMarketplaceConversation(
         user_name: seller.name,
         user_email: seller.email,
         user_initials: seller.initials,
+        user_avatar: seller.avatar || null,
       },
       {
         conversation_id: newConvId,
@@ -317,6 +332,7 @@ export async function getOrCreateMarketplaceConversation(
         user_name: buyer.name,
         user_email: buyer.email,
         user_initials: buyer.initials,
+        user_avatar: buyer.avatar || null,
       },
     ],
     messages: [
@@ -377,8 +393,10 @@ export async function getOrCreateRoommateConversation(
   extraHints?: {
     initiatorName?: string;
     initiatorEmail?: string;
+    initiatorAvatar?: string | null;
     targetName?: string;
     targetEmail?: string;
+    targetAvatar?: string | null;
   }
 ): Promise<string> {
   const all = getConversations();
@@ -392,14 +410,27 @@ export async function getOrCreateRoommateConversation(
   );
 
   if (existing) {
-    // If existing had outdated targetName, repair it
-    if (extraHints?.targetName) {
-      const targetMember = existing.members.find((m) => m.user_id === targetUserId);
-      if (targetMember && targetMember.user_name !== extraHints.targetName) {
+    let changed = false;
+    // If existing had outdated targetName or missing avatar, repair it
+    const targetMember = existing.members.find((m) => m.user_id === targetUserId);
+    if (targetMember) {
+      if (extraHints?.targetName && targetMember.user_name !== extraHints.targetName) {
         targetMember.user_name = extraHints.targetName;
         existing.title = `${extraHints.targetName} (Roommate)`;
-        saveConversations([...all]);
+        changed = true;
       }
+      if (extraHints?.targetAvatar && !targetMember.user_avatar) {
+        targetMember.user_avatar = extraHints.targetAvatar;
+        changed = true;
+      }
+    }
+    const initiatorMember = existing.members.find((m) => m.user_id === initiatorId);
+    if (initiatorMember && extraHints?.initiatorAvatar && !initiatorMember.user_avatar) {
+      initiatorMember.user_avatar = extraHints.initiatorAvatar;
+      changed = true;
+    }
+    if (changed) {
+      saveConversations([...all]);
     }
     return existing.id;
   }
@@ -428,11 +459,13 @@ export async function getOrCreateRoommateConversation(
   const initiator = await resolveUserForChat(initiatorId, {
     name: extraHints?.initiatorName,
     email: extraHints?.initiatorEmail,
+    avatar: extraHints?.initiatorAvatar,
   });
 
   const target = await resolveUserForChat(targetUserId, {
     name: extraHints?.targetName,
     email: extraHints?.targetEmail,
+    avatar: extraHints?.targetAvatar,
   });
 
   const newConvId = generateUUID();
@@ -456,6 +489,7 @@ export async function getOrCreateRoommateConversation(
         user_name: target.name,
         user_email: target.email,
         user_initials: target.initials,
+        user_avatar: target.avatar || null,
       },
       {
         conversation_id: newConvId,
@@ -464,6 +498,7 @@ export async function getOrCreateRoommateConversation(
         user_name: initiator.name,
         user_email: initiator.email,
         user_initials: initiator.initials,
+        user_avatar: initiator.avatar || null,
       },
     ],
     messages: [
@@ -572,6 +607,7 @@ export async function getOrCreateRoomConversation(
         user_name: user.name,
         user_email: user.email,
         user_initials: user.initials,
+        user_avatar: user.avatar || null,
       };
       existing.members.push(newMember);
 
@@ -628,6 +664,7 @@ export async function getOrCreateRoomConversation(
         user_name: owner.name,
         user_email: owner.email,
         user_initials: owner.initials,
+        user_avatar: owner.avatar || null,
       },
       {
         conversation_id: newConvId,
@@ -636,6 +673,7 @@ export async function getOrCreateRoomConversation(
         user_name: user.name,
         user_email: user.email,
         user_initials: user.initials,
+        user_avatar: user.avatar || null,
       },
     ],
     messages: [
@@ -684,8 +722,10 @@ export async function getOrCreateWantedConversation(
   extraHints?: {
     providerName?: string;
     providerEmail?: string;
+    providerAvatar?: string | null;
     requesterName?: string;
     requesterEmail?: string;
+    requesterAvatar?: string | null;
     wantedTitle?: string;
     budgetMax?: number;
     category?: string;
@@ -709,11 +749,13 @@ export async function getOrCreateWantedConversation(
   const provider = await resolveUserForChat(providerId, {
     name: extraHints?.providerName,
     email: extraHints?.providerEmail,
+    avatar: extraHints?.providerAvatar,
   });
 
   const requester = await resolveUserForChat(requesterId || wanted?.requester_id || "", {
     name: extraHints?.requesterName || wanted?.requester_name,
     email: extraHints?.requesterEmail || wanted?.requester_email,
+    avatar: extraHints?.requesterAvatar,
   });
 
   const newConvId = generateUUID();
@@ -743,6 +785,7 @@ export async function getOrCreateWantedConversation(
         user_name: requester.name,
         user_email: requester.email,
         user_initials: requester.initials,
+        user_avatar: requester.avatar || null,
       },
       {
         conversation_id: newConvId,
@@ -751,6 +794,7 @@ export async function getOrCreateWantedConversation(
         user_name: provider.name,
         user_email: provider.email,
         user_initials: provider.initials,
+        user_avatar: provider.avatar || null,
       },
     ],
     messages: [
@@ -868,10 +912,10 @@ export async function fetchUserConversationsFromSupabase(userId: string): Promis
       return getConversations().filter((c) => c.members.some((m) => m.user_id === userId));
     }
 
-    // 3. Fetch all members with user details
+    // 3. Fetch all members with user details including avatar
     const { data: allMembers } = await supabase
       .from("conversation_members")
-      .select("conversation_id, user_id, role, users(id, name, email)")
+      .select("conversation_id, user_id, role, users(id, name, email, avatar)")
       .in("conversation_id", convIds);
 
     // 4. Fetch all messages
@@ -897,6 +941,7 @@ export async function fetchUserConversationsFromSupabase(userId: string): Promis
           const userObj = m.users;
           const uName = userObj?.name || (m.user_id === userId ? getClientDemoSession()?.name : null) || "Campus Student";
           const uEmail = userObj?.email || "";
+          const uAvatar = userObj?.avatar || (m.user_id === userId ? getClientDemoSession()?.avatar : null) || null;
           return {
             conversation_id: cRow.id,
             user_id: m.user_id,
@@ -904,6 +949,7 @@ export async function fetchUserConversationsFromSupabase(userId: string): Promis
             user_name: uName,
             user_email: uEmail,
             user_initials: getInitials(uName),
+            user_avatar: uAvatar,
           };
         });
 
@@ -981,7 +1027,7 @@ export async function fetchConversationByIdFromSupabase(conversationId: string):
 
     const { data: members } = await supabase
       .from("conversation_members")
-      .select("conversation_id, user_id, role, users(id, name, email)")
+      .select("conversation_id, user_id, role, users(id, name, email, avatar)")
       .eq("conversation_id", conversationId);
 
     const { data: messages } = await supabase
@@ -990,8 +1036,10 @@ export async function fetchConversationByIdFromSupabase(conversationId: string):
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
 
+    const currentSession = getClientDemoSession();
     const memberList = (members || []).map((m: any) => {
       const uName = m.users?.name || "Campus Student";
+      const uAvatar = m.users?.avatar || (m.user_id === currentSession?.id ? currentSession?.avatar : null) || null;
       return {
         conversation_id: conversationId,
         user_id: m.user_id,
@@ -999,6 +1047,7 @@ export async function fetchConversationByIdFromSupabase(conversationId: string):
         user_name: uName,
         user_email: m.users?.email || "",
         user_initials: getInitials(uName),
+        user_avatar: uAvatar,
       };
     });
 

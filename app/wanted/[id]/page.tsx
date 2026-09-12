@@ -131,8 +131,10 @@ export default function WantedDetailPage({
         {
           providerName: currentUser.name,
           providerEmail: currentUser.email,
+          providerAvatar: currentUser.avatar,
           requesterName: wanted.requester_name,
           requesterEmail: wanted.requester_email,
+          requesterAvatar: wanted.requester?.avatar || (wanted as any).requester_avatar,
           wantedTitle: wanted.title,
           budgetMax: wanted.budget_max,
           category: wanted.category,
