@@ -84,7 +84,6 @@ export function MobileNavDrawer({
     { href: "/rent", label: "Rent Health Engine", icon: Percent, badge: "Calculator" },
     { href: "/wanted", label: "Wanted Requests", icon: Sparkles },
     { href: "/messages", label: "Messages & Chat", icon: MessageSquare },
-    { href: "/settings", label: "Account Settings", icon: Settings },
   ];
 
   return (

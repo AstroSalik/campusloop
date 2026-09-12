@@ -127,9 +127,12 @@ export async function sendRestockNotificationEmail(
     }
   }
 
-  // 2. Local/Vercel fallback: email delivery record logged
-  console.log(`[CampusLoop Mailer] Transactional email queued for ${sellerEmail}`);
+  // 2. Fallback: No email provider configured — log but report not delivered
+  console.log(`[CampusLoop Mailer] No RESEND_API_KEY configured. Email NOT delivered to ${sellerEmail}.`);
   console.log(`[CampusLoop Mailer] Subject: ${subject}`);
+  console.log(`[CampusLoop Mailer] To enable email delivery, add RESEND_API_KEY to .env.local`);
 
-  return { success: true, delivered: true };
+  // Still return success: true so the rest of the flow continues,
+  // but delivered: false so the UI can be honest with the user
+  return { success: true, delivered: false };
 }

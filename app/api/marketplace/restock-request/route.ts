@@ -117,9 +117,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Send notification email to seller's registered email address
+    let emailDelivered = false;
     if (sellerEmail) {
       try {
-        await sendRestockNotificationEmail({
+        const emailResult = await sendRestockNotificationEmail({
           sellerEmail,
           sellerName: sellerName || "CampusLoop Seller",
           listingTitle: listing.title,
@@ -128,14 +129,16 @@ export async function POST(req: NextRequest) {
           buyerName,
           buyerEmail: buyer?.email,
         });
+        emailDelivered = emailResult.delivered;
       } catch (emailErr) {
         console.warn("[restock-request] Email notification notice:", emailErr);
       }
     }
 
     // 7. Save in-app notification for the seller
+    let notificationSaved = false;
     try {
-      await supabaseAdmin.from("notifications").insert({
+      const { error: notifErr } = await supabaseAdmin.from("notifications").insert({
         user_id: listing.seller_id,
         type: "restock_request",
         title: "🔥 Restock Requested!",
@@ -143,6 +146,10 @@ export async function POST(req: NextRequest) {
         link: `/marketplace/${listing.id}`,
         read: false,
       });
+      notificationSaved = !notifErr;
+      if (notifErr) {
+        console.warn("[restock-request] Notification insert error:", notifErr.message);
+      }
     } catch {
       // Ignore if table pending migration
     }
@@ -151,13 +158,25 @@ export async function POST(req: NextRequest) {
       ? `${sellerEmail.split("@")[0].slice(0, 3)}***@${sellerEmail.split("@")[1]}`
       : "registered email";
 
+    const messageParts = ["Restock request recorded!"];
+    if (notificationSaved) {
+      messageParts.push(`Seller notified via in-app alert.`);
+    }
+    if (emailDelivered) {
+      messageParts.push(`Email sent to ${maskedEmail}.`);
+    } else if (sellerEmail) {
+      messageParts.push(`Email provider not configured — add RESEND_API_KEY for email delivery.`);
+    }
+
     return NextResponse.json({
       success: true,
       listingId,
       restock_requests_count: updatedCount,
       hasRequested: true,
-      sellerNotified: true,
-      message: `Restock request sent! The seller (${maskedEmail}) has been notified via email and in-app alert.`,
+      sellerNotified: notificationSaved || emailDelivered,
+      emailDelivered,
+      notificationSaved,
+      message: messageParts.join(" "),
     });
   } catch (err: any) {
     console.error("Restock request exception:", err);
