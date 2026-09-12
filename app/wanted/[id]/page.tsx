@@ -410,7 +410,9 @@ export default function WantedDetailPage({
                 <div className="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-2.5 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
                   <div className="flex justify-between">
                     <span>Campus:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">Demo Campus (Sopore)</strong>
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      {wanted.requester?.campus_name || "Lovely Professional University (LPU)"}
+                    </strong>
                   </div>
                   <div className="flex justify-between">
                     <span>Location:</span>

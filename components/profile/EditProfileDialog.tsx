@@ -3,10 +3,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { 
+  Building2,
   Camera, 
   Check, 
   Edit3, 
+  GraduationCap,
   Link as LinkIcon, 
+  Phone,
+  ShieldAlert,
+  ShieldCheck,
   Trash2, 
   Upload, 
   User as UserIcon, 
@@ -23,14 +28,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { DemoUser, setClientDemoSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
+import { MAJOR_CAMPUSES, STUDY_YEAR_OPTIONS, POPULAR_DEPARTMENTS } from "@/lib/campuses";
 
 interface EditProfileDialogProps {
   user: DemoUser;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProfileUpdated: (updated: DemoUser) => void;
+  onRequestKyc?: () => void;
 }
 
 // Client-side lightweight image compression for snappy avatar storage & rendering
@@ -79,9 +87,17 @@ export function EditProfileDialog({
   open,
   onOpenChange,
   onProfileUpdated,
+  onRequestKyc,
 }: EditProfileDialogProps) {
   const [name, setName] = useState(user.name || "");
-  const [monthlyIncome, setMonthlyIncome] = useState(user.monthly_income ? String(user.monthly_income) : "");
+  const [campusName, setCampusName] = useState(user.campus_name || "Lovely Professional University (LPU)");
+  const [isCustomCampus, setIsCustomCampus] = useState(false);
+  const [city, setCity] = useState(user.city || "Phagwara, Punjab");
+  const [department, setDepartment] = useState(user.department || "Computer Science & Engineering (CSE)");
+  const [isCustomDept, setIsCustomDept] = useState(false);
+  const [yearOfStudy, setYearOfStudy] = useState(user.year_of_study || STUDY_YEAR_OPTIONS[3]);
+  const [phone, setPhone] = useState(user.phone || "");
+  const [monthlyIncome, setMonthlyIncome] = useState(user.monthly_income ? String(user.monthly_income) : "15000");
   const [avatarUrl, setAvatarUrl] = useState(user.avatar || "");
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -91,7 +107,20 @@ export function EditProfileDialog({
   useEffect(() => {
     if (open) {
       setName(user.name || "");
-      setMonthlyIncome(user.monthly_income ? String(user.monthly_income) : "");
+      const existingCampus = user.campus_name || "Lovely Professional University (LPU)";
+      setCampusName(existingCampus);
+      const matchedCampus = MAJOR_CAMPUSES.find((c) => c.name === existingCampus);
+      setIsCustomCampus(!matchedCampus);
+
+      setCity(user.city || matchedCampus ? `${matchedCampus?.city}, ${matchedCampus?.state}` : "");
+      
+      const existingDept = user.department || "Computer Science & Engineering (CSE)";
+      setDepartment(existingDept);
+      setIsCustomDept(!POPULAR_DEPARTMENTS.includes(existingDept));
+
+      setYearOfStudy(user.year_of_study || STUDY_YEAR_OPTIONS[3]);
+      setPhone(user.phone || "");
+      setMonthlyIncome(user.monthly_income != null ? String(user.monthly_income) : "15000");
       setAvatarUrl(user.avatar || "");
       setShowUrlInput(false);
     }
@@ -107,6 +136,21 @@ export function EditProfileDialog({
       .join("")
       .substring(0, 2)
       .toUpperCase() || "S";
+  };
+
+  const handleCampusSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === "OTHER") {
+      setIsCustomCampus(true);
+      setCampusName("");
+    } else {
+      setIsCustomCampus(false);
+      const found = MAJOR_CAMPUSES.find((c) => c.id === val);
+      if (found) {
+        setCampusName(found.name);
+        setCity(`${found.city}, ${found.state}`);
+      }
+    }
   };
 
   const handleDeviceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,6 +193,11 @@ export function EditProfileDialog({
       return;
     }
 
+    if (!campusName.trim()) {
+      toast.error("Please provide your college or university campus.");
+      return;
+    }
+
     let incomeVal: number | undefined = undefined;
     if (monthlyIncome.trim()) {
       const parsedNum = Number(monthlyIncome);
@@ -166,48 +215,85 @@ export function EditProfileDialog({
     const updatedUser: DemoUser = {
       ...user,
       name: name.trim(),
+      campus_name: campusName.trim(),
+      city: city.trim(),
+      department: department.trim(),
+      year_of_study: yearOfStudy.trim(),
+      phone: phone.trim(),
       monthly_income: incomeVal,
       avatar: finalAvatar,
       initials: newInitials,
     };
 
     try {
-      // 1. Update Supabase users table
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("users")
-        .update({
+      // 1. Sync through authenticated server route
+      await fetch("/api/auth/sync-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           name: updatedUser.name,
-          monthly_income: updatedUser.monthly_income != null ? updatedUser.monthly_income : null,
+          campus_name: updatedUser.campus_name,
+          city: updatedUser.city,
+          department: updatedUser.department,
+          year_of_study: updatedUser.year_of_study,
+          phone: updatedUser.phone,
+          monthly_income: updatedUser.monthly_income,
           avatar: updatedUser.avatar || null,
-        })
-        .eq("id", user.id);
+        }),
+      });
 
-      if (error) {
-        console.error("Supabase profile update warning:", error);
-      }
+      // 2. Also update Supabase client session metadata & users table directly
+      const supabase = createClient();
+      await supabase.auth.updateUser({
+        data: {
+          full_name: updatedUser.name,
+          name: updatedUser.name,
+          campus_name: updatedUser.campus_name,
+          city: updatedUser.city,
+          department: updatedUser.department,
+          year_of_study: updatedUser.year_of_study,
+          phone: updatedUser.phone,
+          avatar: updatedUser.avatar,
+        },
+      });
+
+      try {
+        await supabase
+          .from("users")
+          .update({
+            name: updatedUser.name,
+            campus_name: updatedUser.campus_name,
+            city: updatedUser.city,
+            department: updatedUser.department,
+            year_of_study: updatedUser.year_of_study,
+            phone: updatedUser.phone,
+            monthly_income: updatedUser.monthly_income != null ? updatedUser.monthly_income : null,
+            avatar: updatedUser.avatar || null,
+          })
+          .eq("id", user.id);
+      } catch (e) {}
     } catch (err) {
-      console.error("Profile update exception:", err);
+      console.warn("Profile update warning:", err);
     }
 
-    // 2. Update client session & broadcast to listeners (ProfilePage, Navbar, Dashboard)
+    // 3. Update client session & broadcast to listeners (ProfilePage, Navbar, Dashboard)
     setClientDemoSession(updatedUser);
     onProfileUpdated(updatedUser);
-    toast.success("Profile and avatar updated successfully!");
+    toast.success("Profile and campus updated successfully!");
     setSaving(false);
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold flex items-center gap-2">
             <Edit3 className="h-4 w-4 text-primary dark:text-teal-400" />
             Edit Student Profile
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Update your profile details, avatar photo, and monthly budget for rent calculations.
+            Update your verified student details, actual campus, department, and contact information.
           </DialogDescription>
         </DialogHeader>
 
@@ -223,13 +309,6 @@ export function EditProfileDialog({
                     width={64}
                     height={64}
                     className="aspect-square w-full h-full max-w-full max-h-full object-cover rounded-full select-none block"
-                    style={{
-                      width: "64px",
-                      height: "64px",
-                      maxWidth: "64px",
-                      maxHeight: "64px",
-                      objectFit: "cover"
-                    }}
                   />
                 ) : (
                   <AvatarFallback className="bg-primary text-white font-extrabold text-lg">
@@ -254,7 +333,6 @@ export function EditProfileDialog({
                 Profile Photo
               </span>
 
-              {/* Hidden device file input */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -312,37 +390,189 @@ export function EditProfileDialog({
             </div>
           </div>
 
+          {/* KYC Status Indicator in Edit Dialog */}
+          <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              {user.verification_status === "verified" ? (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+              ) : (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+                  <ShieldAlert className="h-4 w-4" />
+                </div>
+              )}
+              <div>
+                <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                  {user.verification_status === "verified" ? "Aadhaar KYC Verified" : "Identity KYC Unverified"}
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  {user.verification_status === "verified"
+                    ? `Aadhaar ending in •••• ${user.aadhaar_last4 || "XXXX"}`
+                    : "Verify your Aadhaar card to receive the Verified Student tag"}
+                </span>
+              </div>
+            </div>
+
+            {user.verification_status !== "verified" && onRequestKyc && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  onOpenChange(false);
+                  onRequestKyc();
+                }}
+                className="h-7 text-xs font-bold border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+              >
+                Verify KYC
+              </Button>
+            )}
+          </div>
+
           {/* Full Name */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
               Full Name *
             </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={user.name || "Enter your full name"}
+              placeholder="e.g. Bilal Ashiq"
               className="bg-white dark:bg-slate-800 font-medium"
               required
             />
           </div>
 
-          {/* Email (Read-only verified student email) */}
+          {/* University / Campus Selection */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-              <span>Campus Email</span>
-              <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">Verified Domain</span>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+              <span>Campus / University *</span>
+              <span className="text-[10px] text-primary dark:text-teal-400 font-semibold">Your Actual Campus</span>
+            </label>
+            <select
+              value={isCustomCampus ? "OTHER" : MAJOR_CAMPUSES.find((c) => c.name === campusName)?.id || "OTHER"}
+              onChange={handleCampusSelectChange}
+              className="w-full h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-slate-100"
+            >
+              {MAJOR_CAMPUSES.map((camp) => (
+                <option key={camp.id} value={camp.id}>
+                  {camp.name} ({camp.city})
+                </option>
+              ))}
+              <option value="OTHER">Other / Custom University or College...</option>
+            </select>
+          </div>
+
+          {/* If Custom Campus */}
+          {isCustomCampus && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Custom University / College Name *
+              </label>
+              <Input
+                value={campusName}
+                onChange={(e) => setCampusName(e.target.value)}
+                placeholder="Enter your college or university name"
+                required
+                className="bg-white dark:bg-slate-800 text-xs font-medium"
+              />
+            </div>
+          )}
+
+          {/* Campus City / State */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Campus City & State *
             </label>
             <Input
-              value={user.email}
-              disabled
-              className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 cursor-not-allowed text-xs"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="e.g. Phagwara, Punjab"
+              required
+              className="bg-white dark:bg-slate-800 text-xs font-medium"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Department / Program */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Department / Course
+              </label>
+              <select
+                value={isCustomDept ? "OTHER" : department}
+                onChange={(e) => {
+                  if (e.target.value === "OTHER") {
+                    setIsCustomDept(true);
+                    setDepartment("");
+                  } else {
+                    setIsCustomDept(false);
+                    setDepartment(e.target.value);
+                  }
+                }}
+                className="w-full h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-slate-100"
+              >
+                {POPULAR_DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+                <option value="OTHER">Other Department / Program...</option>
+              </select>
+              {isCustomDept && (
+                <Input
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="e.g. B.Tech Artificial Intelligence"
+                  className="mt-1 h-9 text-xs bg-white dark:bg-slate-800"
+                />
+              )}
+            </div>
+
+            {/* Year of Study */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Year of Study / Batch
+              </label>
+              <select
+                value={yearOfStudy}
+                onChange={(e) => setYearOfStudy(e.target.value)}
+                className="w-full h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-slate-100"
+              >
+                {STUDY_YEAR_OPTIONS.map((yr) => (
+                  <option key={yr} value={yr}>
+                    {yr}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Phone / WhatsApp Number */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Phone / WhatsApp Number
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                className="pl-9 bg-white dark:bg-slate-800 text-xs font-medium"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400">
+              Shared with confirmed roommate matches and item buyers for easy campus meetups.
+            </p>
           </div>
 
           {/* Monthly Allowance / Income */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              Monthly Allowance / Income (₹ INR)
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Monthly Allowance / Budget (₹ INR)
             </label>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-sm font-semibold text-slate-400">
@@ -356,8 +586,8 @@ export function EditProfileDialog({
                 className="pl-7 bg-white dark:bg-slate-800 font-semibold"
               />
             </div>
-            <p className="text-[11px] text-slate-400">
-              Used by the Rent Health Engine on the dashboard and room listings to benchmark affordability.
+            <p className="text-[10px] text-slate-400">
+              Used by the Rent Health Engine to benchmark housing affordability.
             </p>
           </div>
 
@@ -374,9 +604,9 @@ export function EditProfileDialog({
             <Button
               type="submit"
               disabled={saving}
-              className="bg-primary hover:bg-primary/90 text-white text-xs font-semibold"
+              className="bg-primary hover:bg-primary/90 text-white text-xs font-bold"
             >
-              {saving ? "Saving..." : "Save Changes"}
+              {saving ? "Saving Changes..." : "Save Profile"}
             </Button>
           </DialogFooter>
         </form>

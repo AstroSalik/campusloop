@@ -12,8 +12,8 @@ export interface UserLocationData {
 const LOCATION_STORAGE_KEY = "campusloop_current_location";
 
 export const DEFAULT_CAMPUS_LOCATION: UserLocationData = {
-  label: "Demo Campus (Sopore)",
-  subLabel: "Hostel 3 & Main Gate Area",
+  label: "Lovely Professional University (LPU)",
+  subLabel: "Main Gate & Law Gate Area, Phagwara",
   source: "preset",
   updatedAt: new Date().toISOString(),
 };
@@ -111,7 +111,7 @@ export async function fetchCurrentGPSLocation(): Promise<UserLocationData> {
           latitude,
           longitude,
           label: `GPS Location (${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°)`,
-          subLabel: "Near Demo Campus",
+          subLabel: "Campus Living Area",
           source: "gps",
           updatedAt: new Date().toISOString(),
         };

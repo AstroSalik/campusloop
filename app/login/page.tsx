@@ -5,15 +5,19 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { 
+  Building2,
   Compass, 
   Eye, 
   EyeOff, 
+  GraduationCap,
   Lock, 
   LogIn, 
   Mail, 
+  Phone,
   ShieldCheck, 
   User, 
-  UserPlus 
+  UserPlus, 
+  Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -26,8 +30,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { setClientDemoSession } from "@/lib/auth";
+import { DemoUser, setClientDemoSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
+import { MAJOR_CAMPUSES, POPULAR_DEPARTMENTS, STUDY_YEAR_OPTIONS } from "@/lib/campuses";
 
 function LoginContent() {
   const router = useRouter();
@@ -47,6 +52,7 @@ function LoginContent() {
     }
   }, [modeParam]);
 
+  // Basic Account Credentials
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,6 +61,34 @@ function LoginContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Student & Campus Details for Signup
+  const [campusSelect, setCampusSelect] = useState(MAJOR_CAMPUSES[0].id);
+  const [isCustomCampus, setIsCustomCampus] = useState(false);
+  const [customCampusName, setCustomCampusName] = useState("");
+  const [city, setCity] = useState(MAJOR_CAMPUSES[0].city + ", " + MAJOR_CAMPUSES[0].state);
+  const [department, setDepartment] = useState(POPULAR_DEPARTMENTS[0]);
+  const [isCustomDept, setIsCustomDept] = useState(false);
+  const [customDept, setCustomDept] = useState("");
+  const [yearOfStudy, setYearOfStudy] = useState(STUDY_YEAR_OPTIONS[0]);
+  const [phone, setPhone] = useState("");
+  const [monthlyAllowance, setMonthlyAllowance] = useState("15000");
+
+  const handleCampusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setCampusSelect(val);
+    if (val === "OTHER") {
+      setIsCustomCampus(true);
+      setCustomCampusName("");
+      setCity("");
+    } else {
+      setIsCustomCampus(false);
+      const found = MAJOR_CAMPUSES.find((c) => c.id === val);
+      if (found) {
+        setCity(`${found.city}, ${found.state}`);
+      }
+    }
+  };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +131,11 @@ function LoginContent() {
         toast.error("Passwords do not match. Please re-check.");
         return;
       }
+
+      if (isCustomCampus && !customCampusName.trim()) {
+        toast.error("Please enter your college or university campus name.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -115,32 +154,45 @@ function LoginContent() {
         }
 
         if (data.user) {
+          let cloudUser: any = null;
+          try {
+            const { data: dbUser } = await supabase
+              .from("users")
+              .select("name, monthly_income, campus_name, city, department, year_of_study, phone, verification_status, aadhaar_last4, avatar")
+              .eq("id", data.user.id)
+              .maybeSingle();
+            cloudUser = dbUser;
+          } catch (e) {}
+
+          const meta = data.user.user_metadata || {};
           const userName =
-            data.user.user_metadata?.full_name ||
-            data.user.user_metadata?.name ||
+            cloudUser?.name ||
+            meta.full_name ||
+            meta.name ||
             email.split("@")[0];
 
-          // Ensure profile exists in public.users via authenticated session
-          try {
-            await fetch("/api/auth/sync-profile", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: userName,
-                campus_id: "00000000-0000-0000-0000-000000000001",
-              }),
-            });
-          } catch (syncErr) {
-            console.warn("Profile sync warning:", syncErr);
-          }
+          const resolvedCampus = cloudUser?.campus_name || meta.campus_name || "Lovely Professional University (LPU)";
+          const resolvedCity = cloudUser?.city || meta.city || "Phagwara, Punjab";
+          const resolvedDept = cloudUser?.department || meta.department;
+          const resolvedYear = cloudUser?.year_of_study || meta.year_of_study;
+          const resolvedPhone = cloudUser?.phone || meta.phone;
+          const resolvedVerification = cloudUser?.verification_status || meta.verification_status || (data.user.email === "astrosalikriyaz@gmail.com" ? "verified" : "unverified");
+          const resolvedIncome = cloudUser?.monthly_income != null ? Number(cloudUser.monthly_income) : (meta.monthly_income != null ? Number(meta.monthly_income) : 15000);
 
-          const studentUser = {
+          const studentUser: DemoUser = {
             id: data.user.id,
             name: userName,
             email: data.user.email || email.trim().toLowerCase(),
             campus_id: "00000000-0000-0000-0000-000000000001",
-            monthly_income: 15000,
-            avatar: data.user.user_metadata?.avatar || null,
+            campus_name: resolvedCampus,
+            city: resolvedCity,
+            department: resolvedDept,
+            year_of_study: resolvedYear,
+            phone: resolvedPhone,
+            verification_status: resolvedVerification,
+            aadhaar_last4: cloudUser?.aadhaar_last4 || meta.aadhaar_last4,
+            monthly_income: resolvedIncome,
+            avatar: cloudUser?.avatar || meta.avatar || null,
             initials: userName
               .split(" ")
               .map((n: string) => n[0])
@@ -156,7 +208,14 @@ function LoginContent() {
           return;
         }
       } else {
-        // Sign Up Flow via Server Endpoint (auto-confirmed + synced to public.users)
+        // Sign Up Flow with Comprehensive Onboarding
+        const resolvedCampusName = isCustomCampus
+          ? customCampusName.trim()
+          : MAJOR_CAMPUSES.find((c) => c.id === campusSelect)?.name || "Lovely Professional University (LPU)";
+        
+        const resolvedDept = isCustomDept ? customDept.trim() : department;
+        const resolvedIncome = Number(monthlyAllowance) || 15000;
+
         const signupRes = await fetch("/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -164,6 +223,12 @@ function LoginContent() {
             name: name.trim(),
             email: email.trim().toLowerCase(),
             password: password,
+            campus_name: resolvedCampusName,
+            city: city.trim(),
+            department: resolvedDept,
+            year_of_study: yearOfStudy,
+            phone: phone.trim(),
+            monthly_income: resolvedIncome,
           }),
         });
 
@@ -185,12 +250,18 @@ function LoginContent() {
           return;
         }
 
-        const newStudentUser = {
+        const newStudentUser: DemoUser = {
           id: signInData.user.id,
           name: name.trim(),
           email: email.trim().toLowerCase(),
           campus_id: "00000000-0000-0000-0000-000000000001",
-          monthly_income: 15000,
+          campus_name: resolvedCampusName,
+          city: city.trim(),
+          department: resolvedDept,
+          year_of_study: yearOfStudy,
+          phone: phone.trim(),
+          verification_status: "unverified",
+          monthly_income: resolvedIncome,
           avatar: null,
           initials: name
             .trim()
@@ -202,7 +273,7 @@ function LoginContent() {
           role_desc: "Student Account",
         };
         setClientDemoSession(newStudentUser);
-        toast.success(`Account created successfully! Welcome to CampusLoop, ${name}!`);
+        toast.success(`Welcome to CampusLoop, ${name}! Your account is created.`);
         router.push(redirectParam);
         router.refresh();
         return;
@@ -226,13 +297,15 @@ function LoginContent() {
               {authMode === "signin" ? "Sign In to CampusLoop" : "Join CampusLoop"}
             </CardTitle>
             <CardDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-              One account for campus housing, roommates, rent splitting & marketplace.
+              {authMode === "signin" 
+                ? "Sign in to manage your campus housing, marketplace listings & roommate requests." 
+                : "Create your student account with your actual campus & academic profile."}
             </CardDescription>
           </div>
           <div className="flex justify-center">
             <Badge variant="outline" className="gap-1.5 py-1 px-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs border-slate-200 dark:border-slate-700">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              LPU & CampusLoop Network
+              Verified Campus Network
             </Badge>
           </div>
         </CardHeader>
@@ -266,13 +339,13 @@ function LoginContent() {
             </button>
           </div>
 
-          {/* Email / Password Form */}
+          {/* Form */}
           <form onSubmit={handleAuthSubmit} className="space-y-3.5">
             {/* Full Name for Sign Up */}
             {authMode === "signup" && (
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Full Name
+                  Full Name *
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -291,13 +364,13 @@ function LoginContent() {
             {/* Campus Email Address */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Campus / Student Email
+                Student Email Address *
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <Input
                   type="email"
-                  placeholder="student@campus.edu or your.email@gmail.com"
+                  placeholder="student@campus.edu or personal@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -310,7 +383,7 @@ function LoginContent() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Password
+                  Password *
                 </label>
                 {authMode === "signup" && (
                   <span className="text-[10px] text-slate-500 dark:text-slate-400">
@@ -346,7 +419,7 @@ function LoginContent() {
             {authMode === "signup" && (
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Confirm Password
+                  Confirm Password *
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -369,6 +442,161 @@ function LoginContent() {
                       <Eye className="h-4 w-4" />
                     )}
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Extended Student Information (Only shown on Signup) */}
+            {authMode === "signup" && (
+              <div className="pt-2 space-y-3.5 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary dark:text-teal-400" />
+                  <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[10px]">
+                    Campus & Academic Profile
+                  </span>
+                </div>
+
+                {/* Campus Selection */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Your Campus / University *
+                  </label>
+                  <select
+                    value={campusSelect}
+                    onChange={handleCampusChange}
+                    className="w-full h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-slate-100"
+                  >
+                    {MAJOR_CAMPUSES.map((camp) => (
+                      <option key={camp.id} value={camp.id}>
+                        {camp.name} ({camp.city})
+                      </option>
+                    ))}
+                    <option value="OTHER">Other / Custom University or College...</option>
+                  </select>
+                </div>
+
+                {/* If Custom Campus */}
+                {isCustomCampus && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Enter College / Campus Name *
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. SRM University or IIT Madras"
+                      value={customCampusName}
+                      onChange={(e) => setCustomCampusName(e.target.value)}
+                      required
+                      className="h-10 text-xs border-slate-200 dark:border-slate-700"
+                    />
+                  </div>
+                )}
+
+                {/* Campus City / State */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Campus City & State *
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="e.g. Phagwara, Punjab"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    required
+                    className="h-10 text-xs border-slate-200 dark:border-slate-700"
+                  />
+                </div>
+
+                {/* Department & Year of Study Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Department / Course
+                    </label>
+                    <select
+                      value={isCustomDept ? "OTHER" : department}
+                      onChange={(e) => {
+                        if (e.target.value === "OTHER") {
+                          setIsCustomDept(true);
+                          setCustomDept("");
+                        } else {
+                          setIsCustomDept(false);
+                          setDepartment(e.target.value);
+                        }
+                      }}
+                      className="w-full h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-slate-100"
+                    >
+                      {POPULAR_DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                      <option value="OTHER">Other Department...</option>
+                    </select>
+                    {isCustomDept && (
+                      <Input
+                        type="text"
+                        placeholder="e.g. B.Sc Physics"
+                        value={customDept}
+                        onChange={(e) => setCustomDept(e.target.value)}
+                        className="mt-1 h-9 text-xs"
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Year of Study
+                    </label>
+                    <select
+                      value={yearOfStudy}
+                      onChange={(e) => setYearOfStudy(e.target.value)}
+                      className="w-full h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-slate-100"
+                    >
+                      {STUDY_YEAR_OPTIONS.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Phone Number */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Phone / WhatsApp Number
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="pl-9 h-10 text-xs border-slate-200 dark:border-slate-700"
+                    />
+                  </div>
+                </div>
+
+                {/* Monthly Allowance */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                    <span>Monthly Allowance / Budget (₹ INR)</span>
+                    <span className="text-[10px] text-slate-400">For Rent Health calculations</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-sm font-semibold text-slate-400">
+                      ₹
+                    </span>
+                    <Input
+                      type="number"
+                      placeholder="15000"
+                      value={monthlyAllowance}
+                      onChange={(e) => setMonthlyAllowance(e.target.value)}
+                      className="pl-7 h-10 text-xs border-slate-200 dark:border-slate-700 font-semibold"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -416,7 +644,7 @@ function LoginContent() {
               ) : authMode === "signin" ? (
                 "Sign In"
               ) : (
-                "Create Account & Get Started"
+                "Create Account & Join Campus"
               )}
             </Button>
           </form>
@@ -425,7 +653,7 @@ function LoginContent() {
         <CardFooter className="flex flex-col space-y-2 border-t border-slate-100 dark:border-slate-800 p-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
           <div className="flex items-center justify-center gap-1.5 text-slate-500 dark:text-slate-400">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-            <span>Encrypted Supabase Authentication & Row Level Security</span>
+            <span>Encrypted Authentication & Row Level Security</span>
           </div>
         </CardFooter>
       </Card>

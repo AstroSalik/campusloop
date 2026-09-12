@@ -13,9 +13,18 @@ export const DEMO_USERS: DemoUser[] = [
     name: "Salik Riyaz",
     email: "astrosalikriyaz@gmail.com",
     campus_id: DEMO_CAMPUS_ID,
+    campus_name: "Lovely Professional University (LPU)",
+    city: "Phagwara, Punjab",
+    department: "Computer Science & Engineering (CSE)",
+    year_of_study: "4th Year (Senior / Final Year)",
+    phone: "+91 98765 43210",
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
     initials: "SR",
     role_desc: "Student Account (Primary)",
+    verification_status: "verified",
+    aadhaar_last4: "4892",
+    kyc_doc_type: "Aadhaar Card",
+    kyc_verified_at: "2026-08-15T10:00:00.000Z",
   },
 ];
 
@@ -36,10 +45,11 @@ export function setClientDemoSession(user: DemoUser | User) {
   if (typeof window !== "undefined") {
     const demoUser: DemoUser = {
       ...user,
+      verification_status: user.verification_status || "unverified",
       initials:
         "initials" in user
           ? (user as DemoUser).initials
-          : user.name
+          : (user.name || "Student")
               .split(" ")
               .map((n) => n[0])
               .join("")
@@ -65,6 +75,7 @@ export function getClientDemoSession(): DemoUser | null {
       return {
         ...(matched || {}),
         ...parsed,
+        verification_status: parsed.verification_status || matched?.verification_status || "unverified",
         initials:
           parsed.initials ||
           (parsed.name

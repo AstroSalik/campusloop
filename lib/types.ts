@@ -19,6 +19,17 @@ export interface User {
   monthly_income?: number | null;
   created_at?: string;
   campus?: Campus;
+  campus_name?: string;
+  city?: string;
+  department?: string;
+  year_of_study?: string;
+  phone?: string;
+  student_id?: string;
+  verification_status?: "unverified" | "pending" | "verified";
+  kyc_doc_type?: string;
+  aadhaar_last4?: string;
+  kyc_submitted_at?: string;
+  kyc_verified_at?: string;
 }
 
 export type ListingType = "buy" | "sell" | "rent";

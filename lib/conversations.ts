@@ -158,7 +158,7 @@ export function getConversations(): StoredConversation[] {
 
           const cleanedSubtitle =
             c.subtitle?.includes("undefined") || c.subtitle === "Campus • ₹"
-              ? "Demo Campus Student"
+              ? "Verified Campus Student"
               : c.subtitle;
 
           const cleanedMessages = (c.messages || []).map((m) => {

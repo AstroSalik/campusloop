@@ -20,7 +20,18 @@ export async function POST(req: NextRequest) {
 
     // 2. Extract allowed update fields from body (ignoring any user-supplied ID or email)
     const body = await req.json().catch(() => ({}));
-    const { name, campus_id, monthly_income } = body;
+    const { 
+      name, 
+      campus_id, 
+      campus_name, 
+      city, 
+      department, 
+      year_of_study, 
+      phone, 
+      monthly_income, 
+      avatar,
+      verification_status 
+    } = body;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -37,7 +48,7 @@ export async function POST(req: NextRequest) {
     });
 
     const defaultCampusId =
-      campus_id || "00000000-0000-0000-0000-000000000001";
+      campus_id || sessionUser.user_metadata?.campus_id || "00000000-0000-0000-0000-000000000001";
     const userName =
       name ||
       sessionUser.user_metadata?.full_name ||
@@ -45,26 +56,77 @@ export async function POST(req: NextRequest) {
       sessionUser.email?.split("@")[0] ||
       "Student";
 
-    // 3. Upsert into public.users using the verified sessionUser.id and sessionUser.email
-    const { data, error } = await supabaseAdmin
-      .from("users")
-      .upsert(
-        {
-          id: sessionUser.id,
-          name: userName,
-          email: (sessionUser.email || "").trim().toLowerCase(),
-          campus_id: defaultCampusId,
-          monthly_income:
-            monthly_income !== undefined ? monthly_income : null,
-        },
-        { onConflict: "id" }
-      )
-      .select()
-      .single();
+    const resolvedCampusName = campus_name || sessionUser.user_metadata?.campus_name || "Lovely Professional University (LPU)";
+    const resolvedCity = city || sessionUser.user_metadata?.city || "";
+    const resolvedDept = department || sessionUser.user_metadata?.department || "";
+    const resolvedYear = year_of_study || sessionUser.user_metadata?.year_of_study || "";
+    const resolvedPhone = phone || sessionUser.user_metadata?.phone || "";
+    const resolvedVerification = verification_status || sessionUser.user_metadata?.verification_status || "unverified";
 
-    if (error) {
-      console.error("Error upserting public user profile:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    // Update user_metadata in Auth
+    try {
+      await supabaseAdmin.auth.admin.updateUserById(sessionUser.id, {
+        user_metadata: {
+          full_name: userName,
+          name: userName,
+          campus_name: resolvedCampusName,
+          city: resolvedCity,
+          department: resolvedDept,
+          year_of_study: resolvedYear,
+          phone: resolvedPhone,
+          verification_status: resolvedVerification,
+          ...(avatar !== undefined ? { avatar } : {}),
+        },
+      });
+    } catch (e) {}
+
+    // 3. Upsert into public.users using the verified sessionUser.id and sessionUser.email
+    let data = null;
+    try {
+      const res = await supabaseAdmin
+        .from("users")
+        .upsert(
+          {
+            id: sessionUser.id,
+            name: userName,
+            email: (sessionUser.email || "").trim().toLowerCase(),
+            campus_id: defaultCampusId,
+            campus_name: resolvedCampusName,
+            city: resolvedCity,
+            department: resolvedDept,
+            year_of_study: resolvedYear,
+            phone: resolvedPhone,
+            avatar: avatar !== undefined ? avatar : null,
+            verification_status: resolvedVerification,
+            monthly_income:
+              monthly_income !== undefined ? monthly_income : null,
+          },
+          { onConflict: "id" }
+        )
+        .select()
+        .single();
+      data = res.data;
+    } catch (upsertErr) {
+      // Fallback in case extended columns aren't yet added to table
+      try {
+        const fallbackRes = await supabaseAdmin
+          .from("users")
+          .upsert(
+            {
+              id: sessionUser.id,
+              name: userName,
+              email: (sessionUser.email || "").trim().toLowerCase(),
+              campus_id: defaultCampusId,
+              avatar: avatar !== undefined ? avatar : null,
+              monthly_income:
+                monthly_income !== undefined ? monthly_income : null,
+            },
+            { onConflict: "id" }
+          )
+          .select()
+          .single();
+        data = fallbackRes.data;
+      } catch (e) {}
     }
 
     return NextResponse.json({ success: true, user: data });

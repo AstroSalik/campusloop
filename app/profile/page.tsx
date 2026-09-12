@@ -11,13 +11,16 @@ import {
   Edit3, 
   ExternalLink, 
   FileText,
+  GraduationCap,
   Home, 
   Lock,
   LogOut, 
   Mail, 
   Package, 
+  Phone,
   Plus, 
   Receipt,
+  ShieldAlert,
   ShieldCheck, 
   Sparkles, 
   Store, 
@@ -53,6 +56,7 @@ import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EditListingDialog } from "@/components/marketplace/EditListingDialog";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
+import { KycVerificationDialog } from "@/components/profile/KycVerificationDialog";
 import { createClient } from "@/lib/supabase/client";
 import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
@@ -66,6 +70,7 @@ export default function ProfilePage() {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [editingListing, setEditingListing] = useState<any | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isKycOpen, setIsKycOpen] = useState(false);
 
   const loadUserData = async (user: DemoUser) => {
     const allListings = getListings();
@@ -95,11 +100,18 @@ export default function ProfilePage() {
           let cloudIncome: number | undefined = undefined;
           let cloudName: string | undefined = undefined;
           let cloudAvatar: string | undefined = undefined;
+          let cloudCampusName: string | undefined = undefined;
+          let cloudCity: string | undefined = undefined;
+          let cloudDept: string | undefined = undefined;
+          let cloudYear: string | undefined = undefined;
+          let cloudPhone: string | undefined = undefined;
+          let cloudVerification: "unverified" | "pending" | "verified" | undefined = undefined;
+          let cloudAadhaarLast4: string | undefined = undefined;
 
           try {
             const { data: dbUser } = await supabase
               .from("users")
-              .select("monthly_income, name, email, avatar")
+              .select("monthly_income, name, email, avatar, campus_id, campus_name, city, department, year_of_study, phone, verification_status, aadhaar_last4")
               .eq("id", user.id)
               .maybeSingle();
 
@@ -107,16 +119,63 @@ export default function ProfilePage() {
               if (dbUser.monthly_income != null) cloudIncome = Number(dbUser.monthly_income);
               if (dbUser.name) cloudName = dbUser.name;
               if (dbUser.avatar) cloudAvatar = dbUser.avatar;
+              if (dbUser.campus_name) cloudCampusName = dbUser.campus_name;
+              if (dbUser.city) cloudCity = dbUser.city;
+              if (dbUser.department) cloudDept = dbUser.department;
+              if (dbUser.year_of_study) cloudYear = dbUser.year_of_study;
+              if (dbUser.phone) cloudPhone = dbUser.phone;
+              if (dbUser.verification_status) cloudVerification = dbUser.verification_status as any;
+              if (dbUser.aadhaar_last4) cloudAadhaarLast4 = dbUser.aadhaar_last4;
             }
           } catch (e) {}
 
-          const resolvedIncome = cloudIncome != null ? cloudIncome : (clientSession?.monthly_income != null ? clientSession.monthly_income : undefined);
+          const resolvedIncome = cloudIncome != null 
+            ? cloudIncome 
+            : (clientSession?.monthly_income != null ? clientSession.monthly_income : 15000);
+
+          const resolvedCampusName = cloudCampusName 
+            || user.user_metadata?.campus_name 
+            || clientSession?.campus_name 
+            || (user.email === "astrosalikriyaz@gmail.com" ? "Lovely Professional University (LPU)" : "Lovely Professional University (LPU)");
+
+          const resolvedCity = cloudCity 
+            || user.user_metadata?.city 
+            || clientSession?.city 
+            || "Phagwara, Punjab";
+
+          const resolvedDept = cloudDept 
+            || user.user_metadata?.department 
+            || clientSession?.department;
+
+          const resolvedYear = cloudYear 
+            || user.user_metadata?.year_of_study 
+            || clientSession?.year_of_study;
+
+          const resolvedPhone = cloudPhone 
+            || user.user_metadata?.phone 
+            || clientSession?.phone;
+
+          const resolvedVerification = cloudVerification 
+            || user.user_metadata?.verification_status 
+            || clientSession?.verification_status 
+            || (user.email === "astrosalikriyaz@gmail.com" ? "verified" : "unverified");
+
+          const resolvedAadhaarLast4 = cloudAadhaarLast4 
+            || user.user_metadata?.aadhaar_last4 
+            || clientSession?.aadhaar_last4;
 
           const activeUser: DemoUser = {
             id: user.id,
             name: cloudName || clientSession?.name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Student",
             email: user.email || clientSession?.email || "",
             campus_id: clientSession?.campus_id || "00000000-0000-0000-0000-000000000001",
+            campus_name: resolvedCampusName,
+            city: resolvedCity,
+            department: resolvedDept,
+            year_of_study: resolvedYear,
+            phone: resolvedPhone,
+            verification_status: resolvedVerification,
+            aadhaar_last4: resolvedAadhaarLast4,
             monthly_income: resolvedIncome,
             avatar: cloudAvatar || clientSession?.avatar || user.user_metadata?.avatar || null,
             initials: (cloudName || clientSession?.name || user.user_metadata?.full_name || user.email || "S")
@@ -225,19 +284,54 @@ export default function ProfilePage() {
                 <Badge variant="outline" className="bg-white dark:bg-slate-900 text-primary dark:text-teal-300 border-primary/30 dark:border-teal-500/40 text-xs font-bold">
                   {currentUser.role_desc}
                 </Badge>
-                <Badge variant="secondary" className="bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 text-[10px] gap-1">
-                  <ShieldCheck className="h-3 w-3" />
-                  Verified Student
-                </Badge>
+                {currentUser.verification_status === "verified" ? (
+                  <Badge variant="secondary" className="bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 text-[10px] gap-1 font-bold">
+                    <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                    Verified Student
+                  </Badge>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsKycOpen(true)}
+                    title="Click to verify your profile with Aadhaar KYC"
+                    className="inline-flex items-center gap-1.5 py-0.5 px-2.5 rounded-full text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 transition-all shadow-xs group"
+                  >
+                    <ShieldAlert className="h-3 w-3 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                    <span>Verify Profile (Aadhaar KYC)</span>
+                  </button>
+                )}
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
                 <span>{currentUser.email}</span>
                 <span>•</span>
                 <Building2 className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
-                <span>Demo Campus (Sopore)</span>
-                <span>•</span>
-                <span className="text-slate-500 dark:text-slate-400">Member since Aug 2026</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100">
+                  {currentUser.campus_name || "Lovely Professional University (LPU)"}
+                </span>
+                {currentUser.city && (
+                  <span className="text-slate-500 dark:text-slate-400">({currentUser.city})</span>
+                )}
+                {currentUser.department && (
+                  <>
+                    <span>•</span>
+                    <GraduationCap className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
+                    <span>{currentUser.department}</span>
+                  </>
+                )}
+                {currentUser.year_of_study && (
+                  <>
+                    <span>•</span>
+                    <span className="text-slate-500 dark:text-slate-400">{currentUser.year_of_study}</span>
+                  </>
+                )}
+                {currentUser.phone && (
+                  <>
+                    <span>•</span>
+                    <Phone className="h-3.5 w-3.5 text-primary dark:text-teal-400" />
+                    <span>{currentUser.phone}</span>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -263,6 +357,38 @@ export default function ProfilePage() {
             </Button>
           </div>
         </div>
+
+        {/* Actionable Prompt Card for Unverified Users */}
+        {currentUser.verification_status !== "verified" && (
+          <div className="p-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/50 dark:via-slate-850 dark:to-transparent border-t border-amber-200/60 dark:border-amber-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <ShieldAlert className="h-4 w-4" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Aadhaar Student KYC Verification Required
+                  </h4>
+                  <Badge variant="outline" className="text-[10px] font-bold text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700/60 py-0 px-1.5">
+                    Not Verified
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
+                  Verify your student identity using your 12-digit Aadhaar card to unlock the verified badge across all marketplace listings, roommate posts, and rent agreements.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setIsKycOpen(true)}
+              className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-1.5 h-8 shadow-xs"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Verify with Aadhaar
+            </Button>
+          </div>
+        )}
 
         {/* Quick Allowance Summary */}
         <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 gap-4 bg-white dark:bg-slate-800/60">
@@ -579,7 +705,20 @@ export default function ProfilePage() {
           user={currentUser}
           open={isEditingProfile}
           onOpenChange={setIsEditingProfile}
+          onRequestKyc={() => setIsKycOpen(true)}
           onProfileUpdated={(updated) => {
+            setCurrentUser(updated);
+          }}
+        />
+      )}
+
+      {/* Aadhaar KYC Verification Modal */}
+      {currentUser && isKycOpen && (
+        <KycVerificationDialog
+          user={currentUser}
+          open={isKycOpen}
+          onOpenChange={setIsKycOpen}
+          onVerified={(updated) => {
             setCurrentUser(updated);
           }}
         />

@@ -4,11 +4,28 @@ import { createClient } from "@supabase/supabase-js";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { email, password, name } = body;
+    const { 
+      email, 
+      password, 
+      name,
+      campus_name,
+      city,
+      department,
+      year_of_study,
+      phone,
+      student_id,
+      monthly_income,
+    } = body;
 
     const cleanEmail = (email || "").trim().toLowerCase();
     const cleanPassword = typeof password === "string" ? password : "";
     const userName = (name || cleanEmail.split("@")[0] || "Student").trim();
+    const resolvedCampusName = (campus_name || "Lovely Professional University (LPU)").trim();
+    const resolvedCity = (city || "").trim();
+    const resolvedDept = (department || "").trim();
+    const resolvedYear = (year_of_study || "").trim();
+    const resolvedPhone = (phone || "").trim();
+    const resolvedIncome = monthly_income != null && !isNaN(Number(monthly_income)) ? Number(monthly_income) : 15000;
 
     if (!cleanEmail || !cleanPassword) {
       return NextResponse.json(
@@ -62,7 +79,7 @@ export async function POST(req: NextRequest) {
       auth: { persistSession: false },
     });
 
-    // 1. Create confirmed user in Supabase Auth
+    // 1. Create confirmed user in Supabase Auth with rich metadata
     const { data: authData, error: authError } =
       await supabaseAdmin.auth.admin.createUser({
         email: cleanEmail,
@@ -72,6 +89,14 @@ export async function POST(req: NextRequest) {
           full_name: userName,
           name: userName,
           campus_id: "00000000-0000-0000-0000-000000000001",
+          campus_name: resolvedCampusName,
+          city: resolvedCity,
+          department: resolvedDept,
+          year_of_study: resolvedYear,
+          phone: resolvedPhone,
+          student_id: (student_id || "").trim(),
+          monthly_income: resolvedIncome,
+          verification_status: "unverified",
         },
       });
 
@@ -93,24 +118,43 @@ export async function POST(req: NextRequest) {
 
     const userId = authData.user.id;
 
-    // 2. Insert into public.users atomically
-    const { data: profileData, error: profileError } = await supabaseAdmin
-      .from("users")
-      .upsert(
-        {
-          id: userId,
-          name: userName,
-          email: cleanEmail,
-          campus_id: "00000000-0000-0000-0000-000000000001",
-          monthly_income: null,
-        },
-        { onConflict: "id" }
-      )
-      .select()
-      .single();
-
-    if (profileError) {
-      console.error("Profile creation error in public.users:", profileError);
+    // 2. Insert into public.users atomically (with graceful fallback for columns)
+    try {
+      await supabaseAdmin
+        .from("users")
+        .upsert(
+          {
+            id: userId,
+            name: userName,
+            email: cleanEmail,
+            campus_id: "00000000-0000-0000-0000-000000000001",
+            campus_name: resolvedCampusName,
+            city: resolvedCity,
+            department: resolvedDept,
+            year_of_study: resolvedYear,
+            phone: resolvedPhone,
+            monthly_income: resolvedIncome,
+            verification_status: "unverified",
+          },
+          { onConflict: "id" }
+        );
+    } catch (profileError) {
+      console.warn("Public users table extended insert fallback:", profileError);
+      // Fallback to base columns if schema not yet updated
+      try {
+        await supabaseAdmin
+          .from("users")
+          .upsert(
+            {
+              id: userId,
+              name: userName,
+              email: cleanEmail,
+              campus_id: "00000000-0000-0000-0000-000000000001",
+              monthly_income: resolvedIncome,
+            },
+            { onConflict: "id" }
+          );
+      } catch (e) {}
     }
 
     return NextResponse.json({
@@ -120,7 +164,13 @@ export async function POST(req: NextRequest) {
         name: userName,
         email: cleanEmail,
         campus_id: "00000000-0000-0000-0000-000000000001",
-        monthly_income: null,
+        campus_name: resolvedCampusName,
+        city: resolvedCity,
+        department: resolvedDept,
+        year_of_study: resolvedYear,
+        phone: resolvedPhone,
+        monthly_income: resolvedIncome,
+        verification_status: "unverified",
       },
     });
   } catch (err: any) {

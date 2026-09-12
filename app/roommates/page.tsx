@@ -528,7 +528,9 @@ export default function RoommatesPage() {
                 </div>
 
                 <CardFooter className="p-4 pt-3 border-t border-slate-100 dark:border-slate-700/80 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/70">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Demo Campus</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    {p.user?.campus_name || "Campus Community"}
+                  </span>
                   <Button
                     size="sm"
                     variant={isMe ? "secondary" : "default"}

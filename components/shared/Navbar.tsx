@@ -112,8 +112,12 @@ export function Navbar() {
             >
               <span className={`h-1.5 w-1.5 rounded-full ${detectingLoc ? "bg-amber-500 animate-ping" : "bg-emerald-500 animate-pulse"}`} />
               <MapPin className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
-              <span className="truncate max-w-[150px]" suppressHydrationWarning>
-                {detectingLoc ? "Detecting GPS..." : (locationMounted ? (userLoc?.label || "Demo Campus — Sopore") : "Demo Campus — Sopore")}
+              <span className="truncate max-w-[170px]" suppressHydrationWarning>
+                {detectingLoc 
+                  ? "Detecting GPS..." 
+                  : (currentUser?.campus_name 
+                      ? currentUser.campus_name 
+                      : (locationMounted ? (userLoc?.label && !userLoc.label.includes("Demo Campus") ? userLoc.label : "Lovely Professional University (LPU)") : "Lovely Professional University (LPU)"))}
               </span>
             </button>
           </div>
@@ -245,7 +249,7 @@ export function Navbar() {
         currentUser={currentUser}
         onSignOut={handleSignOut}
         onOpenSearch={() => setIsSearchOpen(true)}
-        locationLabel={locationMounted ? (userLoc?.label || "Demo Campus — Sopore") : "Demo Campus — Sopore"}
+        locationLabel={currentUser?.campus_name || (locationMounted && userLoc?.label && !userLoc.label.includes("Demo Campus") ? userLoc.label : "Lovely Professional University (LPU)")}
         detectingLocation={detectingLoc}
         onDetectLocation={detectLocation}
       />
