@@ -224,6 +224,94 @@ export function saveConversations(convs: StoredConversation[]) {
   }
 }
 
+export async function persistConversationToCloud(
+  conv: StoredConversation,
+  initialMsg?: string,
+  senderId?: string,
+  initialMsgId?: string
+) {
+  try {
+    const res = await fetch("/api/conversations/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation: {
+          id: conv.id,
+          listing_id: conv.listing_id || null,
+          room_id: conv.room_id || null,
+          wanted_listing_id: conv.wanted_listing_id || null,
+          type: conv.type,
+        },
+        members: conv.members.map((m) => ({
+          user_id: m.user_id,
+          role: m.role,
+        })),
+        initialMessage:
+          initialMsg && senderId && initialMsgId
+            ? {
+                id: initialMsgId,
+                sender_id: senderId,
+                content: initialMsg,
+              }
+            : null,
+      }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result.error) {
+      console.warn("[Server Create Conv] API notice, falling back to direct client:", result.error);
+      const supabase = createClient();
+      await supabase.from("conversations").insert({
+        id: conv.id,
+        listing_id: conv.listing_id || null,
+        room_id: conv.room_id || null,
+        wanted_listing_id: conv.wanted_listing_id || null,
+        type: conv.type === "housing_group" || conv.type === "roommate_dm" ? conv.type : "marketplace_dm",
+      });
+      await supabase.from("conversation_members").insert(
+        conv.members.map((m) => ({
+          conversation_id: conv.id,
+          user_id: m.user_id,
+          role: m.role,
+        }))
+      );
+      if (initialMsg && senderId && initialMsgId) {
+        await supabase.from("messages").insert({
+          id: initialMsgId,
+          conversation_id: conv.id,
+          sender_id: senderId,
+          content: initialMsg,
+        });
+      }
+    }
+  } catch (err) {
+    try {
+      const supabase = createClient();
+      await supabase.from("conversations").insert({
+        id: conv.id,
+        listing_id: conv.listing_id || null,
+        room_id: conv.room_id || null,
+        wanted_listing_id: conv.wanted_listing_id || null,
+        type: conv.type === "housing_group" || conv.type === "roommate_dm" ? conv.type : "marketplace_dm",
+      });
+      await supabase.from("conversation_members").insert(
+        conv.members.map((m) => ({
+          conversation_id: conv.id,
+          user_id: m.user_id,
+          role: m.role,
+        }))
+      );
+      if (initialMsg && senderId && initialMsgId) {
+        await supabase.from("messages").insert({
+          id: initialMsgId,
+          conversation_id: conv.id,
+          sender_id: senderId,
+          content: initialMsg,
+        });
+      }
+    } catch (e) {}
+  }
+}
+
 /**
  * Flow A: Marketplace purchase interest -> Unified Chat Auto-Creation
  */
@@ -347,38 +435,7 @@ export async function getOrCreateMarketplaceConversation(
   };
 
   // 4. Persist to Supabase
-  try {
-    const supabase = createClient();
-    const { error: convErr } = await supabase.from("conversations").insert({
-      id: newConvId,
-      listing_id: listingId,
-      type: "marketplace_dm",
-    });
-
-    if (convErr) {
-      console.error("[Supabase Error] Marketplace conversation insert failed:", convErr);
-    }
-
-    const { error: memErr } = await supabase.from("conversation_members").insert([
-      { conversation_id: newConvId, user_id: seller.id, role: "seller" },
-      { conversation_id: newConvId, user_id: buyer.id, role: "buyer" },
-    ]);
-    if (memErr) {
-      console.error("[Supabase Error] Marketplace members insert failed:", memErr);
-    }
-
-    const { error: msgErr } = await supabase.from("messages").insert({
-      id: initialMsgId,
-      conversation_id: newConvId,
-      sender_id: buyer.id,
-      content: initialMsg,
-    });
-    if (msgErr) {
-      console.error("[Supabase Error] Marketplace initial message insert failed:", msgErr);
-    }
-  } catch (e) {
-    console.error("[Network Exception] Supabase marketplace conversation creation:", e);
-  }
+  await persistConversationToCloud(newConv, initialMsg, buyer.id, initialMsgId);
 
   saveConversations([newConv, ...all]);
   return newConvId;
@@ -512,25 +569,8 @@ export async function getOrCreateRoommateConversation(
     ],
   };
 
-  try {
-    const supabase = createClient();
-    await supabase.from("conversations").insert({
-      id: newConvId,
-      type: "roommate_dm",
-    });
-    await supabase.from("conversation_members").insert([
-      { conversation_id: newConvId, user_id: target.id, role: "seller" },
-      { conversation_id: newConvId, user_id: initiator.id, role: "buyer" },
-    ]);
-    await supabase.from("messages").insert({
-      id: initialMsgId,
-      conversation_id: newConvId,
-      sender_id: initiator.id,
-      content: initialMsg,
-    });
-  } catch (e) {
-    console.error("[Network Exception] Roommate conversation creation:", e);
-  }
+  // 4. Persist to Supabase
+  await persistConversationToCloud(newConv, initialMsg, initiator.id, initialMsgId);
 
   saveConversations([newConv, ...all]);
   return newConvId;
@@ -687,26 +727,8 @@ export async function getOrCreateRoomConversation(
     ],
   };
 
-  try {
-    const supabase = createClient();
-    await supabase.from("conversations").insert({
-      id: newConvId,
-      room_id: roomId,
-      type: "housing_group",
-    });
-    await supabase.from("conversation_members").insert([
-      { conversation_id: newConvId, user_id: owner.id, role: "owner" },
-      { conversation_id: newConvId, user_id: user.id, role: "prospective_roommate" },
-    ]);
-    await supabase.from("messages").insert({
-      id: initialMsgId,
-      conversation_id: newConvId,
-      sender_id: user.id,
-      content: initialMsg,
-    });
-  } catch (e) {
-    console.error("[Network Exception] Room conversation creation:", e);
-  }
+  // 4. Persist to Supabase
+  await persistConversationToCloud(newConv, initialMsg, user.id, initialMsgId);
 
   saveConversations([newConv, ...all]);
   return newConvId;
@@ -808,26 +830,8 @@ export async function getOrCreateWantedConversation(
     ],
   };
 
-  try {
-    const supabase = createClient();
-    // Database schema constraint accepts ('marketplace_dm', 'housing_group', 'roommate_dm')
-    await supabase.from("conversations").insert({
-      id: newConvId,
-      type: "marketplace_dm",
-    });
-    await supabase.from("conversation_members").insert([
-      { conversation_id: newConvId, user_id: requester.id, role: "buyer" },
-      { conversation_id: newConvId, user_id: provider.id, role: "seller" },
-    ]);
-    await supabase.from("messages").insert({
-      id: initialMsgId,
-      conversation_id: newConvId,
-      sender_id: provider.id,
-      content: initialMsg,
-    });
-  } catch (e) {
-    console.error("[Network Exception] Wanted conversation creation:", e);
-  }
+  // 4. Persist to Supabase
+  await persistConversationToCloud(newConv, initialMsg, provider.id, initialMsgId);
 
   saveConversations([newConv, ...all]);
   return newConvId;
@@ -859,22 +863,44 @@ export async function sendMessage(conversationId: string, senderId: string, cont
     markConversationAsRead(conversationId, senderId);
   }
 
-  // 2. Real Supabase Database Insert
+  // 2. Real Supabase Database Insert via server API with client fallback
   try {
-    const supabase = createClient();
-    const { error } = await supabase.from("messages").insert({
-      id: messageId,
-      conversation_id: conversationId,
-      sender_id: senderId,
-      content,
-      created_at: timestamp,
+    const res = await fetch("/api/conversations/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: messageId,
+        conversationId,
+        senderId,
+        content,
+        created_at: timestamp,
+      }),
     });
-
-    if (error) {
-      console.error("[Supabase Error] sendMessage failed:", error);
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result.error) {
+      console.warn("[Server Send] API route notice, falling back to direct client:", result.error);
+      const supabase = createClient();
+      await supabase.from("messages").insert({
+        id: messageId,
+        conversation_id: conversationId,
+        sender_id: senderId,
+        content,
+        created_at: timestamp,
+      });
     }
   } catch (err) {
-    console.error("[Network Exception] Supabase sendMessage:", err);
+    try {
+      const supabase = createClient();
+      await supabase.from("messages").insert({
+        id: messageId,
+        conversation_id: conversationId,
+        sender_id: senderId,
+        content,
+        created_at: timestamp,
+      });
+    } catch (e) {
+      console.error("[Network Exception] Supabase sendMessage:", e);
+    }
   }
 
   return newMsg;
@@ -896,8 +922,15 @@ export async function fetchUserConversationsFromSupabase(userId: string): Promis
       .select("conversation_id")
       .eq("user_id", userId);
 
-    if (memErr || !memberRows || memberRows.length === 0) {
+    if (memErr) {
       return getConversations().filter((c) => c.members.some((m) => m.user_id === userId));
+    }
+
+    if (!memberRows || memberRows.length === 0) {
+      // User has no conversations on cloud -> prune local zombie threads for this user
+      const remaining = getConversations().filter((c) => !c.members.some((m) => m.user_id === userId));
+      saveConversations(remaining);
+      return [];
     }
 
     const convIds = Array.from(new Set(memberRows.map((r) => r.conversation_id)));
@@ -925,7 +958,7 @@ export async function fetchUserConversationsFromSupabase(userId: string): Promis
       .in("conversation_id", convIds)
       .order("created_at", { ascending: true });
 
-    // 5. Merge with local storage
+    // 5. Build authoritative cloud list
     const localList = getConversations();
     const localMap = new Map(localList.map((c) => [c.id, c]));
 
@@ -994,14 +1027,7 @@ export async function fetchUserConversationsFromSupabase(userId: string): Promis
       });
     }
 
-    // Keep any local-only conversations that weren't in remote (e.g. offline fallback)
-    for (const localC of localList) {
-      if (!convIds.includes(localC.id)) {
-        mergedList.push(localC);
-      }
-    }
-
-    // Save and return
+    // Save authoritative list to cache
     saveConversations(mergedList);
     return mergedList.filter((c) => c.members.some((m) => m.user_id === userId));
   } catch (err) {
@@ -1161,14 +1187,28 @@ export async function deleteConversation(conversationId: string, userId?: string
     } catch (e) {}
   }
 
-  // 3. Delete from Supabase cloud
+  // 3. Delete from Supabase cloud via server API route
   try {
-    const supabase = createClient();
-    await supabase.from("messages").delete().eq("conversation_id", conversationId);
-    await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
-    await supabase.from("conversations").delete().eq("id", conversationId);
+    const res = await fetch("/api/conversations/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId, userId }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result.error) {
+      console.warn("[Server Delete] Falling back to direct client delete for conversation:", result.error);
+      const supabase = createClient();
+      await supabase.from("messages").delete().eq("conversation_id", conversationId);
+      await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
+      await supabase.from("conversations").delete().eq("id", conversationId);
+    }
   } catch (err) {
-    console.warn("[Supabase] deleteConversation error (proceeded with local deletion):", err);
+    try {
+      const supabase = createClient();
+      await supabase.from("messages").delete().eq("conversation_id", conversationId);
+      await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
+      await supabase.from("conversations").delete().eq("id", conversationId);
+    } catch (e) {}
   }
 
   // 4. Dispatch events to notify UI components

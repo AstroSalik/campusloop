@@ -223,16 +223,24 @@ export default function ProfilePage() {
     router.refresh();
   };
 
-  const handleDeleteListing = (id: string, title: string) => {
-    deleteListing(id);
-    setMyListings((prev) => prev.filter((item) => item.id !== id));
-    toast.success(`Deleted listing: "${title}"`);
+  const handleDeleteListing = async (id: string, title: string) => {
+    try {
+      await deleteListing(id);
+      setMyListings((prev) => prev.filter((item) => item.id !== id));
+      toast.success(`Deleted listing: "${title}"`);
+    } catch (e) {
+      toast.error("Failed to delete listing.");
+    }
   };
 
-  const handleDeleteRoom = (id: string, title: string) => {
-    deleteRoom(id);
-    setMyRooms((prev) => prev.filter((room) => room.id !== id));
-    toast.success(`Deleted room accommodation: "${title}"`);
+  const handleDeleteRoom = async (id: string, title: string) => {
+    try {
+      await deleteRoom(id);
+      setMyRooms((prev) => prev.filter((room) => room.id !== id));
+      toast.success(`Deleted room accommodation: "${title}"`);
+    } catch (e) {
+      toast.error("Failed to delete accommodation.");
+    }
   };
 
   if (!currentUser) {

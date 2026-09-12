@@ -1,104 +1,8 @@
 import { Listing } from "@/lib/types";
 import { DEMO_CAMPUS_ID, DEMO_USERS } from "@/lib/auth";
 
-export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: string; seller_initials: string })[] = [
-  {
-    id: "l01-study-table",
-    seller_id: DEMO_USERS[0].id, // Salik Riyaz
-    seller_name: DEMO_USERS[0].name,
-    seller_email: DEMO_USERS[0].email,
-    seller_initials: DEMO_USERS[0].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Study Table with Drawer",
-    description: "Solid engineered wood study desk with 2 smooth-glide drawers. Great for laptop and books, no wobbling.",
-    category: "Furniture",
-    type: "sell",
-    price: 1200,
-    condition: "Good",
-    location_label: "Hostel 1",
-    status: "active",
-    created_at: new Date(Date.now() - 3600000 * 24 * 4).toISOString(),
-    images: [
-      {
-        id: "img-l01",
-        listing_id: "l01-study-table",
-        image_url: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=800&q=80",
-      },
-    ],
-  },
-  {
-    id: "l02-bajaj-lamp",
-    seller_id: DEMO_USERS[0].id, // Salik Riyaz
-    seller_name: DEMO_USERS[0].name,
-    seller_email: DEMO_USERS[0].email,
-    seller_initials: DEMO_USERS[0].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Bajaj LED Study Lamp",
-    description: "3-level touch dimmable warm/white LED light. Flexible neck, USB rechargeable battery.",
-    category: "Furniture",
-    type: "sell",
-    price: 450,
-    condition: "Like New",
-    location_label: "Hostel 1",
-    status: "active",
-    created_at: new Date(Date.now() - 3600000 * 24 * 3.5).toISOString(),
-    images: [
-      {
-        id: "img-l02",
-        listing_id: "l02-bajaj-lamp",
-        image_url: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80",
-      },
-    ],
-  },
-  {
-    id: "l03-firefox-cycle",
-    seller_id: DEMO_USERS[0].id, // Salik Riyaz
-    seller_name: DEMO_USERS[0].name,
-    seller_email: DEMO_USERS[0].email,
-    seller_initials: DEMO_USERS[0].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Firefox Cycle (Single Speed)",
-    description: "Well maintained single speed commuter cycle. Front basket, mudguards, and wire lock included.",
-    category: "Cycles",
-    type: "sell",
-    price: 3500,
-    condition: "Good",
-    location_label: "Hostel 1",
-    status: "active",
-    created_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
-    images: [
-      {
-        id: "img-l03",
-        listing_id: "l03-firefox-cycle",
-        image_url: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&q=80",
-      },
-    ],
-  },
-  {
-    id: "l05-scientific-calc",
-    seller_id: DEMO_USERS[0].id, // Salik Riyaz
-    seller_name: DEMO_USERS[0].name,
-    seller_email: DEMO_USERS[0].email,
-    seller_initials: DEMO_USERS[0].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Casio fx-991EX Scientific Calculator",
-    description: "Original Casio ClassWiz fx-991EX with textbook display. Allowed for all engineering exams.",
-    category: "Electronics",
-    type: "sell",
-    price: 900,
-    condition: "Like New",
-    location_label: "Hostel 1",
-    status: "active",
-    created_at: new Date(Date.now() - 3600000 * 24 * 2.5).toISOString(),
-    images: [
-      {
-        id: "img-l05",
-        listing_id: "l05-scientific-calc",
-        image_url: "https://images.unsplash.com/photo-1587145820266-a5951ee6f620?auto=format&fit=crop&w=800&q=80",
-      },
-    ],
-  },
-];
+export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: string; seller_initials: string })[] = [];
+
 
 const DELETED_SAMPLE_LISTING_IDS = new Set([
   "l06-electric-kettle",
@@ -279,40 +183,7 @@ export async function fetchListingsFromSupabase(): Promise<MarketplaceListing[]>
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudListings));
         } catch (e) {}
       }
-
-      const deletedRaw = typeof window !== "undefined" ? localStorage.getItem("campusloop_deleted_listings") : null;
-      const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
-      const activeInitials = INITIAL_LISTINGS.filter(
-        (l) =>
-          !deletedIds.includes(l.id) &&
-          !DELETED_SAMPLE_LISTING_IDS.has(l.id) &&
-          !DELETED_SAMPLE_SELLER_IDS.has(l.seller_id) &&
-          l.seller_name !== "Aman Verma" &&
-          l.seller_name !== "Priya Nair" &&
-          l.seller_name !== "Vikram Iyer"
-      );
-
-      const combined = [
-        ...cloudListings.filter(
-          (l) =>
-            !deletedIds.includes(l.id) &&
-            !DELETED_SAMPLE_LISTING_IDS.has(l.id) &&
-            !DELETED_SAMPLE_SELLER_IDS.has(l.seller_id) &&
-            l.seller_name !== "Aman Verma" &&
-            l.seller_name !== "Priya Nair" &&
-            l.seller_name !== "Vikram Iyer"
-        ),
-      ];
-      const presentIds = new Set(combined.map((l) => l.id));
-
-      for (const init of activeInitials) {
-        if (!presentIds.has(init.id)) {
-          presentIds.add(init.id);
-          combined.push(init);
-        }
-      }
-
-      return combined;
+      return cloudListings;
     }
   } catch (err) {
     console.warn("[Network Exception] fetchListingsFromSupabase:", err);
@@ -455,7 +326,30 @@ export async function updateListing(id: string, updatedFields: Partial<typeof IN
   }
 }
 
-export async function deleteListing(id: string) {
+export async function deleteListing(id: string): Promise<boolean> {
+  // 1. Delete on the server via dedicated API route so it's permanently deleted in Supabase for all devices
+  try {
+    const res = await fetch("/api/marketplace/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result.error) {
+      console.warn("[Server Delete] Falling back to direct client delete:", result.error);
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.from("listings").delete().eq("id", id);
+    }
+  } catch (err) {
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.from("listings").delete().eq("id", id);
+    } catch (e) {}
+  }
+
+  // 2. Synchronize local cache immediately
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -463,7 +357,6 @@ export async function deleteListing(id: string) {
       customList = customList.filter((l) => l.id !== id);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(customList));
 
-      // Also track deleted initial IDs
       const deletedIds = JSON.parse(localStorage.getItem("campusloop_deleted_listings") || "[]");
       if (!deletedIds.includes(id)) {
         deletedIds.push(id);
@@ -471,17 +364,10 @@ export async function deleteListing(id: string) {
       localStorage.setItem("campusloop_deleted_listings", JSON.stringify(deletedIds));
     } catch (e) {}
 
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { error } = await supabase.from("listings").delete().eq("id", id);
-      if (error) console.error("[Supabase Error] Listing delete failed:", error);
-    } catch (err) {
-      console.error("[Network Exception] Supabase listing delete:", err);
-    }
-
     window.dispatchEvent(new Event("campusloop_marketplace_updated"));
   }
+
+  return true;
 }
 
 

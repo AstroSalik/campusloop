@@ -8,59 +8,27 @@ export interface StoredWantedListing extends WantedListing {
   location_label?: string;
 }
 
-export const INITIAL_WANTED_LISTINGS: StoredWantedListing[] = [
-  {
-    id: "w01-mini-fridge",
-    requester_id: DEMO_USERS[0].id, // Salik Riyaz
-    requester_name: DEMO_USERS[0].name,
-    requester_email: DEMO_USERS[0].email,
-    requester_initials: DEMO_USERS[0].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Looking for a mini fridge under ₹2500",
-    description: "Need a compact working mini-fridge for my room in Main Gate PG. Must cool properly, cosmetic scratches or minor dents are totally fine. Can pick up this weekend.",
-    category: "Appliances",
-    budget_max: 2500,
-    status: "active",
-    location_label: "Main Gate PG",
-    created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
-  },
-  {
-    id: "w03-casio-calc",
-    requester_id: DEMO_USERS[0].id, // Salik Riyaz
-    requester_name: DEMO_USERS[0].name,
-    requester_email: DEMO_USERS[0].email,
-    requester_initials: DEMO_USERS[0].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Looking for Casio fx-991EX or fx-991CW Calculator",
-    description: "Urgent requirement for upcoming semester exams. Need a genuine Casio scientific calculator with all matrix and complex functions working smoothly.",
-    category: "Electronics",
-    budget_max: 750,
-    status: "active",
-    location_label: "Hostel 1",
-    created_at: new Date(Date.now() - 3600000 * 24 * 1.5).toISOString(),
-  },
-];
+export const INITIAL_WANTED_LISTINGS: StoredWantedListing[] = [];
 
 const LOCAL_STORAGE_KEY = "campusloop_custom_wanted_listings";
 const DELETED_STORAGE_KEY = "campusloop_deleted_wanted_listings";
 
 export function getWantedListings(): StoredWantedListing[] {
-  if (typeof window === "undefined") return INITIAL_WANTED_LISTINGS;
+  if (typeof window === "undefined") return [];
   try {
     const deletedRaw = localStorage.getItem(DELETED_STORAGE_KEY);
     const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
-    const activeInitials = INITIAL_WANTED_LISTINGS.filter((w) => !deletedIds.includes(w.id));
 
     const custom = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (custom) {
       const parsed: StoredWantedListing[] = JSON.parse(custom);
-      return [...parsed.filter((w) => !deletedIds.includes(w.id)), ...activeInitials];
+      return parsed.filter((w) => !deletedIds.includes(w.id));
     }
-    return activeInitials;
+    return [];
   } catch (e) {
     // fallback
   }
-  return INITIAL_WANTED_LISTINGS;
+  return [];
 }
 
 export function mapSupabaseWanted(row: any): StoredWantedListing {
@@ -144,22 +112,7 @@ export async function fetchWantedListingsFromSupabase(): Promise<StoredWantedLis
       } catch (e) {}
     }
 
-    const deletedRaw = typeof window !== "undefined" ? localStorage.getItem(DELETED_STORAGE_KEY) : null;
-    const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
-    const activeInitials = INITIAL_WANTED_LISTINGS.filter((w) => !deletedIds.includes(w.id));
-
-    // Combine: user items from cloud + sample initial items
-    const combined: StoredWantedListing[] = [...results.filter((w) => !deletedIds.includes(w.id))];
-    const presentIds = new Set(combined.map((w) => w.id));
-
-    for (const init of activeInitials) {
-      if (!presentIds.has(init.id)) {
-        presentIds.add(init.id);
-        combined.push(init);
-      }
-    }
-
-    return combined;
+    return results;
   } catch (err) {
     console.warn("[Network Exception] fetchWantedListingsFromSupabase:", err);
   }
@@ -339,7 +292,30 @@ export async function updateWantedListing(id: string, updatedFields: Partial<Sto
   }
 }
 
-export async function deleteWantedListing(id: string) {
+export async function deleteWantedListing(id: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/wanted/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result.error) {
+      console.warn("[Server Delete] Falling back to direct client delete for wanted listing:", result.error);
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.from("wanted_listings").delete().eq("id", id);
+      await supabase.from("listings").delete().eq("id", id);
+    }
+  } catch (err) {
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.from("wanted_listings").delete().eq("id", id);
+      await supabase.from("listings").delete().eq("id", id);
+    } catch (e) {}
+  }
+
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -347,21 +323,14 @@ export async function deleteWantedListing(id: string) {
       customList = customList.filter((w) => w.id !== id);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(customList));
 
-      // Also track deleted initial IDs
       const deletedIds = JSON.parse(localStorage.getItem(DELETED_STORAGE_KEY) || "[]");
       if (!deletedIds.includes(id)) {
         deletedIds.push(id);
       }
       localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(deletedIds));
+      window.dispatchEvent(new Event("campusloop_wanted_updated"));
     } catch (e) {}
-
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.from("wanted_listings").delete().eq("id", id);
-      await supabase.from("listings").delete().eq("id", id);
-    } catch (err) {}
-
-    window.dispatchEvent(new Event("campusloop_wanted_updated"));
   }
+
+  return true;
 }

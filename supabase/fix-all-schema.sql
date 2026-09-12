@@ -4,7 +4,7 @@
 -- This fixes:
 -- 1. Missing public.users columns (campus_name, city, dept, KYC fields, etc.)
 -- 2. Missing public.wanted_listings table (reverse marketplace)
--- 3. Enables RLS policies for smooth reads and authenticated writes
+-- 3. Enables full RLS policies for smooth reads, authenticated writes, and cascade deletes
 -- ==============================================================================
 
 -- 1. Ensure all extended columns exist on public.users
@@ -83,5 +83,53 @@ DROP POLICY IF EXISTS "Users can insert their own profile" ON public.users;
 CREATE POLICY "Users can insert their own profile"
   ON public.users FOR INSERT
   WITH CHECK (auth.uid() = id);
+
+-- 6. Rooms & Accommodations Deletion Policies
+DROP POLICY IF EXISTS "Owners can delete their own rooms" ON public.rooms;
+CREATE POLICY "Owners can delete their own rooms"
+  ON public.rooms FOR DELETE
+  USING (auth.uid() = owner_id);
+
+-- 7. Roommate Profiles Deletion Policies
+DROP POLICY IF EXISTS "Users can delete their own roommate profiles" ON public.roommate_profiles;
+CREATE POLICY "Users can delete their own roommate profiles"
+  ON public.roommate_profiles FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- 8. Unified Chat & Messaging Deletion & Management Policies
+DROP POLICY IF EXISTS "Members can delete conversations" ON public.conversations;
+CREATE POLICY "Members can delete conversations"
+  ON public.conversations FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.conversation_members
+      WHERE conversation_members.conversation_id = conversations.id
+      AND conversation_members.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Members can delete conversation members" ON public.conversation_members;
+CREATE POLICY "Members can delete conversation members"
+  ON public.conversation_members FOR DELETE
+  USING (
+    user_id = auth.uid() OR
+    EXISTS (
+      SELECT 1 FROM public.conversation_members cm
+      WHERE cm.conversation_id = conversation_members.conversation_id
+      AND cm.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Members can delete messages" ON public.messages;
+CREATE POLICY "Members can delete messages"
+  ON public.messages FOR DELETE
+  USING (
+    sender_id = auth.uid() OR
+    EXISTS (
+      SELECT 1 FROM public.conversation_members
+      WHERE conversation_members.conversation_id = messages.conversation_id
+      AND conversation_members.user_id = auth.uid()
+    )
+  );
 
 -- Done!

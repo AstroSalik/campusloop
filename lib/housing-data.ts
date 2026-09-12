@@ -9,91 +9,9 @@ export const INITIAL_ROOMS: (Room & {
   owner_initials: string;
   booked_users?: BookedUser[];
   interested_users?: InterestedUser[];
-})[] = [
-  {
-    id: "r01-main-gate-2bhk",
-    owner_id: DEMO_USERS[0].id, // Salik Riyaz
-    owner_name: DEMO_USERS[0].name,
-    owner_email: DEMO_USERS[0].email,
-    owner_initials: DEMO_USERS[0].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "2BHK Near Main Gate",
-    rent: 18000,
-    utilities: 1500,
-    maintenance: 900,
-    bedrooms: 2,
-    occupancy_total: 3,
-    occupancy_filled: 1,
-    amenities: ["WiFi", "Geyser", "RO Water", "Power Backup", "Beds & Mattresses"],
-    location_label: "Main Gate PG",
-    available_from: "Sept 1st",
-    status: "available",
-    created_at: new Date(Date.now() - 3600000 * 24 * 5).toISOString(),
-    images: [
-      {
-        id: "img-r01",
-        room_id: "r01-main-gate-2bhk",
-        image_url: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1000&q=80",
-      },
-    ],
-    booked_users: [
-      {
-        user_id: DEMO_USERS[0].id,
-        user_name: DEMO_USERS[0].name,
-        user_email: DEMO_USERS[0].email,
-        user_initials: DEMO_USERS[0].initials,
-        booked_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
-        spot_number: 1,
-      },
-    ],
-    interested_users: [],
-  },
-  {
-    id: "r02-hostel2-single",
-    owner_id: DEMO_USERS[0].id, // Salik Riyaz
-    owner_name: DEMO_USERS[0].name,
-    owner_email: DEMO_USERS[0].email,
-    owner_initials: DEMO_USERS[0].initials,
-    campus_id: DEMO_CAMPUS_ID,
-    title: "Single Room PG (Hostel 2 area)",
-    rent: 8000,
-    utilities: 800,
-    maintenance: 400,
-    bedrooms: 1,
-    occupancy_total: 1,
-    occupancy_filled: 0,
-    amenities: ["Attached Washroom", "WiFi", "Study Table", "Geyser"],
-    location_label: "Hostel 2 area",
-    available_from: "Immediate",
-    status: "available",
-    created_at: new Date(Date.now() - 3600000 * 24 * 4.5).toISOString(),
-    images: [
-      {
-        id: "img-r02",
-        room_id: "r02-hostel2-single",
-        image_url: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=1000&q=80",
-      },
-    ],
-    booked_users: [],
-    interested_users: [],
-  },
-];
+})[] = [];
 
-export const INITIAL_ROOMMATE_PROFILES: (RoommateProfile & { user_name: string; user_email: string; user_initials: string; user_avatar?: string | null })[] = [
-  {
-    id: "prof-01",
-    user_id: DEMO_USERS[0].id, // Salik Riyaz
-    user_name: DEMO_USERS[0].name,
-    user_email: DEMO_USERS[0].email,
-    user_initials: DEMO_USERS[0].initials,
-    user_avatar: DEMO_USERS[0].avatar,
-    budget_min: 6000,
-    budget_max: 9000,
-    preferred_location: "Main Gate PG",
-    move_in_month: "September",
-    lifestyle_tags: ["Quiet Study", "Early Bird", "Non-Smoker", "Veg/Non-Veg OK"],
-  },
-];
+export const INITIAL_ROOMMATE_PROFILES: (RoommateProfile & { user_name: string; user_email: string; user_initials: string; user_avatar?: string | null })[] = [];
 
 const DELETED_SAMPLE_ROOMMATE_IDS = new Set(["prof-02", "prof-03", "prof-04"]);
 const DELETED_SAMPLE_USER_IDS = new Set([
@@ -130,28 +48,18 @@ export function cleanRoom(room: typeof INITIAL_ROOMS[0]): typeof INITIAL_ROOMS[0
 }
 
 export function getRooms(): typeof INITIAL_ROOMS {
-  if (typeof window === "undefined") return INITIAL_ROOMS.map(cleanRoom);
+  if (typeof window === "undefined") return [];
   try {
     const deletedRaw = localStorage.getItem("campusloop_deleted_rooms");
     const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
-    const activeInitials = INITIAL_ROOMS.filter((r) => !deletedIds.includes(r.id));
 
     const custom = localStorage.getItem(ROOMS_KEY);
     if (custom) {
       const parsed: typeof INITIAL_ROOMS = JSON.parse(custom);
-      const combined = [...parsed.filter((r: any) => !deletedIds.includes(r.id)), ...activeInitials];
-      // Deduplicate by ID
-      const map = new Map<string, typeof INITIAL_ROOMS[0]>();
-      for (const item of combined) {
-        if (!map.has(item.id)) {
-          map.set(item.id, cleanRoom(item));
-        }
-      }
-      return Array.from(map.values());
+      return parsed.filter((r: any) => !deletedIds.includes(r.id)).map(cleanRoom);
     }
-    return activeInitials.map(cleanRoom);
   } catch (e) {}
-  return INITIAL_ROOMS.map(cleanRoom);
+  return [];
 }
 
 export type HousingRoom = typeof INITIAL_ROOMS[0];
@@ -230,22 +138,7 @@ export async function fetchRoomsFromSupabase(): Promise<HousingRoom[]> {
           localStorage.setItem(ROOMS_KEY, JSON.stringify(cloudRooms));
         } catch (e) {}
       }
-
-      const deletedRaw = typeof window !== "undefined" ? localStorage.getItem("campusloop_deleted_rooms") : null;
-      const deletedIds: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
-      const activeInitials = INITIAL_ROOMS.filter((r) => !deletedIds.includes(r.id));
-
-      const combined = [...cloudRooms.filter((r) => !deletedIds.includes(r.id))];
-      const presentIds = new Set(combined.map((r) => r.id));
-
-      for (const init of activeInitials) {
-        if (!presentIds.has(init.id)) {
-          presentIds.add(init.id);
-          combined.push(cleanRoom(init));
-        }
-      }
-
-      return combined;
+      return cloudRooms;
     }
   } catch (err) {
     console.warn("[Network Exception] fetchRoomsFromSupabase:", err);
@@ -376,7 +269,28 @@ export async function updateRoom(id: string, updatedFields: Partial<typeof INITI
   }
 }
 
-export async function deleteRoom(id: string) {
+export async function deleteRoom(id: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/housing/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result.error) {
+      console.warn("[Server Delete] Falling back to direct client delete for room:", result.error);
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.from("rooms").delete().eq("id", id);
+    }
+  } catch (err) {
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.from("rooms").delete().eq("id", id);
+    } catch (e) {}
+  }
+
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(ROOMS_KEY);
@@ -391,16 +305,9 @@ export async function deleteRoom(id: string) {
       localStorage.setItem("campusloop_deleted_rooms", JSON.stringify(deletedIds));
       window.dispatchEvent(new Event("campusloop_housing_updated"));
     } catch (e) {}
-
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { error } = await supabase.from("rooms").delete().eq("id", id);
-      if (error) console.error("[Supabase Error] Room delete failed:", error);
-    } catch (err) {
-      console.error("[Network Exception] Supabase room delete:", err);
-    }
   }
+
+  return true;
 }
 
 /**
@@ -652,44 +559,7 @@ export async function fetchRoommateProfilesFromSupabase(): Promise<typeof INITIA
           localStorage.setItem(PROFILES_KEY, JSON.stringify(cloudProfiles));
         } catch (e) {}
       }
-
-      // Merge cloud profiles with seed profiles without duplicates
-      const cloudUserIds = new Set(cloudProfiles.map((p) => p.user_id));
-      const activeInitials = INITIAL_ROOMMATE_PROFILES.filter((p) => !cloudUserIds.has(p.user_id));
-      let combined = [...cloudProfiles, ...activeInitials];
-
-      // Synchronize with active user session
-      if (typeof window !== "undefined") {
-        try {
-          const currentUserRaw = localStorage.getItem("campusloop_user");
-          if (currentUserRaw) {
-            const currentUser = JSON.parse(currentUserRaw);
-            combined = combined.map((p) => {
-              if (p.user_id === currentUser.id) {
-                return {
-                  ...p,
-                  user_name: currentUser.name || p.user_name,
-                  user_avatar: currentUser.avatar || p.user_avatar,
-                  user_initials: currentUser.initials || p.user_initials,
-                };
-              }
-              return p;
-            });
-          }
-        } catch (e) {}
-      }
-
-      // Filter out deleted sample roommate profiles
-      combined = combined.filter(
-        (p) =>
-          !DELETED_SAMPLE_ROOMMATE_IDS.has(p.id) &&
-          !DELETED_SAMPLE_USER_IDS.has(p.user_id) &&
-          p.user_name !== "Aman Verma" &&
-          p.user_name !== "Priya Nair" &&
-          p.user_name !== "Vikram Iyer"
-      );
-
-      return combined;
+      return cloudProfiles;
     }
   } catch (err) {
     console.warn("[Network Exception] fetchRoommateProfilesFromSupabase:", err);
@@ -698,46 +568,49 @@ export async function fetchRoommateProfilesFromSupabase(): Promise<typeof INITIA
 }
 
 export function getRoommateProfiles(): typeof INITIAL_ROOMMATE_PROFILES {
-  let list = INITIAL_ROOMMATE_PROFILES;
-  if (typeof window !== "undefined") {
-    try {
-      const custom = localStorage.getItem(PROFILES_KEY);
-      if (custom) {
-        const parsed = JSON.parse(custom);
-        const customUserIds = new Set(parsed.map((p: any) => p.user_id));
-        const filteredInitials = INITIAL_ROOMMATE_PROFILES.filter((p) => !customUserIds.has(p.user_id));
-        list = [...parsed, ...filteredInitials];
-      }
-    } catch (e) {}
+  if (typeof window === "undefined") return [];
+  try {
+    const custom = localStorage.getItem(PROFILES_KEY);
+    if (custom) {
+      return JSON.parse(custom);
+    }
+  } catch (e) {}
+  return [];
+}
 
+export async function deleteRoommateProfile(id: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/roommates/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || result.error) {
+      console.warn("[Server Delete] Falling back to direct client delete for roommate profile:", result.error);
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.from("roommate_profiles").delete().eq("id", id);
+    }
+  } catch (err) {
     try {
-      const currentUserRaw = localStorage.getItem("campusloop_user");
-      if (currentUserRaw) {
-        const currentUser = JSON.parse(currentUserRaw);
-        list = list.map((p) => {
-          if (p.user_id === currentUser.id) {
-            return {
-              ...p,
-              user_name: currentUser.name || p.user_name,
-              user_avatar: currentUser.avatar || p.user_avatar,
-              user_initials: currentUser.initials || p.user_initials,
-            };
-          }
-          return p;
-        });
-      }
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.from("roommate_profiles").delete().eq("id", id);
     } catch (e) {}
   }
 
-  // Filter out deleted sample roommate profiles
-  return list.filter(
-    (p) =>
-      !DELETED_SAMPLE_ROOMMATE_IDS.has(p.id) &&
-      !DELETED_SAMPLE_USER_IDS.has(p.user_id) &&
-      p.user_name !== "Aman Verma" &&
-      p.user_name !== "Priya Nair" &&
-      p.user_name !== "Vikram Iyer"
-  );
+  if (typeof window !== "undefined") {
+    try {
+      const customRaw = localStorage.getItem(PROFILES_KEY);
+      let customList = customRaw ? JSON.parse(customRaw) : [];
+      customList = customList.filter((p: any) => p.id !== id);
+      localStorage.setItem(PROFILES_KEY, JSON.stringify(customList));
+      window.dispatchEvent(new Event("campusloop_roommates_updated"));
+    } catch (e) {}
+  }
+
+  return true;
 }
 
 export async function saveRoommateProfile(newProfile: typeof INITIAL_ROOMMATE_PROFILES[0]) {

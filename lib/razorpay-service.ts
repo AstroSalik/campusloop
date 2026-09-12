@@ -36,108 +36,21 @@ export interface PaymentTransaction {
 
 const STORAGE_KEY = "campusloop_payment_transactions";
 
-export const INITIAL_TRANSACTIONS: PaymentTransaction[] = [
-  {
-    id: "pay_test_992144810231",
-    order_id: "order_test_881920193",
-    type: "housing_booking",
-    type_label: "PG Spot Reservation Deposit",
-    amount: 1000,
-    currency: "INR",
-    status: "success",
-    item_id: "h1",
-    item_title: "Green View Residency (Double Room)",
-    payer_id: "user-1",
-    payer_name: "Ayaan Malik",
-    payer_email: "ayaan.m@campus.edu",
-    payer_initials: "AM",
-    payee_id: "user-2",
-    payee_name: "Sahil Ahmed",
-    payee_email: "sahil.a@campus.edu",
-    payment_method: "upi",
-    payment_details: {
-      upi_id: "ayaan@oksbi",
-    },
-    booking_spot: 1,
-    notes: {
-      campus: "Demo Campus (Sopore)",
-      room_type: "Double Room with Ensuite",
-      deposit_type: "Reservation Token",
-    },
-    created_at: "2026-08-28T14:30:00.000Z",
-  },
-  {
-    id: "pay_test_773190284192",
-    order_id: "order_test_441209312",
-    type: "marketplace_purchase",
-    type_label: "Marketplace Item Purchase",
-    amount: 3200,
-    currency: "INR",
-    status: "success",
-    item_id: "m1",
-    item_title: "Hero Sprint 26T Mountain Bicycle",
-    payer_id: "user-1",
-    payer_name: "Ayaan Malik",
-    payer_email: "ayaan.m@campus.edu",
-    payer_initials: "AM",
-    payee_id: "user-4",
-    payee_name: "Priya Sharma",
-    payee_email: "priya.s@campus.edu",
-    payment_method: "card",
-    payment_details: {
-      card_last4: "4242",
-      card_network: "Visa",
-    },
-    pickup_otp: "8492",
-    notes: {
-      pickup_location: "Hostel B Common Room",
-      escrow_status: "Verified & Held in Student Safe Vault",
-    },
-    created_at: "2026-08-25T11:15:00.000Z",
-  },
-  {
-    id: "pay_test_331908271109",
-    order_id: "order_test_112093814",
-    type: "rent_split",
-    type_label: "Monthly Roommate Rent Share",
-    amount: 6800,
-    currency: "INR",
-    status: "success",
-    item_id: "h2",
-    item_title: "Pine Grove 3BHK Flat — August Rent Share",
-    payer_id: "user-1",
-    payer_name: "Ayaan Malik",
-    payer_email: "ayaan.m@campus.edu",
-    payer_initials: "AM",
-    payee_id: "user-3",
-    payee_name: "Zoya Khan",
-    payee_email: "zoya.k@campus.edu",
-    payment_method: "upi",
-    payment_details: {
-      upi_id: "ayaan@upi",
-    },
-    notes: {
-      month: "August 2026",
-      share_breakdown: "Rent ₹6,000 + Electricity & WiFi ₹800",
-    },
-    created_at: "2026-08-01T09:00:00.000Z",
-  },
-];
+export const INITIAL_TRANSACTIONS: PaymentTransaction[] = [];
 
 /**
- * Loads transactions from localStorage with fallback to default demo transactions.
+ * Loads transactions from localStorage.
  */
 export function getTransactions(): PaymentTransaction[] {
-  if (typeof window === "undefined") return INITIAL_TRANSACTIONS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TRANSACTIONS));
-      return INITIAL_TRANSACTIONS;
+      return [];
     }
     return JSON.parse(raw);
   } catch {
-    return INITIAL_TRANSACTIONS;
+    return [];
   }
 }
 
