@@ -42,33 +42,60 @@ export default function ConversationDetailPage() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [isBlockedByOther, setIsBlockedByOther] = useState(false);
 
-  // Identify the peer participant in DM conversations
+  // Identify peer participants
   const otherMembers = conversation?.members.filter((m) => m.user_id !== currentUser?.id) || [];
+  const isGroup = conversation?.type === "housing_group";
   const peerMember = otherMembers[0] || conversation?.members[0];
-  const peerName = peerMember?.user_name || "this student";
+  const peerName = isGroup 
+    ? "a member in this group" 
+    : (peerMember?.user_name || "this student");
 
   // Check and refresh block statuses
   useEffect(() => {
-    if (!currentUser || !peerMember?.user_id) return;
+    if (!currentUser) return;
 
     const checkBlocks = () => {
-      setIsBlocked(isUserBlocked(peerMember.user_id));
-      setIsBlockedByOther(isUserBlockedBy(peerMember.user_id));
+      if (isGroup) {
+        // Group conversations evaluate every member in otherMembers
+        const anyBlockedByMe = otherMembers.some((m) => isUserBlocked(m.user_id, currentUser.id));
+        const anyBlockedMe = otherMembers.some((m) => isUserBlockedBy(m.user_id, currentUser.id));
+        setIsBlocked(anyBlockedByMe);
+        setIsBlockedByOther(anyBlockedMe);
+      } else {
+        if (peerMember?.user_id) {
+          setIsBlocked(isUserBlocked(peerMember.user_id, currentUser.id));
+          setIsBlockedByOther(isUserBlockedBy(peerMember.user_id, currentUser.id));
+        } else {
+          setIsBlocked(false);
+          setIsBlockedByOther(false);
+        }
+      }
     };
 
     checkBlocks();
-    fetchUserBlocks(currentUser.id).then(checkBlocks);
+    fetchUserBlocks(currentUser.id).then(checkBlocks).catch(() => checkBlocks());
 
     window.addEventListener("campusloop_blocks_changed", checkBlocks);
     return () => window.removeEventListener("campusloop_blocks_changed", checkBlocks);
-  }, [currentUser?.id, peerMember?.user_id]);
+  }, [currentUser?.id, conversation?.type, otherMembers.length, peerMember?.user_id]);
 
   const handleUnblockPeer = async () => {
-    if (!currentUser || !peerMember?.user_id) return;
+    if (!currentUser) return;
+    const targetMember = isGroup
+      ? otherMembers.find((m) => isUserBlocked(m.user_id, currentUser.id))
+      : peerMember;
+
+    if (!targetMember?.user_id) return;
+    const targetName = targetMember.user_name || "student";
+
     try {
-      await unblockUser(currentUser.id, peerMember.user_id);
-      toast.success(`Unblocked ${peerName}`);
-      setIsBlocked(false);
+      const success = await unblockUser(currentUser.id, targetMember.user_id);
+      if (success) {
+        toast.success(`Unblocked ${targetName}`);
+        setIsBlocked(false);
+      } else {
+        toast.error("Failed to unblock student");
+      }
     } catch {
       toast.error("Failed to unblock student");
     }

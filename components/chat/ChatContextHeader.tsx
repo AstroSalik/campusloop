@@ -89,7 +89,12 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
     };
 
     checkBlocks();
-    fetchUserBlocks(currentSession.id).then(checkBlocks);
+    fetchUserBlocks(currentSession.id)
+      .then(checkBlocks)
+      .catch((err) => {
+        console.warn("Error fetching user blocks:", err);
+        checkBlocks();
+      });
 
     window.addEventListener("campusloop_blocks_changed", checkBlocks);
     return () => window.removeEventListener("campusloop_blocks_changed", checkBlocks);
@@ -114,9 +119,13 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
     if (!currentSession || !peerMember?.user_id) return;
     setIsBlocking(true);
     try {
-      await blockUser(currentSession.id, peerMember.user_id);
-      toast.success(`Blocked ${peerName}`);
-      setBlockDialogOpen(false);
+      const ok = await blockUser(currentSession.id, peerMember.user_id);
+      if (ok) {
+        toast.success(`Blocked ${peerName}`);
+        setBlockDialogOpen(false);
+      } else {
+        toast.error("Failed to block user");
+      }
     } catch (e) {
       toast.error("Failed to block user");
     } finally {
@@ -128,8 +137,12 @@ export function ChatContextHeader({ conversation }: ChatContextHeaderProps) {
     if (!currentSession || !peerMember?.user_id) return;
     setIsBlocking(true);
     try {
-      await unblockUser(currentSession.id, peerMember.user_id);
-      toast.success(`Unblocked ${peerName}`);
+      const ok = await unblockUser(currentSession.id, peerMember.user_id);
+      if (ok) {
+        toast.success(`Unblocked ${peerName}`);
+      } else {
+        toast.error("Failed to unblock user");
+      }
     } catch (e) {
       toast.error("Failed to unblock user");
     } finally {

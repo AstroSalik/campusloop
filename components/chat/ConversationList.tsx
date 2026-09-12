@@ -68,6 +68,7 @@ export function ConversationList({
     } finally {
       setIsDeleting(false);
       setConversationToDelete(null);
+      setDeleteForEveryone(false);
     }
   };
 
@@ -344,6 +345,7 @@ export function ConversationList({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      setDeleteForEveryone(false);
                       setConversationToDelete(conv);
                     }}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 dark:text-slate-500 dark:hover:text-red-400 transition-colors"
@@ -361,7 +363,10 @@ export function ConversationList({
       <Dialog
         open={!!conversationToDelete}
         onOpenChange={(open) => {
-          if (!open && !isDeleting) setConversationToDelete(null);
+          if (!open && !isDeleting) {
+            setConversationToDelete(null);
+            setDeleteForEveryone(false);
+          }
         }}
       >
         <DialogContent className="sm:max-w-md">
@@ -378,7 +383,7 @@ export function ConversationList({
             </DialogDescription>
           </DialogHeader>
 
-          {/* Telegram Checkbox: Also delete for peer */}
+          {/* Telegram Checkbox: Also delete for peer / group */}
           <div className="my-2">
             <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <input
@@ -389,12 +394,18 @@ export function ConversationList({
               />
               <div className="text-left space-y-0.5">
                 <p className="text-xs font-semibold text-slate-900 dark:text-white">
-                  Also delete for other student
+                  {conversationToDelete?.type === "housing_group"
+                    ? "Also delete for everyone in this group"
+                    : "Also delete for everyone in this chat"}
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
                   {deleteForEveryone
-                    ? "Permanently erase this chat and all messages for both participants."
-                    : "Delete from your inbox only. The other student will keep their full chat history."}
+                    ? (conversationToDelete?.type === "housing_group"
+                        ? "Permanently erase this group chat and all messages for all members."
+                        : "Permanently erase this chat and all messages for everyone in this chat.")
+                    : (conversationToDelete?.type === "housing_group"
+                        ? "Delete from your inbox only. Other group members will keep their full chat history."
+                        : "Delete from your inbox only. Other participants will keep their full chat history.")}
                 </p>
               </div>
             </label>
@@ -404,7 +415,10 @@ export function ConversationList({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConversationToDelete(null)}
+              onClick={() => {
+                setConversationToDelete(null);
+                setDeleteForEveryone(false);
+              }}
               disabled={isDeleting}
             >
               Cancel

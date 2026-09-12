@@ -1,50 +1,70 @@
 "use client";
 
-const BLOCKED_BY_ME_KEY = "campusloop_blocked_users";
-const BLOCKED_BY_OTHERS_KEY = "campusloop_blocked_by_users";
+const BASE_BLOCKED_BY_ME_KEY = "campusloop_blocked_users";
+const BASE_BLOCKED_BY_OTHERS_KEY = "campusloop_blocked_by_users";
 
 export interface UserBlocksData {
   blockedUserIds: string[]; // Users I have blocked
   blockedByUserIds: string[]; // Users who blocked me
 }
 
-export function getLocalBlockedUserIds(): string[] {
+function resolveCurrentUserId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const raw = localStorage.getItem("campusloop_user");
+    if (raw && raw !== "LOGGED_OUT") {
+      const parsed = JSON.parse(raw);
+      if (parsed?.id) return parsed.id;
+    }
+  } catch {}
+  return "";
+}
+
+function getScopedKey(base: string, userId?: string): string {
+  const uid = userId || resolveCurrentUserId();
+  return uid ? `${base}_${uid}` : base;
+}
+
+export function getLocalBlockedUserIds(userId?: string): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(BLOCKED_BY_ME_KEY);
+    const key = getScopedKey(BASE_BLOCKED_BY_ME_KEY, userId);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-export function getLocalBlockedByUserIds(): string[] {
+export function getLocalBlockedByUserIds(userId?: string): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(BLOCKED_BY_OTHERS_KEY);
+    const key = getScopedKey(BASE_BLOCKED_BY_OTHERS_KEY, userId);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-export function isUserBlocked(targetUserId: string): boolean {
+export function isUserBlocked(targetUserId: string, currentUserId?: string): boolean {
   if (!targetUserId) return false;
-  const blocked = getLocalBlockedUserIds();
+  const blocked = getLocalBlockedUserIds(currentUserId);
   return blocked.includes(targetUserId);
 }
 
-export function isUserBlockedBy(targetUserId: string): boolean {
+export function isUserBlockedBy(targetUserId: string, currentUserId?: string): boolean {
   if (!targetUserId) return false;
-  const blockedBy = getLocalBlockedByUserIds();
+  const blockedBy = getLocalBlockedByUserIds(currentUserId);
   return blockedBy.includes(targetUserId);
 }
 
-export async function fetchUserBlocks(userId: string): Promise<UserBlocksData> {
-  if (!userId) return { blockedUserIds: [], blockedByUserIds: [] };
+export async function fetchUserBlocks(userId?: string): Promise<UserBlocksData> {
+  const uid = userId || resolveCurrentUserId();
+  if (!uid) return { blockedUserIds: [], blockedByUserIds: [] };
 
   try {
-    const res = await fetch(`/api/users/block?userId=${encodeURIComponent(userId)}`);
+    const res = await fetch(`/api/users/block?userId=${encodeURIComponent(uid)}`);
     const data = await res.json();
 
     if (res.ok && data) {
@@ -53,8 +73,8 @@ export async function fetchUserBlocks(userId: string): Promise<UserBlocksData> {
 
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem(BLOCKED_BY_ME_KEY, JSON.stringify(blockedUserIds));
-          localStorage.setItem(BLOCKED_BY_OTHERS_KEY, JSON.stringify(blockedByUserIds));
+          localStorage.setItem(getScopedKey(BASE_BLOCKED_BY_ME_KEY, uid), JSON.stringify(blockedUserIds));
+          localStorage.setItem(getScopedKey(BASE_BLOCKED_BY_OTHERS_KEY, uid), JSON.stringify(blockedByUserIds));
           window.dispatchEvent(new Event("campusloop_blocks_changed"));
         } catch {}
       }
@@ -66,21 +86,24 @@ export async function fetchUserBlocks(userId: string): Promise<UserBlocksData> {
   }
 
   return {
-    blockedUserIds: getLocalBlockedUserIds(),
-    blockedByUserIds: getLocalBlockedByUserIds(),
+    blockedUserIds: getLocalBlockedUserIds(uid),
+    blockedByUserIds: getLocalBlockedByUserIds(uid),
   };
 }
 
 export async function blockUser(blockerId: string, blockedId: string): Promise<boolean> {
   if (!blockerId || !blockedId) return false;
 
+  const key = getScopedKey(BASE_BLOCKED_BY_ME_KEY, blockerId);
+  // Snapshot previous local list
+  const prevList = [...getLocalBlockedUserIds(blockerId)];
+
   // 1. Optimistic local update
   if (typeof window !== "undefined") {
     try {
-      const list = getLocalBlockedUserIds();
-      if (!list.includes(blockedId)) {
-        list.push(blockedId);
-        localStorage.setItem(BLOCKED_BY_ME_KEY, JSON.stringify(list));
+      if (!prevList.includes(blockedId)) {
+        const nextList = [...prevList, blockedId];
+        localStorage.setItem(key, JSON.stringify(nextList));
         window.dispatchEvent(new Event("campusloop_blocks_changed"));
       }
     } catch {}
@@ -97,21 +120,40 @@ export async function blockUser(blockerId: string, blockedId: string): Promise<b
         action: "block",
       }),
     });
-    return res.ok;
+
+    if (!res.ok) {
+      // Restore previous snapshot on failure
+      if (typeof window !== "undefined") {
+        localStorage.setItem(key, JSON.stringify(prevList));
+        window.dispatchEvent(new Event("campusloop_blocks_changed"));
+      }
+      return false;
+    }
+
+    return true;
   } catch (err) {
     console.warn("blockUser exception:", err);
-    return true;
+    // Restore previous snapshot on error
+    if (typeof window !== "undefined") {
+      localStorage.setItem(key, JSON.stringify(prevList));
+      window.dispatchEvent(new Event("campusloop_blocks_changed"));
+    }
+    return false;
   }
 }
 
 export async function unblockUser(blockerId: string, blockedId: string): Promise<boolean> {
   if (!blockerId || !blockedId) return false;
 
+  const key = getScopedKey(BASE_BLOCKED_BY_ME_KEY, blockerId);
+  // Snapshot previous local list
+  const prevList = [...getLocalBlockedUserIds(blockerId)];
+
   // 1. Optimistic local update
   if (typeof window !== "undefined") {
     try {
-      const list = getLocalBlockedUserIds().filter((id) => id !== blockedId);
-      localStorage.setItem(BLOCKED_BY_ME_KEY, JSON.stringify(list));
+      const nextList = prevList.filter((id) => id !== blockedId);
+      localStorage.setItem(key, JSON.stringify(nextList));
       window.dispatchEvent(new Event("campusloop_blocks_changed"));
     } catch {}
   }
@@ -127,9 +169,24 @@ export async function unblockUser(blockerId: string, blockedId: string): Promise
         action: "unblock",
       }),
     });
-    return res.ok;
+
+    if (!res.ok) {
+      // Restore previous snapshot on failure
+      if (typeof window !== "undefined") {
+        localStorage.setItem(key, JSON.stringify(prevList));
+        window.dispatchEvent(new Event("campusloop_blocks_changed"));
+      }
+      return false;
+    }
+
+    return true;
   } catch (err) {
     console.warn("unblockUser exception:", err);
-    return true;
+    // Restore previous snapshot on error
+    if (typeof window !== "undefined") {
+      localStorage.setItem(key, JSON.stringify(prevList));
+      window.dispatchEvent(new Event("campusloop_blocks_changed"));
+    }
+    return false;
   }
 }
