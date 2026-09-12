@@ -91,7 +91,7 @@ export function ListingForm() {
       seller_name: currentUser.name,
       seller_email: currentUser.email,
       seller_initials: currentUser.initials,
-      campus_id: DEMO_CAMPUS_ID,
+      campus_id: currentUser.campus_id || DEMO_CAMPUS_ID,
       title: title.trim(),
       description: description.trim(),
       category: finalCategory,
@@ -113,10 +113,16 @@ export function ListingForm() {
       ],
     };
 
-    await saveListing(newListing);
-    toast.success("Listing posted successfully to campus marketplace!");
-    router.push(`/marketplace/${newId}`);
-    setLoading(false);
+    try {
+      const saved = await saveListing(newListing);
+      toast.success("Listing posted successfully to campus marketplace!");
+      router.push(`/marketplace/${saved.id || newId}`);
+    } catch (err: any) {
+      console.error("[ListingForm] Error posting listing:", err);
+      toast.error(err?.message || "Failed to post listing. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

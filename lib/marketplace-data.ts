@@ -232,21 +232,56 @@ export async function fetchListingByIdFromSupabase(id: string): Promise<Marketpl
   return null;
 }
 
-export async function saveListing(newListing: typeof INITIAL_LISTINGS[0]) {
+export async function saveListing(newListing: typeof INITIAL_LISTINGS[0]): Promise<MarketplaceListing> {
+  // 1. First attempt authoritative server endpoint
+  try {
+    const res = await fetch("/api/marketplace/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listing: newListing }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const saved = data.listing ? mapSupabaseListing(data.listing) : newListing;
+      if (typeof window !== "undefined") {
+        try {
+          const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
+          const customList = customRaw ? JSON.parse(customRaw) : [];
+          // Remove any duplicate if present
+          const filtered = customList.filter((l: any) => l.id !== saved.id);
+          filtered.unshift(saved);
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered));
+        } catch (e) {}
+        window.dispatchEvent(new Event("campusloop_marketplace_updated"));
+      }
+      return saved;
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      console.warn("[saveListing] Server endpoint error:", errData.error);
+      throw new Error(errData.error || "Failed to save listing to server.");
+    }
+  } catch (err: any) {
+    if (err.message && !err.message.includes("Failed to fetch")) {
+      throw err;
+    }
+    // 2. Client fallback (e.g. offline or fetch failure)
+    console.warn("[saveListing] Falling back to client-side database save:", err);
+  }
+
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
       const customList = customRaw ? JSON.parse(customRaw) : [];
       customList.unshift(newListing);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(customList));
-    } catch (e) {
-      // fallback
-    }
+    } catch (e) {}
 
     try {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
-      const { error: listErr } = await supabase.from("listings").insert({
+      
+      const payload: any = {
         id: newListing.id,
         seller_id: newListing.seller_id,
         campus_id: newListing.campus_id,
@@ -258,10 +293,21 @@ export async function saveListing(newListing: typeof INITIAL_LISTINGS[0]) {
         condition: newListing.condition,
         location_label: newListing.location_label,
         status: newListing.status || "active",
+      };
+
+      let { error: listErr } = await supabase.from("listings").insert({
+        ...payload,
         quantity: typeof newListing.quantity === "number" ? newListing.quantity : 1,
         sold_out_at: newListing.sold_out_at || null,
         restock_requests_count: newListing.restock_requests_count || 0,
       });
+
+      // If quantity column doesn't exist, retry with base columns
+      if (listErr && (listErr.code === "PGRST204" || listErr.message?.includes("quantity"))) {
+        const retry = await supabase.from("listings").insert(payload);
+        listErr = retry.error;
+      }
+
       if (listErr && listErr.code !== "23505") {
         console.error("[Supabase Error] Listing insert failed:", listErr);
       }
@@ -283,6 +329,7 @@ export async function saveListing(newListing: typeof INITIAL_LISTINGS[0]) {
 
     window.dispatchEvent(new Event("campusloop_marketplace_updated"));
   }
+  return newListing;
 }
 
 export async function updateListing(id: string, updatedFields: Partial<typeof INITIAL_LISTINGS[0]>) {
@@ -324,7 +371,17 @@ export async function updateListing(id: string, updatedFields: Partial<typeof IN
       if (updatedFields.restock_requests_count !== undefined) payload.restock_requests_count = updatedFields.restock_requests_count;
 
       if (Object.keys(payload).length > 0) {
-        const { error } = await supabase.from("listings").update(payload).eq("id", id);
+        let { error } = await supabase.from("listings").update(payload).eq("id", id);
+        if (error && (error.code === "PGRST204" || error.message?.includes("quantity"))) {
+          // Retry without extended columns
+          delete payload.quantity;
+          delete payload.sold_out_at;
+          delete payload.restock_requests_count;
+          if (Object.keys(payload).length > 0) {
+            const retry = await supabase.from("listings").update(payload).eq("id", id);
+            error = retry.error;
+          }
+        }
         if (error) console.error("[Supabase Error] Listing update failed:", error);
       }
     } catch (err) {

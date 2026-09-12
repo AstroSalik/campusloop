@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     // 1. Fetch current listing and verify ownership
     const { data: listing, error: fetchErr } = await supabaseAdmin
       .from("listings")
-      .select("id, seller_id, quantity, status, title")
+      .select("*")
       .eq("id", listingId)
       .maybeSingle();
 
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Reactivate listing with new stock
-    const { error: updateErr } = await supabaseAdmin
+    let { error: updateErr } = await supabaseAdmin
       .from("listings")
       .update({
         quantity: resolvedQuantity,
@@ -70,6 +70,15 @@ export async function POST(req: NextRequest) {
         sold_out_at: null,
       })
       .eq("id", listingId);
+
+    // Fallback if quantity or sold_out_at not present in schema cache
+    if (updateErr && (updateErr.code === "PGRST204" || updateErr.message?.includes("quantity"))) {
+      const fallback = await supabaseAdmin
+        .from("listings")
+        .update({ status: "active" })
+        .eq("id", listingId);
+      updateErr = fallback.error;
+    }
 
     if (updateErr) {
       console.error("[marketplace-restock] Error restocking listing:", updateErr.message);

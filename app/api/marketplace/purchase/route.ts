@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     // 1. Fetch current listing state
     const { data: listing, error: fetchErr } = await supabaseAdmin
       .from("listings")
-      .select("id, seller_id, title, price, status, quantity, sold_out_at")
+      .select("*")
       .eq("id", listingId)
       .maybeSingle();
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "You cannot purchase your own listing" }, { status: 400 });
     }
 
-    const currentQty = typeof listing.quantity === "number" ? listing.quantity : 1;
+    const currentQty = typeof listing.quantity === "number" ? listing.quantity : (listing.status === "sold" ? 0 : 1);
 
     if (listing.status === "sold" || currentQty <= 0) {
       return NextResponse.json(
@@ -80,10 +80,19 @@ export async function POST(req: NextRequest) {
       updatePayload.sold_out_at = soldOutTimestamp;
     }
 
-    const { error: updateErr } = await supabaseAdmin
+    let { error: updateErr } = await supabaseAdmin
       .from("listings")
       .update(updatePayload)
       .eq("id", listingId);
+
+    // If quantity or sold_out_at column not in schema cache, fallback to status only
+    if (updateErr && (updateErr.code === "PGRST204" || updateErr.message?.includes("quantity"))) {
+      const fallback = await supabaseAdmin
+        .from("listings")
+        .update({ status: newStatus })
+        .eq("id", listingId);
+      updateErr = fallback.error;
+    }
 
     if (updateErr) {
       console.error("[marketplace-purchase] Error updating listing stock:", updateErr.message);
