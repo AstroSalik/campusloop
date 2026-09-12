@@ -13,24 +13,23 @@ export async function POST(req: NextRequest) {
       doc_back_image, 
       consent_agreed,
       otp_code,
-      user_id: clientUserId
     } = body;
 
-    // 1. Authenticate user from session cookies
+    // 1. Authenticate user strictly from server session cookies
     const serverSupabase = createServerSupabaseClient();
     const {
       data: { user: sessionUser },
       error: authError,
     } = await serverSupabase.auth.getUser();
 
-    const targetUserId = sessionUser?.id || clientUserId;
-
-    if (!targetUserId) {
+    if (authError || !sessionUser?.id) {
       return NextResponse.json(
         { error: "Unauthorized: Please sign in to verify your account." },
         { status: 401 }
       );
     }
+
+    const targetUserId = sessionUser.id;
 
     // 2. Validate Aadhaar inputs
     if (!consent_agreed) {
@@ -64,6 +63,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Compare Aadhaar name with stored profile name
+    const storedName =
+      sessionUser.user_metadata?.full_name ||
+      sessionUser.user_metadata?.name ||
+      "";
+
+    if (storedName && !checkNameSimilarity(storedName, aadhaar_name)) {
+      return NextResponse.json(
+        {
+          error: `The name on your Aadhaar card does not match your registered profile name.`,
+        },
+        { status: 422 }
+      );
+    }
+
     if (!doc_front_image) {
       return NextResponse.json(
         { error: "A clear photo or scan of your Aadhaar card (front side) is required." },
@@ -71,7 +85,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // OTP validation if submitted
+    // OTP format validation
     if (otp_code !== undefined && otp_code !== null) {
       const cleanOtp = String(otp_code).trim();
       if (cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) {
@@ -83,55 +97,68 @@ export async function POST(req: NextRequest) {
     }
 
     const aadhaarLast4 = cleanAadhaar.slice(-4);
-    const verifiedAt = new Date().toISOString();
+    const submittedAt = new Date().toISOString();
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (supabaseUrl && serviceRoleKey) {
-      const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey, {
-        auth: { persistSession: false },
-      });
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        { error: "Supabase service configuration missing" },
+        { status: 500 }
+      );
+    }
 
-      // 1. Update Supabase Auth user_metadata (100% reliable schema-free storage)
-      try {
-        await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
-          user_metadata: {
-            verification_status: "verified",
-            aadhaar_last4: aadhaarLast4,
-            kyc_doc_type: "Aadhaar Card (UIDAI)",
-            kyc_verified_at: verifiedAt,
-            aadhaar_name: aadhaar_name.trim(),
-          },
-        });
-      } catch (adminErr) {
-        console.warn("Supabase Auth admin metadata update warning:", adminErr);
-      }
+    const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
+    });
 
-      // 2. Update public.users database table (handling any pending schema migrations gracefully)
-      try {
-        await supabaseAdmin
-          .from("users")
-          .update({
-            verification_status: "verified",
-            aadhaar_last4: aadhaarLast4,
-            kyc_doc_type: "Aadhaar Card (UIDAI)",
-            kyc_verified_at: verifiedAt,
-          })
-          .eq("id", targetUserId);
-      } catch (dbErr) {
-        console.warn("Public users table KYC update notice:", dbErr);
-      }
+    // 1. Update Supabase Auth user_metadata (status set to pending review)
+    const { error: adminUpdateError } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+      user_metadata: {
+        verification_status: "pending",
+        aadhaar_last4: aadhaarLast4,
+        kyc_doc_type: "Aadhaar Card (Under Review)",
+        kyc_submitted_at: submittedAt,
+        aadhaar_name: aadhaar_name.trim(),
+      },
+    });
+
+    if (adminUpdateError) {
+      console.error("Auth admin metadata update error:", adminUpdateError);
+      return NextResponse.json(
+        { error: `Failed to update auth verification status: ${adminUpdateError.message}` },
+        { status: 500 }
+      );
+    }
+
+    // 2. Update public.users database table
+    const { error: dbUpdateError } = await supabaseAdmin
+      .from("users")
+      .update({
+        verification_status: "pending",
+        aadhaar_last4: aadhaarLast4,
+        kyc_doc_type: "Aadhaar Card (Under Review)",
+        kyc_submitted_at: submittedAt,
+      })
+      .eq("id", targetUserId);
+
+    if (dbUpdateError) {
+      console.error("Database user profile KYC update error:", dbUpdateError);
+      return NextResponse.json(
+        { error: `Failed to update database profile verification status: ${dbUpdateError.message}` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Aadhaar KYC verified successfully. Your profile is now verified!",
+      message: "Aadhaar KYC documents submitted successfully. Your verification is now in review.",
       verification: {
-        status: "verified",
+        status: "pending",
         aadhaar_last4: aadhaarLast4,
-        kyc_doc_type: "Aadhaar Card (UIDAI)",
-        verified_at: verifiedAt,
+        kyc_doc_type: "Aadhaar Card (Under Review)",
+        submitted_at: submittedAt,
       },
     });
   } catch (err: any) {

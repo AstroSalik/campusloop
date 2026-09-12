@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
       department, 
       year_of_study, 
       phone, 
+      student_id,
       monthly_income, 
       avatar,
       verification_status 
@@ -62,67 +63,79 @@ export async function POST(req: NextRequest) {
     const resolvedYear = year_of_study || sessionUser.user_metadata?.year_of_study || "";
     const resolvedPhone = phone || sessionUser.user_metadata?.phone || "";
     const resolvedVerification = verification_status || sessionUser.user_metadata?.verification_status || "unverified";
+    const normalizedStudentId = student_id !== undefined ? ((student_id || "").trim() || null) : undefined;
 
     // Update user_metadata in Auth
     try {
+      const metaUpdates: Record<string, any> = {
+        full_name: userName,
+        name: userName,
+        campus_name: resolvedCampusName,
+        city: resolvedCity,
+        department: resolvedDept,
+        year_of_study: resolvedYear,
+        phone: resolvedPhone,
+        verification_status: resolvedVerification,
+      };
+      if (normalizedStudentId !== undefined) {
+        metaUpdates.student_id = normalizedStudentId;
+      }
+      if (avatar !== undefined) {
+        metaUpdates.avatar = avatar;
+      }
       await supabaseAdmin.auth.admin.updateUserById(sessionUser.id, {
-        user_metadata: {
-          full_name: userName,
-          name: userName,
-          campus_name: resolvedCampusName,
-          city: resolvedCity,
-          department: resolvedDept,
-          year_of_study: resolvedYear,
-          phone: resolvedPhone,
-          verification_status: resolvedVerification,
-          ...(avatar !== undefined ? { avatar } : {}),
-        },
+        user_metadata: metaUpdates,
       });
     } catch (e) {}
 
     // 3. Upsert into public.users using the verified sessionUser.id and sessionUser.email
     let data = null;
     try {
+      const upsertPayload: Record<string, any> = {
+        id: sessionUser.id,
+        name: userName,
+        email: (sessionUser.email || "").trim().toLowerCase(),
+        campus_id: defaultCampusId,
+        campus_name: resolvedCampusName,
+        city: resolvedCity,
+        department: resolvedDept,
+        year_of_study: resolvedYear,
+        phone: resolvedPhone,
+        verification_status: resolvedVerification,
+        monthly_income:
+          monthly_income !== undefined ? monthly_income : null,
+      };
+      if (normalizedStudentId !== undefined) {
+        upsertPayload.student_id = normalizedStudentId;
+      }
+      if (avatar !== undefined) {
+        upsertPayload.avatar = avatar;
+      }
+
       const res = await supabaseAdmin
         .from("users")
-        .upsert(
-          {
-            id: sessionUser.id,
-            name: userName,
-            email: (sessionUser.email || "").trim().toLowerCase(),
-            campus_id: defaultCampusId,
-            campus_name: resolvedCampusName,
-            city: resolvedCity,
-            department: resolvedDept,
-            year_of_study: resolvedYear,
-            phone: resolvedPhone,
-            avatar: avatar !== undefined ? avatar : null,
-            verification_status: resolvedVerification,
-            monthly_income:
-              monthly_income !== undefined ? monthly_income : null,
-          },
-          { onConflict: "id" }
-        )
+        .upsert(upsertPayload, { onConflict: "id" })
         .select()
         .single();
       data = res.data;
     } catch (upsertErr) {
       // Fallback in case extended columns aren't yet added to table
       try {
+        const fallbackPayload: Record<string, any> = {
+          id: sessionUser.id,
+          name: userName,
+          email: (sessionUser.email || "").trim().toLowerCase(),
+          campus_id: defaultCampusId,
+          monthly_income:
+            monthly_income !== undefined ? monthly_income : null,
+        };
+        if (avatar !== undefined) {
+          fallbackPayload.avatar = avatar;
+        }
+
         const fallbackRes = await supabaseAdmin
           .from("users")
-          .upsert(
-            {
-              id: sessionUser.id,
-              name: userName,
-              email: (sessionUser.email || "").trim().toLowerCase(),
-              campus_id: defaultCampusId,
-              avatar: avatar !== undefined ? avatar : null,
-              monthly_income:
-                monthly_income !== undefined ? monthly_income : null,
-            },
-            { onConflict: "id" }
-          )
+          .upsert(fallbackPayload, { onConflict: "id" })
           .select()
           .single();
         data = fallbackRes.data;

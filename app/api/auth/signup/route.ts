@@ -25,7 +25,13 @@ export async function POST(req: NextRequest) {
     const resolvedDept = (department || "").trim();
     const resolvedYear = (year_of_study || "").trim();
     const resolvedPhone = (phone || "").trim();
-    const resolvedIncome = monthly_income != null && !isNaN(Number(monthly_income)) ? Number(monthly_income) : 15000;
+    const normalizedStudentId = (student_id || "").trim() || null;
+
+    let resolvedIncome: number | null = null;
+    if (monthly_income !== undefined && monthly_income !== null && String(monthly_income).trim() !== "") {
+      const parsed = Number(monthly_income);
+      resolvedIncome = !isNaN(parsed) && parsed >= 0 ? parsed : null;
+    }
 
     if (!cleanEmail || !cleanPassword) {
       return NextResponse.json(
@@ -79,6 +85,35 @@ export async function POST(req: NextRequest) {
       auth: { persistSession: false },
     });
 
+    // Authoritative campus resolution: derive or create campus_id matching resolvedCampusName
+    let resolvedCampusId = "00000000-0000-0000-0000-000000000001";
+    try {
+      const { data: existingCampus } = await supabaseAdmin
+        .from("campuses")
+        .select("id")
+        .ilike("name", resolvedCampusName)
+        .maybeSingle();
+
+      if (existingCampus?.id) {
+        resolvedCampusId = existingCampus.id;
+      } else {
+        const { data: newCampus } = await supabaseAdmin
+          .from("campuses")
+          .insert({
+            name: resolvedCampusName,
+            city: resolvedCity || "Campus Area",
+          })
+          .select("id")
+          .single();
+
+        if (newCampus?.id) {
+          resolvedCampusId = newCampus.id;
+        }
+      }
+    } catch (campusErr) {
+      console.warn("Authoritative campus resolution notice:", campusErr);
+    }
+
     // 1. Create confirmed user in Supabase Auth with rich metadata
     const { data: authData, error: authError } =
       await supabaseAdmin.auth.admin.createUser({
@@ -88,13 +123,13 @@ export async function POST(req: NextRequest) {
         user_metadata: {
           full_name: userName,
           name: userName,
-          campus_id: "00000000-0000-0000-0000-000000000001",
+          campus_id: resolvedCampusId,
           campus_name: resolvedCampusName,
           city: resolvedCity,
           department: resolvedDept,
           year_of_study: resolvedYear,
           phone: resolvedPhone,
-          student_id: (student_id || "").trim(),
+          student_id: normalizedStudentId,
           monthly_income: resolvedIncome,
           verification_status: "unverified",
         },
@@ -127,12 +162,13 @@ export async function POST(req: NextRequest) {
             id: userId,
             name: userName,
             email: cleanEmail,
-            campus_id: "00000000-0000-0000-0000-000000000001",
+            campus_id: resolvedCampusId,
             campus_name: resolvedCampusName,
             city: resolvedCity,
             department: resolvedDept,
             year_of_study: resolvedYear,
             phone: resolvedPhone,
+            student_id: normalizedStudentId,
             monthly_income: resolvedIncome,
             verification_status: "unverified",
           },
@@ -149,7 +185,7 @@ export async function POST(req: NextRequest) {
               id: userId,
               name: userName,
               email: cleanEmail,
-              campus_id: "00000000-0000-0000-0000-000000000001",
+              campus_id: resolvedCampusId,
               monthly_income: resolvedIncome,
             },
             { onConflict: "id" }
@@ -163,12 +199,13 @@ export async function POST(req: NextRequest) {
         id: userId,
         name: userName,
         email: cleanEmail,
-        campus_id: "00000000-0000-0000-0000-000000000001",
+        campus_id: resolvedCampusId,
         campus_name: resolvedCampusName,
         city: resolvedCity,
         department: resolvedDept,
         year_of_study: resolvedYear,
         phone: resolvedPhone,
+        student_id: normalizedStudentId,
         monthly_income: resolvedIncome,
         verification_status: "unverified",
       },

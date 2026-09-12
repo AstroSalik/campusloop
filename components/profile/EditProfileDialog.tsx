@@ -112,7 +112,13 @@ export function EditProfileDialog({
       const matchedCampus = MAJOR_CAMPUSES.find((c) => c.name === existingCampus);
       setIsCustomCampus(!matchedCampus);
 
-      setCity(user.city || matchedCampus ? `${matchedCampus?.city}, ${matchedCampus?.state}` : "");
+      if (user.city) {
+        setCity(user.city);
+      } else if (matchedCampus) {
+        setCity(`${matchedCampus.city}, ${matchedCampus.state}`);
+      } else {
+        setCity("");
+      }
       
       const existingDept = user.department || "Computer Science & Engineering (CSE)";
       setDepartment(existingDept);
@@ -227,7 +233,7 @@ export function EditProfileDialog({
 
     try {
       // 1. Sync through authenticated server route
-      await fetch("/api/auth/sync-profile", {
+      const syncRes = await fetch("/api/auth/sync-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -238,13 +244,18 @@ export function EditProfileDialog({
           year_of_study: updatedUser.year_of_study,
           phone: updatedUser.phone,
           monthly_income: updatedUser.monthly_income,
-          avatar: updatedUser.avatar || null,
+          avatar: updatedUser.avatar,
         }),
       });
 
+      const syncJson = await syncRes.json().catch(() => ({}));
+      if (!syncRes.ok || syncJson.error) {
+        throw new Error(syncJson.error || "Failed to sync profile changes.");
+      }
+
       // 2. Also update Supabase client session metadata & users table directly
       const supabase = createClient();
-      await supabase.auth.updateUser({
+      const { error: authError } = await supabase.auth.updateUser({
         data: {
           full_name: updatedUser.name,
           name: updatedUser.name,
@@ -257,6 +268,10 @@ export function EditProfileDialog({
         },
       });
 
+      if (authError) {
+        throw new Error(authError.message || "Failed to update auth metadata.");
+      }
+
       try {
         await supabase
           .from("users")
@@ -268,20 +283,22 @@ export function EditProfileDialog({
             year_of_study: updatedUser.year_of_study,
             phone: updatedUser.phone,
             monthly_income: updatedUser.monthly_income != null ? updatedUser.monthly_income : null,
-            avatar: updatedUser.avatar || null,
+            avatar: updatedUser.avatar,
           })
           .eq("id", user.id);
       } catch (e) {}
-    } catch (err) {
-      console.warn("Profile update warning:", err);
-    }
 
-    // 3. Update client session & broadcast to listeners (ProfilePage, Navbar, Dashboard)
-    setClientDemoSession(updatedUser);
-    onProfileUpdated(updatedUser);
-    toast.success("Profile and campus updated successfully!");
-    setSaving(false);
-    onOpenChange(false);
+      // 3. Update client session & broadcast to listeners (ProfilePage, Navbar, Dashboard)
+      setClientDemoSession(updatedUser);
+      onProfileUpdated(updatedUser);
+      toast.success("Profile and campus updated successfully!");
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error("Profile update error:", err);
+      toast.error(err?.message || "Could not save profile changes. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

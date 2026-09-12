@@ -176,7 +176,7 @@ function LoginContent() {
           const resolvedDept = cloudUser?.department || meta.department;
           const resolvedYear = cloudUser?.year_of_study || meta.year_of_study;
           const resolvedPhone = cloudUser?.phone || meta.phone;
-          const resolvedVerification = cloudUser?.verification_status || meta.verification_status || (data.user.email === "astrosalikriyaz@gmail.com" ? "verified" : "unverified");
+          const resolvedVerification = cloudUser?.verification_status || meta.verification_status || "unverified";
           const resolvedIncome = cloudUser?.monthly_income != null ? Number(cloudUser.monthly_income) : (meta.monthly_income != null ? Number(meta.monthly_income) : 15000);
 
           const studentUser: DemoUser = {
@@ -214,7 +214,16 @@ function LoginContent() {
           : MAJOR_CAMPUSES.find((c) => c.id === campusSelect)?.name || "Lovely Professional University (LPU)";
         
         const resolvedDept = isCustomDept ? customDept.trim() : department;
-        const resolvedIncome = Number(monthlyAllowance) || 15000;
+
+        let resolvedIncome: number | null = 15000;
+        if (monthlyAllowance.trim() !== "") {
+          const parsed = Number(monthlyAllowance);
+          if (isNaN(parsed) || parsed < 0) {
+            toast.error("Please enter a valid, non-negative monthly allowance.");
+            return;
+          }
+          resolvedIncome = parsed;
+        }
 
         const signupRes = await fetch("/api/auth/signup", {
           method: "POST",

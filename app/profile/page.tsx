@@ -136,7 +136,7 @@ export default function ProfilePage() {
           const resolvedCampusName = cloudCampusName 
             || user.user_metadata?.campus_name 
             || clientSession?.campus_name 
-            || (user.email === "astrosalikriyaz@gmail.com" ? "Lovely Professional University (LPU)" : "Lovely Professional University (LPU)");
+            || "Lovely Professional University (LPU)";
 
           const resolvedCity = cloudCity 
             || user.user_metadata?.city 
@@ -158,7 +158,7 @@ export default function ProfilePage() {
           const resolvedVerification = cloudVerification 
             || user.user_metadata?.verification_status 
             || clientSession?.verification_status 
-            || (user.email === "astrosalikriyaz@gmail.com" ? "verified" : "unverified");
+            || "unverified";
 
           const resolvedAadhaarLast4 = cloudAadhaarLast4 
             || user.user_metadata?.aadhaar_last4 

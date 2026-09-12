@@ -114,14 +114,14 @@ export function KycVerificationDialog({
     }
 
     setStep("otp");
-    toast.info("UIDAI Verification OTP dispatched to your Aadhaar-linked mobile.");
+    toast.info("Please enter your verification OTP to continue.");
   };
 
   const handleFinalVerify = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (otpCode.length !== 6) {
-      toast.error("Please enter the 6-digit OTP sent to your Aadhaar-linked mobile.");
+      toast.error("Please enter the 6-digit OTP to continue.");
       return;
     }
 
@@ -132,7 +132,6 @@ export function KycVerificationDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: user.id,
           aadhaar_number: cleanAadhaar,
           aadhaar_name: fullName.trim(),
           doc_front_image: docFront,
@@ -149,18 +148,18 @@ export function KycVerificationDialog({
         return;
       }
 
-      const verifiedUser: DemoUser = {
+      const updatedUser: DemoUser = {
         ...user,
-        verification_status: "verified",
+        verification_status: "pending",
         aadhaar_last4: cleanAadhaar.slice(-4),
-        kyc_doc_type: "Aadhaar Card (UIDAI)",
-        kyc_verified_at: new Date().toISOString(),
+        kyc_doc_type: "Aadhaar Card (Under Review)",
+        kyc_submitted_at: new Date().toISOString(),
       };
 
-      setClientDemoSession(verifiedUser);
-      onVerified(verifiedUser);
+      setClientDemoSession(updatedUser);
+      onVerified(updatedUser);
       setStep("success");
-      toast.success("Identity verified! You now have the Verified Student badge!");
+      toast.success("Aadhaar KYC submitted! Documents are now under review.");
     } catch (err: any) {
       toast.error(err?.message || "An unexpected error occurred during KYC verification.");
     } finally {
@@ -203,7 +202,7 @@ export function KycVerificationDialog({
                 <span>Bank-Grade Privacy & Encryption</span>
               </div>
               <p className="text-[11px] leading-relaxed text-teal-700/90 dark:text-teal-300/80">
-                Aadhaar data is processed through secure UIDAI checksum protocols. Only the masked last 4 digits are retained to prove your student authenticity.
+                Aadhaar details and document scans are transmitted securely to the server for verification, where only the masked last 4 digits are retained in the public profile after review.
               </p>
             </div>
 
@@ -397,22 +396,22 @@ export function KycVerificationDialog({
 
         {step === "success" && (
           <div className="py-6 text-center space-y-4">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 ring-8 ring-emerald-50 dark:ring-emerald-900/30 animate-in zoom-in-50">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 ring-8 ring-amber-50 dark:ring-amber-900/30 animate-in zoom-in-50">
               <ShieldCheck className="h-8 w-8" />
             </div>
 
             <div className="space-y-1">
               <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
-                Aadhaar KYC Verified!
+                Aadhaar KYC Submitted!
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                Your student profile has been verified with Aadhaar. You now possess the official <strong className="text-emerald-600 dark:text-emerald-400">Verified Student</strong> trust badge.
+                Your Aadhaar verification has been submitted securely. Your profile is currently under review and will display the <strong className="text-emerald-600 dark:text-emerald-400">Verified Student</strong> badge once approved.
               </p>
             </div>
 
-            <div className="inline-flex items-center gap-1.5 py-1 px-3 bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 rounded-full text-xs font-bold text-emerald-700 dark:text-emerald-300">
+            <div className="inline-flex items-center gap-1.5 py-1 px-3 bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 rounded-full text-xs font-bold text-amber-700 dark:text-amber-300">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Verified Student • Aadhaar ending in •••• {cleanAadhaar.slice(-4)}
+              KYC In Review • Aadhaar ending in •••• {cleanAadhaar.slice(-4)}
             </div>
 
             <div className="pt-2">
