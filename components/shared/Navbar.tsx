@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { getClientDemoSession, clearClientDemoSession, DemoUser } from "@/lib/auth";
+import { getClientDemoSession, setClientDemoSession, clearClientDemoSession, DemoUser } from "@/lib/auth";
 import { GlobalSearchModal } from "./GlobalSearchModal";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationBell } from "./NotificationBell";
@@ -35,10 +35,20 @@ export function Navbar() {
   const { location: userLoc, detectLocation, loading: detectingLoc, mounted: locationMounted } = useUserLocation();
 
   const handleHeaderLocationClick = async () => {
-    toast.info("Refreshing your current GPS location...");
-    const detected = await detectLocation();
-    if (detected && detected.label) {
-      toast.success(`Current location updated: ${detected.label}`);
+    toast.info("Requesting your GPS location...");
+    try {
+      const detected = await detectLocation();
+      if (detected && detected.label) {
+        const current = getClientDemoSession();
+        if (current) {
+          const updated = { ...current, campus_name: detected.label };
+          setClientDemoSession(updated);
+          setCurrentUser(updated);
+        }
+        toast.success(`Current location updated: ${detected.label}`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Could not detect GPS. Please allow location access in your browser.");
     }
   };
 
@@ -116,9 +126,9 @@ export function Navbar() {
               <span className="truncate max-w-[170px]" suppressHydrationWarning>
                 {detectingLoc 
                   ? "Detecting GPS..." 
-                  : (currentUser?.campus_name 
-                      ? currentUser.campus_name 
-                      : (locationMounted ? (userLoc?.label && !userLoc.label.includes("Demo Campus") ? userLoc.label : "Lovely Professional University (LPU)") : "Lovely Professional University (LPU)"))}
+                  : (locationMounted && userLoc?.label 
+                      ? userLoc.label 
+                      : (currentUser?.campus_name || "Lovely Professional University (LPU)"))}
               </span>
             </button>
           </div>

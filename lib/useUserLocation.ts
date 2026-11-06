@@ -40,7 +40,7 @@ export function useUserLocation() {
       return loc;
     } catch (e) {
       setLoading(false);
-      return location;
+      throw e;
     }
   };
 

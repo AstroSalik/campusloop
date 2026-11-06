@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getAuthenticatedUserId } from "@/lib/auth-server";
+import { extractListingMetadata, injectListingMetadata } from "@/lib/marketplace-meta";
+import { purgeExpiredSoldListings } from "@/lib/marketplace-cleanup";
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,7 +51,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "You cannot purchase your own listing" }, { status: 400 });
     }
 
-    const currentQty = typeof listing.quantity === "number" ? listing.quantity : (listing.status === "sold" ? 0 : 1);
+    // Trigger opportunistic purge of listings sold out >= 3 days
+    purgeExpiredSoldListings(supabaseAdmin).catch(() => {});
+
+    // Extract authoritative quantity and metadata (from column or embedded description)
+    const { meta: currentMeta, cleanDescription } = extractListingMetadata(listing);
+    const currentQty = currentMeta.quantity;
 
     if (listing.status === "sold" || currentQty <= 0) {
       return NextResponse.json(
@@ -60,20 +67,28 @@ export async function POST(req: NextRequest) {
 
     if (currentQty < qtyToBuy) {
       return NextResponse.json(
-        { error: `Only ${currentQty} units available in stock` },
+        { error: `Only ${currentQty} unit${currentQty === 1 ? "" : "s"} available in stock` },
         { status: 400 }
       );
     }
 
     // 2. Compute new stock state
-    const newQty = currentQty - qtyToBuy;
+    const newQty = Math.max(0, currentQty - qtyToBuy);
     const isNowSoldOut = newQty <= 0;
-    const newStatus = isNowSoldOut ? "sold" : listing.status || "active";
-    const soldOutTimestamp = isNowSoldOut ? new Date().toISOString() : null;
+    const newStatus = isNowSoldOut ? "sold" : "active";
+    const soldOutTimestamp = isNowSoldOut ? (currentMeta.sold_out_at || new Date().toISOString()) : null;
+
+    // Embed updated metadata into description so it works even if schema cache lacks quantity column
+    const updatedDescription = injectListingMetadata(cleanDescription, {
+      quantity: newQty,
+      sold_out_at: soldOutTimestamp,
+      restock_requests_count: currentMeta.restock_requests_count,
+    });
 
     const updatePayload: Record<string, any> = {
-      quantity: Math.max(0, newQty),
+      description: updatedDescription,
       status: newStatus,
+      quantity: newQty,
     };
 
     if (isNowSoldOut) {
@@ -85,11 +100,15 @@ export async function POST(req: NextRequest) {
       .update(updatePayload)
       .eq("id", listingId);
 
-    // If quantity or sold_out_at column not in schema cache, fallback to status only
-    if (updateErr && (updateErr.code === "PGRST204" || updateErr.message?.includes("quantity"))) {
+    // If quantity or sold_out_at column not in schema cache, fallback without those columns
+    if (updateErr && (updateErr.code === "PGRST204" || updateErr.message?.includes("quantity") || updateErr.message?.includes("sold_out_at"))) {
+      const fallbackPayload: Record<string, any> = {
+        description: updatedDescription,
+        status: newStatus,
+      };
       const fallback = await supabaseAdmin
         .from("listings")
-        .update({ status: newStatus })
+        .update(fallbackPayload)
         .eq("id", listingId);
       updateErr = fallback.error;
     }

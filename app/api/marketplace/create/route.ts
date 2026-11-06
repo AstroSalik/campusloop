@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getAuthenticatedUserId } from "@/lib/auth-server";
+import { injectListingMetadata } from "@/lib/marketplace-meta";
+import { purgeExpiredSoldListings } from "@/lib/marketplace-cleanup";
 
 export async function POST(req: NextRequest) {
   try {
@@ -99,14 +101,24 @@ export async function POST(req: NextRequest) {
 
     const listingId = listingData.id || `listing-custom-${Date.now().toString(36)}`;
 
+    // Purge any listings that have been sold out for >= 3 days
+    purgeExpiredSoldListings(supabaseAdmin).catch(() => {});
+
     // 3. Attempt insertion with schema tolerance
+    // Always embed dynamic metadata into description as an ultra-reliable fallback
+    const descriptionWithMeta = injectListingMetadata(description, {
+      quantity,
+      sold_out_at: null,
+      restock_requests_count: 0,
+    });
+
     // Try first with extended columns (quantity, sold_out_at, restock_requests_count)
     const extendedPayload = {
       id: listingId,
       seller_id: sellerId,
       campus_id: campusId,
       title,
-      description,
+      description: descriptionWithMeta,
       category,
       type,
       price,
@@ -123,13 +135,13 @@ export async function POST(req: NextRequest) {
 
     // If extended columns don't exist in Supabase schema cache yet (PGRST204), fall back to base columns
     if (insertErr && (insertErr.code === "PGRST204" || insertErr.message?.includes("quantity") || insertErr.message?.includes("sold_out_at") || insertErr.message?.includes("restock_requests_count"))) {
-      console.warn("[marketplace-create] Extended columns missing in schema cache, falling back to base columns.");
+      console.warn("[marketplace-create] Extended columns missing in schema cache, falling back to base columns with embedded metadata.");
       const basePayload = {
         id: listingId,
         seller_id: sellerId,
         campus_id: campusId,
         title,
-        description,
+        description: descriptionWithMeta,
         category,
         type,
         price,

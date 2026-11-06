@@ -1,5 +1,6 @@
 import { Listing } from "@/lib/types";
 import { DEMO_CAMPUS_ID, DEMO_USERS } from "@/lib/auth";
+import { extractListingMetadata, injectListingMetadata } from "@/lib/marketplace-meta";
 
 export const INITIAL_LISTINGS: (Listing & { seller_name: string; seller_email: string; seller_initials: string })[] = [];
 
@@ -146,6 +147,9 @@ export function mapSupabaseListing(row: any): MarketplaceListing {
           },
         ];
 
+  const { meta, cleanDescription } = extractListingMetadata(row);
+  const resolvedStatus = meta.quantity <= 0 ? "sold" : (row.status || "active");
+
   return {
     id: row.id,
     seller_id: row.seller_id,
@@ -154,16 +158,16 @@ export function mapSupabaseListing(row: any): MarketplaceListing {
     seller_initials: sellerInitials,
     campus_id: row.campus_id || DEMO_CAMPUS_ID,
     title: row.title,
-    description: row.description,
+    description: cleanDescription,
     category: row.category,
     type: row.type || "sell",
     price: Number(row.price),
     condition: row.condition || "Good",
     location_label: row.location_label || "Campus",
-    status: row.status || "active",
-    quantity: typeof row.quantity === "number" ? row.quantity : (row.status === "sold" ? 0 : 1),
-    sold_out_at: row.sold_out_at || (row.status === "sold" ? row.created_at : null),
-    restock_requests_count: typeof row.restock_requests_count === "number" ? row.restock_requests_count : 0,
+    status: resolvedStatus,
+    quantity: meta.quantity,
+    sold_out_at: meta.sold_out_at,
+    restock_requests_count: meta.restock_requests_count,
     created_at: row.created_at,
     images: images,
   };
@@ -186,6 +190,7 @@ export async function fetchListingsFromSupabase(): Promise<MarketplaceListing[]>
     if (data) {
       const cloudListings = data.map(mapSupabaseListing);
       if (typeof window !== "undefined") {
+        fetch("/api/marketplace/cleanup").catch(() => {});
         try {
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudListings));
         } catch (e) {}
@@ -285,12 +290,18 @@ export async function saveListing(newListing: typeof INITIAL_LISTINGS[0]): Promi
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       
+      const descWithMeta = injectListingMetadata(newListing.description, {
+        quantity: typeof newListing.quantity === "number" ? newListing.quantity : 1,
+        sold_out_at: newListing.sold_out_at || null,
+        restock_requests_count: newListing.restock_requests_count || 0,
+      });
+
       const payload: any = {
         id: newListing.id,
         seller_id: newListing.seller_id,
         campus_id: newListing.campus_id,
         title: newListing.title,
-        description: newListing.description,
+        description: descWithMeta,
         category: newListing.category,
         type: newListing.type,
         price: newListing.price,
@@ -373,6 +384,14 @@ export async function updateListing(id: string, updatedFields: Partial<typeof IN
       if (updatedFields.quantity !== undefined) payload.quantity = updatedFields.quantity;
       if (updatedFields.sold_out_at !== undefined) payload.sold_out_at = updatedFields.sold_out_at;
       if (updatedFields.restock_requests_count !== undefined) payload.restock_requests_count = updatedFields.restock_requests_count;
+
+      if (payload.description) {
+        payload.description = injectListingMetadata(payload.description, {
+          quantity: payload.quantity,
+          sold_out_at: payload.sold_out_at,
+          restock_requests_count: payload.restock_requests_count,
+        });
+      }
 
       if (Object.keys(payload).length > 0) {
         let { error } = await supabase.from("listings").update(payload).eq("id", id);

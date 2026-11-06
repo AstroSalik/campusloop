@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getAuthenticatedUserId } from "@/lib/auth-server";
+import { extractListingMetadata, injectListingMetadata } from "@/lib/marketplace-meta";
 
 export async function POST(req: NextRequest) {
   try {
@@ -50,21 +51,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { meta: currentMeta, cleanDescription } = extractListingMetadata(listing);
+
     // Determine target quantity
     let resolvedQuantity: number;
     if (typeof newQuantity === "number" && !isNaN(newQuantity)) {
       resolvedQuantity = Math.max(1, newQuantity);
     } else if (typeof addedQuantity === "number" && !isNaN(addedQuantity)) {
-      const current = typeof listing.quantity === "number" ? listing.quantity : 0;
-      resolvedQuantity = Math.max(1, current + addedQuantity);
+      resolvedQuantity = Math.max(1, currentMeta.quantity + addedQuantity);
     } else {
       resolvedQuantity = 1;
     }
+
+    const updatedDescription = injectListingMetadata(cleanDescription, {
+      quantity: resolvedQuantity,
+      sold_out_at: null,
+      restock_requests_count: currentMeta.restock_requests_count,
+    });
 
     // 2. Reactivate listing with new stock
     let { error: updateErr } = await supabaseAdmin
       .from("listings")
       .update({
+        description: updatedDescription,
         quantity: resolvedQuantity,
         status: "active",
         sold_out_at: null,
@@ -72,10 +81,13 @@ export async function POST(req: NextRequest) {
       .eq("id", listingId);
 
     // Fallback if quantity or sold_out_at not present in schema cache
-    if (updateErr && (updateErr.code === "PGRST204" || updateErr.message?.includes("quantity"))) {
+    if (updateErr && (updateErr.code === "PGRST204" || updateErr.message?.includes("quantity") || updateErr.message?.includes("sold_out_at"))) {
       const fallback = await supabaseAdmin
         .from("listings")
-        .update({ status: "active" })
+        .update({
+          description: updatedDescription,
+          status: "active",
+        })
         .eq("id", listingId);
       updateErr = fallback.error;
     }
