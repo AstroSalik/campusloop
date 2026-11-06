@@ -8,6 +8,10 @@ const DELETED_SAMPLE_LISTING_IDS = new Set([
   "l06-electric-kettle",
   "l07-clrs-algorithms",
   "l08-ergonomic-chair",
+  "listing-custom-munncfab",
+  "listing-custom-mu2zgr4n",
+  "listing-custom-mu01zpni",
+  "listing-custom-mu01shr5",
 ]);
 const DELETED_SAMPLE_SELLER_IDS = new Set([
   "00000000-0000-0000-0000-000000000003",
