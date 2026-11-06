@@ -1,21 +1,17 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { 
   Bell, 
-  Check, 
   CheckCheck, 
   Flame, 
-  MessageSquare, 
-  Package, 
   ShoppingBag, 
-  Sparkles, 
   X 
 } from "lucide-react";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 export interface CampusNotification {
   id: string;
@@ -32,8 +28,12 @@ export function NotificationBell() {
   const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
   const [notifications, setNotifications] = useState<CampusNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Listen for auth changes
   useEffect(() => {
@@ -42,7 +42,7 @@ export function NotificationBell() {
     return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
   }, []);
 
-  // Fetch notifications
+  // Fetch notifications from server & sync with localStorage
   const fetchNotifications = async () => {
     if (!currentUser) return;
     try {
@@ -50,13 +50,16 @@ export function NotificationBell() {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.notifications)) {
-          // Merge with any local notification records
           const localRaw = localStorage.getItem(`campusloop_notifs_${currentUser.id}`);
           const localList: CampusNotification[] = localRaw ? JSON.parse(localRaw) : [];
-          
+
           const combinedMap = new Map<string, CampusNotification>();
           data.notifications.forEach((n: CampusNotification) => combinedMap.set(n.id, n));
-          localList.forEach((n: CampusNotification) => combinedMap.set(n.id, n));
+          localList.forEach((n: CampusNotification) => {
+            if (!combinedMap.has(n.id)) {
+              combinedMap.set(n.id, n);
+            }
+          });
 
           const combined = Array.from(combinedMap.values()).sort(
             (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -66,7 +69,6 @@ export function NotificationBell() {
         }
       }
     } catch {
-      // Fallback to local storage
       const localRaw = localStorage.getItem(`campusloop_notifs_${currentUser?.id}`);
       if (localRaw) {
         setNotifications(JSON.parse(localRaw));
@@ -79,14 +81,14 @@ export function NotificationBell() {
 
     const handleEvent = () => fetchNotifications();
     window.addEventListener("campusloop_notifications_updated", handleEvent);
-    const interval = setInterval(fetchNotifications, 15000); // 15s refresh
+    const interval = setInterval(fetchNotifications, 10000);
     return () => {
       window.removeEventListener("campusloop_notifications_updated", handleEvent);
       clearInterval(interval);
     };
   }, [currentUser]);
 
-  // Close when clicking outside
+  // Desktop outside click handler
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -151,6 +153,139 @@ export function NotificationBell() {
 
   if (!currentUser) return null;
 
+  // Shared content inside desktop dropdown or mobile portaled card
+  const renderPanelContent = (isMobile: boolean) => (
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+            Notifications
+          </span>
+          {unreadCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 text-[10px] font-bold">
+              {unreadCount} unread
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={markAllAsRead}
+              className="text-[11px] font-semibold text-primary hover:underline dark:text-teal-400 flex items-center gap-1"
+            >
+              <CheckCheck className="h-3 w-3" />
+              Mark all read
+            </button>
+          )}
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              aria-label="Close notifications"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Notifications List */}
+      <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+        {notifications.length === 0 ? (
+          <div className="p-8 text-center space-y-2">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
+              <Bell className="h-5 w-5" />
+            </div>
+            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+              You&apos;re all caught up!
+            </p>
+            <p className="text-[11px] text-slate-500">
+              You&apos;ll be notified here when peers buy your items or request restocks.
+            </p>
+          </div>
+        ) : (
+          notifications.map((notif) => {
+            const isRestock = notif.type === "restock_request";
+            return (
+              <div
+                key={notif.id}
+                onClick={() => markAsRead(notif.id)}
+                className={cn(
+                  "p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-start gap-3 cursor-pointer",
+                  !notif.read && "bg-teal-50/40 dark:bg-teal-950/20"
+                )}
+              >
+                <div
+                  className={cn(
+                    "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                    isRestock
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                      : notif.type === "purchase"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-primary/10 text-primary dark:text-teal-300"
+                  )}
+                >
+                  {isRestock ? (
+                    <Flame className="h-4 w-4" />
+                  ) : notif.type === "purchase" ? (
+                    <ShoppingBag className="h-4 w-4" />
+                  ) : (
+                    <Bell className="h-4 w-4" />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
+                      {notif.title}
+                    </span>
+                    {!notif.read && (
+                      <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug line-clamp-2">
+                    {notif.message}
+                  </p>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-slate-400">
+                      {new Date(notif.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {notif.link && (
+                      <Link
+                        href={notif.link}
+                        onClick={() => setIsOpen(false)}
+                        className="text-[11px] font-bold text-primary hover:underline dark:text-teal-400"
+                      >
+                        {isRestock ? "Restock Item →" : "View Details →"}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-center">
+        <Link
+          href="/profile"
+          onClick={() => setIsOpen(false)}
+          className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+        >
+          View My Seller Profile & Stock →
+        </Link>
+      </div>
+    </>
+  );
+
   return (
     <div className="relative shrink-0" ref={containerRef}>
       {/* Bell Trigger Button */}
@@ -172,142 +307,30 @@ export function NotificationBell() {
         )}
       </button>
 
-      {/* Popover Dropdown Panel */}
+      {/* Desktop Dropdown Panel */}
       {isOpen && (
-        <>
-          {/* Mobile Backdrop */}
+        <div className="hidden sm:flex absolute right-0 top-full mt-2 w-96 max-h-[480px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex-col z-50 animate-in fade-in-0 zoom-in-95 duration-150">
+          {renderPanelContent(false)}
+        </div>
+      )}
+
+      {/* Mobile Modal Dialog (Portaled to document.body to completely bypass header backdrop-filter containing blocks) */}
+      {mounted && isOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[100] flex flex-col justify-start items-center p-3 sm:hidden animate-in fade-in-0 duration-150">
+          {/* Touch Backdrop */}
           <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-40 sm:hidden"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
             onClick={() => setIsOpen(false)}
+            aria-hidden="true"
           />
 
-          <div className="fixed inset-x-3 top-16 max-h-[82vh] z-50 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col animate-in fade-in-0 zoom-in-95 duration-150 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:max-h-[480px]">
-            {/* Header */}
-            <div className="flex items-center justify-between p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Notifications
-                </span>
-                {unreadCount > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 text-[10px] font-bold">
-                    {unreadCount} unread
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={markAllAsRead}
-                    className="text-[11px] font-semibold text-primary hover:underline dark:text-teal-400 flex items-center gap-1"
-                  >
-                    <CheckCheck className="h-3 w-3" />
-                    Mark all read
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="sm:hidden p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                  aria-label="Close notifications"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-          {/* Notifications List */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
-            {notifications.length === 0 ? (
-              <div className="p-8 text-center space-y-2">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
-                  <Bell className="h-5 w-5" />
-                </div>
-                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  You&apos;re all caught up!
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  You&apos;ll be notified here when peers buy your items or request restocks.
-                </p>
-              </div>
-            ) : (
-              notifications.map((notif) => {
-                const isRestock = notif.type === "restock_request";
-                return (
-                  <div
-                    key={notif.id}
-                    onClick={() => markAsRead(notif.id)}
-                    className={cn(
-                      "p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-start gap-3 cursor-pointer",
-                      !notif.read && "bg-teal-50/40 dark:bg-teal-950/20"
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                        isRestock
-                          ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                          : "bg-primary/10 text-primary dark:text-teal-300"
-                      )}
-                    >
-                      {isRestock ? (
-                        <Flame className="h-4 w-4" />
-                      ) : notif.type === "purchase" ? (
-                        <ShoppingBag className="h-4 w-4" />
-                      ) : (
-                        <Bell className="h-4 w-4" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
-                          {notif.title}
-                        </span>
-                        {!notif.read && (
-                          <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug line-clamp-2">
-                        {notif.message}
-                      </p>
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] text-slate-400">
-                          {new Date(notif.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                        {notif.link && (
-                          <Link
-                            href={notif.link}
-                            onClick={() => setIsOpen(false)}
-                            className="text-[11px] font-bold text-primary hover:underline dark:text-teal-400"
-                          >
-                            {isRestock ? "Restock Item →" : "View Details →"}
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+          {/* Centered Floating Card */}
+          <div className="relative w-full max-w-sm mt-16 max-h-[82vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 animate-in zoom-in-95 duration-150">
+            {renderPanelContent(true)}
           </div>
-
-          {/* Footer */}
-          <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-center">
-            <Link
-              href="/profile"
-              onClick={() => setIsOpen(false)}
-              className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-            >
-              View My Seller Profile & Stock →
-            </Link>
-          </div>
-        </div>
-      </>
-    )}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

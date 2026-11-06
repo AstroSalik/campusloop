@@ -24,6 +24,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { NotificationBell } from "./NotificationBell";
 import { MobileNavDrawer } from "./MobileNavDrawer";
 import { useUserLocation } from "@/lib/useUserLocation";
+import { getSavedLocation } from "@/lib/location";
 import { useUnreadMessageCount } from "@/lib/useUnreadMessageCount";
 
 export function Navbar() {
@@ -31,14 +32,33 @@ export function Navbar() {
   const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activePillLocation, setActivePillLocation] = useState<string>("");
   const { unreadCount } = useUnreadMessageCount();
   const { location: userLoc, detectLocation, loading: detectingLoc, mounted: locationMounted } = useUserLocation();
+
+  useEffect(() => {
+    const syncLocation = () => {
+      const saved = getSavedLocation();
+      if (saved && saved.label) {
+        setActivePillLocation(saved.label);
+      }
+    };
+    syncLocation();
+
+    window.addEventListener("campusloop_location_changed", syncLocation);
+    window.addEventListener("storage", syncLocation);
+    return () => {
+      window.removeEventListener("campusloop_location_changed", syncLocation);
+      window.removeEventListener("storage", syncLocation);
+    };
+  }, [locationMounted]);
 
   const handleHeaderLocationClick = async () => {
     toast.info("Requesting your GPS location...");
     try {
       const detected = await detectLocation();
       if (detected && detected.label) {
+        setActivePillLocation(detected.label);
         const current = getClientDemoSession();
         if (current) {
           const updated = { ...current, campus_name: detected.label };
@@ -126,9 +146,7 @@ export function Navbar() {
               <span className="truncate max-w-[170px]" suppressHydrationWarning>
                 {detectingLoc 
                   ? "Detecting GPS..." 
-                  : (locationMounted && userLoc?.label 
-                      ? userLoc.label 
-                      : (currentUser?.campus_name || "Lovely Professional University (LPU)"))}
+                  : (activePillLocation || (locationMounted && userLoc?.label ? userLoc.label : (currentUser?.campus_name || "Lovely Professional University (LPU)")))}
               </span>
             </button>
           </div>
@@ -265,9 +283,9 @@ export function Navbar() {
         currentUser={currentUser}
         onSignOut={handleSignOut}
         onOpenSearch={() => setIsSearchOpen(true)}
-        locationLabel={currentUser?.campus_name || (locationMounted && userLoc?.label && !userLoc.label.includes("Demo Campus") ? userLoc.label : "Lovely Professional University (LPU)")}
+        locationLabel={activePillLocation || currentUser?.campus_name || (locationMounted && userLoc?.label ? userLoc.label : "Lovely Professional University (LPU)")}
         detectingLocation={detectingLoc}
-        onDetectLocation={detectLocation}
+        onDetectLocation={handleHeaderLocationClick}
       />
     </>
   );

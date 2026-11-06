@@ -3,6 +3,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getAuthenticatedUserId } from "@/lib/auth-server";
 import { extractListingMetadata, injectListingMetadata } from "@/lib/marketplace-meta";
 import { purgeExpiredSoldListings } from "@/lib/marketplace-cleanup";
+import { createNotification } from "@/lib/notification-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -117,6 +118,16 @@ export async function POST(req: NextRequest) {
       console.error("[marketplace-purchase] Error updating listing stock:", updateErr.message);
       return NextResponse.json({ error: updateErr.message }, { status: 500 });
     }
+
+    // Deliver notification to seller
+    createNotification(supabaseAdmin, {
+      userId: listing.seller_id,
+      type: "purchase",
+      title: isNowSoldOut ? "🔥 Item Sold Out!" : "🛍️ Item Purchased!",
+      message: `A student bought ${qtyToBuy} unit${qtyToBuy > 1 ? "s" : ""} of "${listing.title}". ${newQty} left in stock.`,
+      link: `/marketplace/${listingId}`,
+      listingId,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

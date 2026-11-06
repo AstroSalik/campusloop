@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getAuthenticatedUserId } from "@/lib/auth-server";
 import { sendRestockNotificationEmail } from "@/lib/email-service";
+import { createNotification } from "@/lib/notification-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -135,23 +136,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 7. Save in-app notification for the seller
+    // 7. Save in-app notification for the seller (resilient across table & message channel)
     let notificationSaved = false;
     try {
-      const { error: notifErr } = await supabaseAdmin.from("notifications").insert({
-        user_id: listing.seller_id,
+      const notifResult = await createNotification(supabaseAdmin, {
+        userId: listing.seller_id,
         type: "restock_request",
         title: "🔥 Restock Requested!",
         message: `${buyerName} requested your item "${listing.title}" to be restocked.`,
         link: `/marketplace/${listing.id}`,
-        read: false,
+        listingId: listing.id,
       });
-      notificationSaved = !notifErr;
-      if (notifErr) {
-        console.warn("[restock-request] Notification insert error:", notifErr.message);
-      }
-    } catch {
-      // Ignore if table pending migration
+      notificationSaved = notifResult.success;
+    } catch (notifErr: any) {
+      console.warn("[restock-request] Notification notice:", notifErr?.message);
     }
 
     const maskedEmail = sellerEmail
