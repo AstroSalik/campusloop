@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 export type Theme = "light" | "dark";
 
 const THEME_STORAGE_KEY = "campusloop_theme";
+const THEME_RESET_KEY = "campusloop_default_light_v1";
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>("light");
@@ -13,17 +14,29 @@ export function useTheme() {
   useEffect(() => {
     setMounted(true);
     try {
-      const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-      if (stored === "dark" || stored === "light") {
-        setTheme(stored);
-        applyTheme(stored);
-      } else {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const initial = prefersDark ? "dark" : "light";
-        setTheme(initial);
-        applyTheme(initial);
+      const hasAppliedDefaultLight = localStorage.getItem(THEME_RESET_KEY);
+      
+      if (!hasAppliedDefaultLight) {
+        // Enforce light mode as the default for all users, overriding any legacy dark auto-detection
+        localStorage.setItem(THEME_RESET_KEY, "true");
+        localStorage.setItem(THEME_STORAGE_KEY, "light");
+        setTheme("light");
+        applyTheme("light");
+        return;
       }
-    } catch (e) {}
+
+      const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
+      if (stored === "dark") {
+        setTheme("dark");
+        applyTheme("dark");
+      } else {
+        // Default strictly to light mode
+        setTheme("light");
+        applyTheme("light");
+      }
+    } catch (e) {
+      applyTheme("light");
+    }
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === THEME_STORAGE_KEY && (e.newValue === "light" || e.newValue === "dark")) {
@@ -53,6 +66,7 @@ export function useTheme() {
     applyTheme(next);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
+      localStorage.setItem(THEME_RESET_KEY, "true");
       window.dispatchEvent(new Event("campusloop_theme_changed"));
     } catch (e) {}
   };
@@ -62,6 +76,7 @@ export function useTheme() {
     applyTheme(t);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, t);
+      localStorage.setItem(THEME_RESET_KEY, "true");
       window.dispatchEvent(new Event("campusloop_theme_changed"));
     } catch (e) {}
   };

@@ -116,7 +116,7 @@ export function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/95 dark:bg-slate-900/95 dark:border-slate-800 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-xs">
-        <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
+        <div className="w-full max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Brand Wordmark & Location */}
           <div className="flex items-center gap-3 sm:gap-5 shrink-0">
             <Link href="/" className="flex items-center gap-2 group">
@@ -246,11 +246,10 @@ export function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center gap-1 sm:gap-1.5 h-9 px-2.5 sm:px-3.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 active:scale-98 transition-all shadow-xs shrink-0 whitespace-nowrap"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 active:scale-98 transition-all shadow-xs shrink-0 whitespace-nowrap"
               >
                 <LogIn className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Sign In / Sign Up</span>
-                <span className="sm:hidden">Sign In</span>
+                <span>Sign In</span>
               </Link>
             )}
 

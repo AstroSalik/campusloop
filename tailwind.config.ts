@@ -8,6 +8,12 @@ const config: Config = {
     "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    container: {
+      center: true,
+      screens: {
+        "2xl": "1280px",
+      },
+    },
     extend: {
       colors: {
         border: "hsl(var(--border))",

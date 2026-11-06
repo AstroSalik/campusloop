@@ -136,7 +136,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-7xl px-5 sm:px-8 py-6 sm:py-8 space-y-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
       {/* 1. Seamless Blended Hero Section */}
       <div className="relative pt-4 sm:pt-6 pb-14 sm:pb-16 lg:pt-12 lg:pb-24 overflow-hidden">
         {/* Subtle background glow/blend */}

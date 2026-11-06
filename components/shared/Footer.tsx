@@ -27,7 +27,7 @@ export function Footer() {
 
   return (
     <footer className="w-full border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 mt-auto transition-colors">
-      <div className="container mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
           {/* Col 1: Brand & Trust Statement */}
           <div className="md:col-span-2 space-y-4">
