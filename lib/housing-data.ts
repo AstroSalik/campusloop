@@ -270,25 +270,14 @@ export async function updateRoom(id: string, updatedFields: Partial<typeof INITI
 }
 
 export async function deleteRoom(id: string): Promise<boolean> {
-  try {
-    const res = await fetch("/api/housing/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok || result.error) {
-      console.warn("[Server Delete] Falling back to direct client delete for room:", result.error);
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.from("rooms").delete().eq("id", id);
-    }
-  } catch (err) {
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.from("rooms").delete().eq("id", id);
-    } catch (e) {}
+  const response = await fetch("/api/housing/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({}));
+    throw new Error(error || "Could not delete this accommodation.");
   }
 
   if (typeof window !== "undefined") {
@@ -579,25 +568,14 @@ export function getRoommateProfiles(): typeof INITIAL_ROOMMATE_PROFILES {
 }
 
 export async function deleteRoommateProfile(id: string): Promise<boolean> {
-  try {
-    const res = await fetch("/api/roommates/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok || result.error) {
-      console.warn("[Server Delete] Falling back to direct client delete for roommate profile:", result.error);
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.from("roommate_profiles").delete().eq("id", id);
-    }
-  } catch (err) {
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.from("roommate_profiles").delete().eq("id", id);
-    } catch (e) {}
+  const response = await fetch("/api/roommates/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({}));
+    throw new Error(error || "Could not delete this roommate profile.");
   }
 
   if (typeof window !== "undefined") {

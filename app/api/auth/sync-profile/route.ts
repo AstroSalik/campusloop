@@ -31,7 +31,6 @@ export async function POST(req: NextRequest) {
       student_id,
       monthly_income, 
       avatar,
-      verification_status 
     } = body;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -62,7 +61,6 @@ export async function POST(req: NextRequest) {
     const resolvedDept = department || sessionUser.user_metadata?.department || "";
     const resolvedYear = year_of_study || sessionUser.user_metadata?.year_of_study || "";
     const resolvedPhone = phone || sessionUser.user_metadata?.phone || "";
-    const resolvedVerification = verification_status || sessionUser.user_metadata?.verification_status || "unverified";
     const normalizedStudentId = student_id !== undefined ? ((student_id || "").trim() || null) : undefined;
 
     // Update user_metadata in Auth
@@ -75,7 +73,6 @@ export async function POST(req: NextRequest) {
         department: resolvedDept,
         year_of_study: resolvedYear,
         phone: resolvedPhone,
-        verification_status: resolvedVerification,
       };
       if (normalizedStudentId !== undefined) {
         metaUpdates.student_id = normalizedStudentId;
@@ -121,7 +118,6 @@ export async function POST(req: NextRequest) {
         department: resolvedDept,
         year_of_study: resolvedYear,
         phone: resolvedPhone,
-        verification_status: resolvedVerification,
         monthly_income:
           monthly_income !== undefined ? monthly_income : null,
       };

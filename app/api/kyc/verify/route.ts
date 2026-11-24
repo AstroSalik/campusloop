@@ -1,171 +1,96 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { validateAadhaarVerhoeff, checkNameSimilarity } from "@/lib/kyc-validator";
+import { AccountVerification, VerificationError } from "@/lib/account-verification";
+import { createClient } from "@/lib/supabase/server";
 
-export async function POST(req: NextRequest) {
+function reply(body: object, status = 200) {
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+async function getVerification() {
+  const { data: { user }, error } = await createClient().auth.getUser();
+  if (error || !user) throw new VerificationError("Sign in to use account verification.", 401);
+  return new AccountVerification(user.id);
+}
+
+function failure(error: unknown) {
+  if (error instanceof VerificationError) return reply({ error: error.message }, error.status);
+  return reply({ error: "Account verification is temporarily unavailable." }, 503);
+}
+
+async function readAction(request: NextRequest) {
+  const reader = request.body?.getReader();
+  if (!reader) throw new VerificationError("Send a verification action.");
+  const decoder = new TextDecoder();
+  let size = 0;
+  let text = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > 1024) {
+      await reader.cancel();
+      throw new VerificationError("The verification request is too large.", 413);
+    }
+    text += decoder.decode(value, { stream: true });
+  }
   try {
-    const body = await req.json().catch(() => ({}));
-    const { 
-      aadhaar_number, 
-      aadhaar_name, 
-      doc_front_image, 
-      doc_back_image, 
-      consent_agreed,
-      otp_code,
-    } = body;
+    const body = JSON.parse(text + decoder.decode());
+    if (!body || typeof body.action !== "string") throw new Error();
+    return body;
+  } catch {
+    throw new VerificationError("Send a supported verification action.");
+  }
+}
 
-    // 1. Authenticate user strictly from server session cookies
-    const serverSupabase = createServerSupabaseClient();
-    const {
-      data: { user: sessionUser },
-      error: authError,
-    } = await serverSupabase.auth.getUser();
+function isSameOrigin(request: NextRequest) {
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (fetchSite && fetchSite !== "same-origin") return false;
+  try {
+    const origin = new URL(request.headers.get("origin") ?? "");
+    return (origin.protocol === "http:" || origin.protocol === "https:")
+      && (origin.host === request.headers.get("host") || origin.origin === process.env.VERIFICATION_APP_ORIGIN);
+  } catch {
+    return false;
+  }
+}
 
-    if (authError || !sessionUser?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized: Please sign in to verify your account." },
-        { status: 401 }
-      );
+export async function GET() {
+  try {
+    return reply(await (await getVerification()).overview());
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return reply({ error: "Open your CampusLoop profile to continue." }, 403);
+  }
+  if (request.headers.get("content-type")?.split(";")[0] !== "application/json") {
+    return reply({ error: "Send a JSON verification action." }, 415);
+  }
+
+  try {
+    const verification = await getVerification();
+    const body = await readAction(request);
+    switch (body.action) {
+      case "start-aadhaar":
+        await verification.startAadhaar(body.consentVersion);
+        break;
+      case "check-aadhaar":
+        await verification.checkAadhaar();
+        break;
+      case "send-email":
+        await verification.sendEmail(body.email);
+        break;
+      case "confirm-email":
+        await verification.confirmEmail(body.code);
+        break;
+      default:
+        throw new VerificationError("Send a supported verification action.");
     }
-
-    const targetUserId = sessionUser.id;
-
-    // 2. Validate Aadhaar inputs
-    if (!consent_agreed) {
-      return NextResponse.json(
-        { error: "You must provide explicit consent for Aadhaar KYC verification." },
-        { status: 400 }
-      );
-    }
-
-    const cleanAadhaar = (aadhaar_number || "").replace(/\s+/g, "");
-    if (!cleanAadhaar || cleanAadhaar.length !== 12 || !/^\d{12}$/.test(cleanAadhaar)) {
-      return NextResponse.json(
-        { error: "Please provide a valid 12-digit Aadhaar number." },
-        { status: 400 }
-      );
-    }
-
-    if (!validateAadhaarVerhoeff(cleanAadhaar)) {
-      return NextResponse.json(
-        { 
-          error: "Invalid Aadhaar number. The 12-digit number failed UIDAI checksum verification. Please re-check your Aadhaar card." 
-        },
-        { status: 422 }
-      );
-    }
-
-    if (!aadhaar_name || aadhaar_name.trim().length < 3) {
-      return NextResponse.json(
-        { error: "Please enter your full name exactly as printed on your Aadhaar card." },
-        { status: 400 }
-      );
-    }
-
-    // Compare Aadhaar name with stored profile name
-    const storedName =
-      sessionUser.user_metadata?.full_name ||
-      sessionUser.user_metadata?.name ||
-      "";
-
-    if (storedName && !checkNameSimilarity(storedName, aadhaar_name)) {
-      return NextResponse.json(
-        {
-          error: `The name on your Aadhaar card does not match your registered profile name.`,
-        },
-        { status: 422 }
-      );
-    }
-
-    if (!doc_front_image) {
-      return NextResponse.json(
-        { error: "A clear photo or scan of your Aadhaar card (front side) is required." },
-        { status: 400 }
-      );
-    }
-
-    // OTP format validation
-    if (otp_code !== undefined && otp_code !== null) {
-      const cleanOtp = String(otp_code).trim();
-      if (cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) {
-        return NextResponse.json(
-          { error: "Please enter the valid 6-digit Aadhaar OTP." },
-          { status: 400 }
-        );
-      }
-    }
-
-    const aadhaarLast4 = cleanAadhaar.slice(-4);
-    const submittedAt = new Date().toISOString();
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: "Supabase service configuration missing" },
-        { status: 500 }
-      );
-    }
-
-    const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
-
-    // 1. Update Supabase Auth user_metadata (status set to pending review)
-    const { error: adminUpdateError } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
-      user_metadata: {
-        verification_status: "pending",
-        aadhaar_last4: aadhaarLast4,
-        kyc_doc_type: "Aadhaar Card (Under Review)",
-        kyc_submitted_at: submittedAt,
-        aadhaar_name: aadhaar_name.trim(),
-      },
-    });
-
-    if (adminUpdateError) {
-      console.error("Auth admin metadata update error:", adminUpdateError);
-      return NextResponse.json(
-        { error: `Failed to update auth verification status: ${adminUpdateError.message}` },
-        { status: 500 }
-      );
-    }
-
-    // 2. Update public.users database table
-    const { error: dbUpdateError } = await supabaseAdmin
-      .from("users")
-      .update({
-        verification_status: "pending",
-        aadhaar_last4: aadhaarLast4,
-        kyc_doc_type: "Aadhaar Card (Under Review)",
-        kyc_submitted_at: submittedAt,
-      })
-      .eq("id", targetUserId);
-
-    if (dbUpdateError) {
-      console.error("Database user profile KYC update error:", dbUpdateError);
-      return NextResponse.json(
-        { error: `Failed to update database profile verification status: ${dbUpdateError.message}` },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Aadhaar KYC documents submitted successfully. Your verification is now in review.",
-      verification: {
-        status: "pending",
-        aadhaar_last4: aadhaarLast4,
-        kyc_doc_type: "Aadhaar Card (Under Review)",
-        submitted_at: submittedAt,
-      },
-    });
-  } catch (err: any) {
-    console.error("Aadhaar KYC verification exception:", err);
-    return NextResponse.json(
-      { error: err?.message || "Internal server error during KYC verification." },
-      { status: 500 }
-    );
+    return reply(await verification.overview());
+  } catch (error) {
+    return failure(error);
   }
 }

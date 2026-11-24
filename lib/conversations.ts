@@ -224,92 +224,29 @@ export function saveConversations(convs: StoredConversation[]) {
   }
 }
 
-export async function persistConversationToCloud(
-  conv: StoredConversation,
-  initialMsg?: string,
-  senderId?: string,
-  initialMsgId?: string
-) {
-  try {
-    const res = await fetch("/api/conversations/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        conversation: {
-          id: conv.id,
-          listing_id: conv.listing_id || null,
-          room_id: conv.room_id || null,
-          wanted_listing_id: conv.wanted_listing_id || null,
-          type: conv.type,
-        },
-        members: conv.members.map((m) => ({
-          user_id: m.user_id,
-          role: m.role,
-        })),
-        initialMessage:
-          initialMsg && senderId && initialMsgId
-            ? {
-                id: initialMsgId,
-                sender_id: senderId,
-                content: initialMsg,
-              }
-            : null,
-      }),
-    });
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok || result.error) {
-      console.warn("[Server Create Conv] API notice, falling back to direct client:", result.error);
-      const supabase = createClient();
-      await supabase.from("conversations").insert({
-        id: conv.id,
-        listing_id: conv.listing_id || null,
-        room_id: conv.room_id || null,
-        wanted_listing_id: conv.wanted_listing_id || null,
-        type: conv.type === "housing_group" || conv.type === "roommate_dm" ? conv.type : "marketplace_dm",
-      });
-      await supabase.from("conversation_members").insert(
-        conv.members.map((m) => ({
-          conversation_id: conv.id,
-          user_id: m.user_id,
-          role: m.role,
-        }))
-      );
-      if (initialMsg && senderId && initialMsgId) {
-        await supabase.from("messages").insert({
-          id: initialMsgId,
-          conversation_id: conv.id,
-          sender_id: senderId,
-          content: initialMsg,
-        });
-      }
-    }
-  } catch (err) {
-    try {
-      const supabase = createClient();
-      await supabase.from("conversations").insert({
-        id: conv.id,
-        listing_id: conv.listing_id || null,
-        room_id: conv.room_id || null,
-        wanted_listing_id: conv.wanted_listing_id || null,
-        type: conv.type === "housing_group" || conv.type === "roommate_dm" ? conv.type : "marketplace_dm",
-      });
-      await supabase.from("conversation_members").insert(
-        conv.members.map((m) => ({
-          conversation_id: conv.id,
-          user_id: m.user_id,
-          role: m.role,
-        }))
-      );
-      if (initialMsg && senderId && initialMsgId) {
-        await supabase.from("messages").insert({
-          id: initialMsgId,
-          conversation_id: conv.id,
-          sender_id: senderId,
-          content: initialMsg,
-        });
-      }
-    } catch (e) {}
+async function persistConversationToCloud(conv: StoredConversation): Promise<string> {
+  const response = await fetch("/api/conversations/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: conv.type,
+      listingId: conv.listing_id,
+      roomId: conv.room_id,
+      wantedId: conv.wanted_listing_id,
+      roommateId: conv.type === "roommate_dm" ? conv.members[0].user_id : undefined,
+    }),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.conversationId) {
+    throw new Error(result?.error || "Could not open this conversation. Try again.");
   }
+
+  const id: string = result.conversationId;
+  const all = getConversations();
+  if (!all.some((existing) => existing.id === id)) {
+    saveConversations([{ ...conv, id, members: conv.members.map((member) => ({ ...member, conversation_id: id })) }, ...all]);
+  }
+  return id;
 }
 
 /**
@@ -382,7 +319,6 @@ export async function getOrCreateMarketplaceConversation(
 
   // Generate standard valid UUID for Supabase
   const newConvId = generateUUID();
-  const initialMsgId = generateUUID();
 
   const listingTitle = extraHints?.listingTitle || listing?.title || "Marketplace Item";
   const listingSubtitle =
@@ -392,7 +328,6 @@ export async function getOrCreateMarketplaceConversation(
       ? `${listing.location_label} • ₹${listing.price.toLocaleString("en-IN")}`
       : "Campus Marketplace";
 
-  const initialMsg = `Hi ${seller.name}, I'm interested in your listing: "${listingTitle}". Is it still available?`;
 
   const newConv: StoredConversation = {
     id: newConvId,
@@ -423,22 +358,10 @@ export async function getOrCreateMarketplaceConversation(
         user_avatar: buyer.avatar || null,
       },
     ],
-    messages: [
-      {
-        id: initialMsgId,
-        conversation_id: newConvId,
-        sender_id: buyer.id,
-        content: initialMsg,
-        created_at: new Date().toISOString(),
-      },
-    ],
+    messages: [],
   };
 
-  // 4. Persist to Supabase
-  await persistConversationToCloud(newConv, initialMsg, buyer.id, initialMsgId);
-
-  saveConversations([newConv, ...all]);
-  return newConvId;
+  return persistConversationToCloud(newConv);
 }
 
 /**
@@ -461,7 +384,7 @@ export async function getOrCreateRoommateConversation(
   // Check local cache
   const existing = all.find(
     (c) =>
-      (c.type === "roommate_dm" || (c.type === "marketplace_dm" && !c.listing_id && !c.room_id)) &&
+      (c.type === "roommate_dm" || (c.type === "marketplace_dm" && !c.listing_id && !c.room_id && !c.wanted_listing_id)) &&
       c.members.some((m) => m.user_id === initiatorId) &&
       c.members.some((m) => m.user_id === targetUserId)
   );
@@ -526,8 +449,6 @@ export async function getOrCreateRoommateConversation(
   });
 
   const newConvId = generateUUID();
-  const initialMsgId = generateUUID();
-  const initialMsg = `Hi ${target.name}, I saw your roommate profile on CampusLoop and would love to connect about finding a place together!`;
 
   const newConv: StoredConversation = {
     id: newConvId,
@@ -558,22 +479,10 @@ export async function getOrCreateRoommateConversation(
         user_avatar: initiator.avatar || null,
       },
     ],
-    messages: [
-      {
-        id: initialMsgId,
-        conversation_id: newConvId,
-        sender_id: initiator.id,
-        content: initialMsg,
-        created_at: new Date().toISOString(),
-      },
-    ],
+    messages: [],
   };
 
-  // 4. Persist to Supabase
-  await persistConversationToCloud(newConv, initialMsg, initiator.id, initialMsgId);
-
-  saveConversations([newConv, ...all]);
-  return newConvId;
+  return persistConversationToCloud(newConv);
 }
 
 /**
@@ -593,7 +502,6 @@ export async function getOrCreateRoomConversation(
     location?: string;
   }
 ): Promise<string> {
-  const all = getConversations();
   const room = getRoomById(roomId);
 
   const user = await resolveUserForChat(userId, {
@@ -606,86 +514,14 @@ export async function getOrCreateRoomConversation(
     email: extraHints?.ownerEmail || room?.owner?.email,
   });
 
-  // 1. Check if a housing_group conversation already exists for this room_id
-  let existing = all.find((c) => c.type === "housing_group" && c.room_id === roomId);
-
-  if (!existing) {
-    // Check Supabase
-    try {
-      const supabase = createClient();
-      const { data: convData } = await supabase
-        .from("conversations")
-        .select("id, room_id, type")
-        .eq("room_id", roomId)
-        .eq("type", "housing_group")
-        .maybeSingle();
-
-      if (convData) {
-        existing = {
-          id: convData.id,
-          room_id: roomId,
-          listing_id: null,
-          wanted_listing_id: null,
-          type: "housing_group",
-          created_at: new Date().toISOString(),
-          title: `${extraHints?.roomTitle || room?.title || "Housing"} (Roommates Group)`,
-          subtitle: `${extraHints?.location || room?.location_label || "Campus"} • Roommates Group`,
-          members: [],
-          messages: [],
-        };
-      }
-    } catch (e) {}
-  }
-
-  if (existing) {
-    const isMember = existing.members.some((m) => m.user_id === user.id);
-    if (!isMember) {
-      const newMember = {
-        conversation_id: existing.id,
-        user_id: user.id,
-        role: "prospective_roommate" as const,
-        user_name: user.name,
-        user_email: user.email,
-        user_initials: user.initials,
-        user_avatar: user.avatar || null,
-      };
-      existing.members.push(newMember);
-
-      const joinMsgId = generateUUID();
-      const joinMsgContent = `Hi everyone, I'm interested in this room (${extraHints?.roomTitle || room?.title || "Accommodation"}) and would like to join the roommate group!`;
-      existing.messages.push({
-        id: joinMsgId,
-        conversation_id: existing.id,
-        sender_id: user.id,
-        content: joinMsgContent,
-        created_at: new Date().toISOString(),
-      });
-
-      saveConversations([...all]);
-
-      try {
-        const supabase = createClient();
-        await supabase.from("conversation_members").insert({
-          conversation_id: existing.id,
-          user_id: user.id,
-          role: "prospective_roommate",
-        });
-        await supabase.from("messages").insert({
-          id: joinMsgId,
-          conversation_id: existing.id,
-          sender_id: user.id,
-          content: joinMsgContent,
-        });
-      } catch (e) {}
-    }
-    return existing.id;
-  }
+  const existing = getConversations().find((c) =>
+    c.type === "housing_group" && c.room_id === roomId && c.members.some((member) => member.user_id === user.id)
+  );
+  if (existing) return existing.id;
 
   // 2. Create new Housing Group Conversation
   const newConvId = generateUUID();
-  const initialMsgId = generateUUID();
   const roomTitle = extraHints?.roomTitle || room?.title || "Housing";
-  const initialMsg = `Hi ${owner.name}, I'm interested in "${roomTitle}". Is there still a spot open?`;
 
   const newConv: StoredConversation = {
     id: newConvId,
@@ -716,26 +552,14 @@ export async function getOrCreateRoomConversation(
         user_avatar: user.avatar || null,
       },
     ],
-    messages: [
-      {
-        id: initialMsgId,
-        conversation_id: newConvId,
-        sender_id: user.id,
-        content: initialMsg,
-        created_at: new Date().toISOString(),
-      },
-    ],
+    messages: [],
   };
 
-  // 4. Persist to Supabase
-  await persistConversationToCloud(newConv, initialMsg, user.id, initialMsgId);
-
-  saveConversations([newConv, ...all]);
-  return newConvId;
+  return persistConversationToCloud(newConv);
 }
 
 /**
- * Flow: Student responds to Wanted Request ("I Can Provide This") -> Auto create or open conversation
+ * Opens the thread for an offer on a Wanted request.
  */
 export async function getOrCreateWantedConversation(
   wantedListingId: string,
@@ -758,7 +582,7 @@ export async function getOrCreateWantedConversation(
   // 1. Check local cache
   const existing = all.find(
     (c) =>
-      c.type === "wanted_response" &&
+      (c.type === "wanted_response" || c.type === "marketplace_dm") &&
       c.wanted_listing_id === wantedListingId &&
       c.members.some((m) => m.user_id === providerId)
   );
@@ -781,14 +605,12 @@ export async function getOrCreateWantedConversation(
   });
 
   const newConvId = generateUUID();
-  const initialMsgId = generateUUID();
   const wantedTitle = extraHints?.wantedTitle || wanted?.title || "Requested Item";
   const budgetMax = extraHints?.budgetMax || wanted?.budget_max || 0;
 
   const title = `Wanted: ${wantedTitle}`;
   const subtitle = budgetMax > 0 ? `Budget: Up to ₹${budgetMax.toLocaleString("en-IN")}` : "Wanted Item Response";
 
-  const initialMsg = `Hi ${requester.name}, I saw your request for "${wantedTitle}". I have this available and can provide it to you!`;
 
   const newConv: StoredConversation = {
     id: newConvId,
@@ -819,91 +641,35 @@ export async function getOrCreateWantedConversation(
         user_avatar: provider.avatar || null,
       },
     ],
-    messages: [
-      {
-        id: initialMsgId,
-        conversation_id: newConvId,
-        sender_id: provider.id,
-        content: initialMsg,
-        created_at: new Date().toISOString(),
-      },
-    ],
+    messages: [],
   };
 
-  // 4. Persist to Supabase
-  await persistConversationToCloud(newConv, initialMsg, provider.id, initialMsgId);
-
-  saveConversations([newConv, ...all]);
-  return newConvId;
+  return persistConversationToCloud(newConv);
 }
 
 /**
  * Add a new message to any conversation (Persists to Supabase and local storage)
  */
 export async function sendMessage(conversationId: string, senderId: string, content: string): Promise<Message> {
+  const response = await fetch("/api/conversations/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: generateUUID(), conversationId, content }),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.message) {
+    throw new Error(result?.error || "Your message could not be sent. Try again.");
+  }
+
+  const message: Message = result.message;
   const all = getConversations();
-  const conv = all.find((c) => c.id === conversationId);
-
-  const messageId = generateUUID();
-  const timestamp = new Date().toISOString();
-
-  const newMsg: Message = {
-    id: messageId,
-    conversation_id: conversationId,
-    sender_id: senderId,
-    content,
-    created_at: timestamp,
-  };
-
-  // 1. Update local state immediately (optimistic UI)
-  if (conv) {
-    if (!conv.messages) conv.messages = [];
-    conv.messages.push(newMsg);
-    saveConversations([...all]);
-    markConversationAsRead(conversationId, senderId);
+  const conversation = all.find((item) => item.id === conversationId);
+  if (conversation && !conversation.messages.some((item) => item.id === message.id)) {
+    conversation.messages.push(message);
+    saveConversations(all);
   }
-
-  // 2. Real Supabase Database Insert via server API with client fallback
-  try {
-    const res = await fetch("/api/conversations/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: messageId,
-        conversationId,
-        senderId,
-        content,
-        created_at: timestamp,
-      }),
-    });
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok || result.error) {
-      console.warn("[Server Send] API route notice, falling back to direct client:", result.error);
-      const supabase = createClient();
-      await supabase.from("messages").insert({
-        id: messageId,
-        conversation_id: conversationId,
-        sender_id: senderId,
-        content,
-        created_at: timestamp,
-      });
-    }
-  } catch (err) {
-    try {
-      const supabase = createClient();
-      await supabase.from("messages").insert({
-        id: messageId,
-        conversation_id: conversationId,
-        sender_id: senderId,
-        content,
-        created_at: timestamp,
-      });
-    } catch (e) {
-      console.error("[Network Exception] Supabase sendMessage:", e);
-    }
-  }
-
-  return newMsg;
+  markConversationAsRead(conversationId, senderId);
+  return message;
 }
 
 /**
@@ -1017,8 +783,8 @@ export async function fetchUserConversationsFromSupabase(userId: string): Promis
         id: cRow.id,
         listing_id: cRow.listing_id || localC?.listing_id || null,
         room_id: cRow.room_id || localC?.room_id || null,
-        wanted_listing_id: localC?.wanted_listing_id || null,
-        type: localC?.type || cRow.type,
+        wanted_listing_id: cRow.wanted_listing_id || (cRow.type === "wanted_response" ? cRow.listing_id : null) || localC?.wanted_listing_id || null,
+        type: cRow.wanted_listing_id ? "wanted_response" : localC?.type || cRow.type,
         created_at: cRow.created_at,
         title,
         subtitle,
@@ -1089,8 +855,8 @@ export async function fetchConversationByIdFromSupabase(conversationId: string):
       id: convRow.id,
       listing_id: convRow.listing_id || local?.listing_id || null,
       room_id: convRow.room_id || local?.room_id || null,
-      wanted_listing_id: local?.wanted_listing_id || null,
-      type: local?.type || convRow.type,
+      wanted_listing_id: convRow.wanted_listing_id || (convRow.type === "wanted_response" ? convRow.listing_id : null) || local?.wanted_listing_id || null,
+      type: convRow.wanted_listing_id ? "wanted_response" : local?.type || convRow.type,
       created_at: convRow.created_at,
       title: local?.title || "CampusLoop Chat",
       subtitle: local?.subtitle || "Active Thread",
@@ -1170,7 +936,15 @@ export async function deleteConversation(
 ): Promise<boolean> {
   if (!conversationId) return false;
 
-  const deleteForEveryone = options?.deleteForEveryone ?? false;
+  const response = await fetch("/api/conversations/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversationId, deleteForEveryone: options?.deleteForEveryone ?? false }),
+  });
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({}));
+    throw new Error(error || "Could not delete this conversation.");
+  }
 
   // 1. Remove from local storage cache
   const all = getConversations();
@@ -1193,39 +967,7 @@ export async function deleteConversation(
     } catch (e) {}
   }
 
-  // 3. Delete from Supabase cloud via server API route
-  try {
-    const res = await fetch("/api/conversations/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, userId, deleteForEveryone }),
-    });
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok || result.error) {
-      console.warn("[Server Delete] Falling back to direct client delete for conversation:", result.error);
-      const supabase = createClient();
-      if (deleteForEveryone) {
-        await supabase.from("messages").delete().eq("conversation_id", conversationId);
-        await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
-        await supabase.from("conversations").delete().eq("id", conversationId);
-      } else if (userId) {
-        await supabase.from("conversation_members").delete().eq("conversation_id", conversationId).eq("user_id", userId);
-      }
-    }
-  } catch (err) {
-    try {
-      const supabase = createClient();
-      if (deleteForEveryone) {
-        await supabase.from("messages").delete().eq("conversation_id", conversationId);
-        await supabase.from("conversation_members").delete().eq("conversation_id", conversationId);
-        await supabase.from("conversations").delete().eq("id", conversationId);
-      } else if (userId) {
-        await supabase.from("conversation_members").delete().eq("conversation_id", conversationId).eq("user_id", userId);
-      }
-    } catch (e) {}
-  }
-
-  // 4. Dispatch events to notify UI components
+  // 3. Dispatch events to notify UI components
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("campusloop_conversations_updated"));
   }

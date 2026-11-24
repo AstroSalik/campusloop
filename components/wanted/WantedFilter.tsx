@@ -42,6 +42,7 @@ export function WantedFilter({
           <button
             key={cat.id}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onSelectCategory(cat.id)}
             className={cn(
               "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0",

@@ -23,6 +23,7 @@ import {
   Users2, 
   X 
 } from "lucide-react";
+import { ContactComposer } from "@/components/chat/ContactComposer";
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -55,7 +56,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { getRoommateProfiles, saveRoommateProfile, fetchRoommateProfilesFromSupabase } from "@/lib/housing-data";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
-import { getOrCreateRoommateConversation } from "@/lib/conversations";
+import { getOrCreateRoommateConversation, sendMessage } from "@/lib/conversations";
 
 const AVAILABLE_TAGS = [
   "Quiet Study",
@@ -88,6 +89,7 @@ export default function RoommatesPage() {
 
   const [profiles, setProfiles] = useState<ReturnType<typeof getRoommateProfiles>>([]);
   const [loading, setLoading] = useState(true);
+  const [contact, setContact] = useState<(typeof profiles)[number] | null>(null);
 
   // Simple plain filters per PRD Section 3
   const [selectedLocation, setSelectedLocation] = useState("all");
@@ -209,39 +211,49 @@ export default function RoommatesPage() {
     setBudgetFilter("");
   };
 
-  const handleContactRoommate = async (profileUser: typeof profiles[0]) => {
+  const handleContactRoommate = (profile: (typeof profiles)[number]) => {
     if (!currentUser) {
       toast.error("Please sign in to message student roommates.");
       router.push("/login?redirect=/roommates");
       return;
     }
-
-    if (profileUser.user_id === currentUser.id) {
+    if (profile.user_id === currentUser.id) {
       toast.info("This is your own roommate profile!");
       return;
     }
-    try {
-      const convId = await getOrCreateRoommateConversation(
-        currentUser.id,
-        profileUser.user_id,
-        {
-          initiatorName: currentUser.name,
-          initiatorEmail: currentUser.email,
-          initiatorAvatar: currentUser.avatar,
-          targetName: profileUser.user_name,
-          targetEmail: profileUser.user_email,
-          targetAvatar: profileUser.user_avatar,
-        }
-      );
-      toast.success(`Connected with ${profileUser.user_name}! Opening chat...`);
-      router.push(`/messages/${convId}`);
-    } catch (e) {
-      toast.error("Could not open chat.");
-    }
+    setContact(profile);
+  };
+
+  const sendRoommateMessage = async (text: string) => {
+    if (!currentUser || !contact) throw new Error("Sign in to message this roommate.");
+    const conversationId = await getOrCreateRoommateConversation(
+      currentUser.id,
+      contact.user_id,
+      {
+        initiatorName: currentUser.name,
+        initiatorEmail: currentUser.email,
+        initiatorAvatar: currentUser.avatar,
+        targetName: contact.user_name,
+        targetEmail: contact.user_email,
+        targetAvatar: contact.user_avatar,
+      }
+    );
+    await sendMessage(conversationId, currentUser.id, text);
+    router.push(`/messages/${conversationId}`);
   };
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
+      {contact && currentUser && (
+        <ContactComposer
+          title="Message a potential roommate"
+          recipient={contact.user_name}
+          context={`${contact.preferred_location} · Move-in: ${contact.move_in_month}`}
+          draft="Hi, are you still looking for a roommate?"
+          onDismiss={() => setContact(null)}
+          onSend={sendRoommateMessage}
+        />
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div>

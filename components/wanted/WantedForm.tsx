@@ -33,14 +33,15 @@ import {
 } from "@/components/ui/select";
 import { getClientDemoSession, DemoUser, DEMO_CAMPUS_ID } from "@/lib/auth";
 import { saveWantedListing, StoredWantedListing } from "@/lib/wanted-data";
+import { generateUUID } from "@/lib/conversations";
 import { useUserLocation } from "@/lib/useUserLocation";
 
-export function WantedForm() {
+export function WantedForm({ initialTitle = "" }: { initialTitle?: string }) {
   const router = useRouter();
   const [currentUser] = useState<DemoUser | null>(() => getClientDemoSession());
   const { location: userLoc, detectLocation, loading: detectingLoc } = useUserLocation();
 
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState("");
   const [budgetMax, setBudgetMax] = useState("");
   const [category, setCategory] = useState("Furniture");
@@ -59,6 +60,7 @@ export function WantedForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!currentUser) {
       toast.error("Please sign in to post a wanted request.");
       router.push("/login?redirect=/wanted/new");
@@ -75,13 +77,13 @@ export function WantedForm() {
       return;
     }
 
-    if (Number(budgetMax) <= 0) {
+    if (!Number.isFinite(Number(budgetMax)) || Number(budgetMax) <= 0) {
       toast.error("Please enter a valid positive budget ceiling.");
       return;
     }
 
     setLoading(true);
-    const newId = `w-custom-${Date.now().toString(36)}`;
+    const newId = generateUUID();
     const finalCategory = category === "Other" && customCategory.trim() ? customCategory.trim() : category;
 
     const newWantedListing: StoredWantedListing = {
@@ -90,7 +92,7 @@ export function WantedForm() {
       requester_name: currentUser.name,
       requester_email: currentUser.email,
       requester_initials: currentUser.initials,
-      campus_id: DEMO_CAMPUS_ID,
+      campus_id: currentUser.campus_id || DEMO_CAMPUS_ID,
       title: title.trim(),
       description: description.trim(),
       category: finalCategory,
@@ -100,10 +102,14 @@ export function WantedForm() {
       created_at: new Date().toISOString(),
     };
 
-    await saveWantedListing(newWantedListing);
-    toast.success("Wanted request published! Sellers across campus will be able to contact you.");
-    router.push(`/wanted/${newId}`);
-    setLoading(false);
+    try {
+      await saveWantedListing(newWantedListing);
+      toast.success("Wanted request published.");
+      router.push(`/wanted/${newId}`);
+    } catch {
+      toast.error("Could not publish your request. Try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,7 +138,9 @@ export function WantedForm() {
               What are you looking for? *
             </label>
             <Input
-              placeholder="e.g. Looking for a mini fridge under ₹2500"
+              aria-label="Item name"
+              maxLength={120}
+              placeholder="e.g. Graphic calculator"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
@@ -270,7 +278,7 @@ export function WantedForm() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.back()}
+            onClick={() => router.push("/marketplace?tab=wanted")}
             disabled={loading}
             className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
           >

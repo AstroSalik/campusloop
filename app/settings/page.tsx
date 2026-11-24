@@ -301,9 +301,6 @@ export default function SettingsPage() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
               Account Settings
             </h1>
-            <Badge variant="outline" className="text-xs bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
-              Verified Student
-            </Badge>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Manage your credentials, privacy preferences, blocked users, and campus security.
@@ -733,7 +730,7 @@ export default function SettingsPage() {
               </p>
               <ul className="list-disc pl-5 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
                 <li>All your active marketplace items and images will be purged.</li>
-                <li>Your student KYC and verified badges will be deleted.</li>
+                <li>Your CampusLoop account verification records will be deleted.</li>
                 <li>Active chats with buyers and roommates will be cleared.</li>
                 <li>You will immediately be signed out from all campus devices.</li>
               </ul>

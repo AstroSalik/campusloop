@@ -178,7 +178,6 @@ function LoginContent() {
           const resolvedDept = cloudUser?.department || meta.department;
           const resolvedYear = cloudUser?.year_of_study || meta.year_of_study;
           const resolvedPhone = cloudUser?.phone || meta.phone;
-          const resolvedVerification = cloudUser?.verification_status || meta.verification_status || "unverified";
           const resolvedIncome = cloudUser?.monthly_income != null ? Number(cloudUser.monthly_income) : (meta.monthly_income != null ? Number(meta.monthly_income) : 15000);
 
           const studentUser: DemoUser = {
@@ -191,8 +190,6 @@ function LoginContent() {
             department: resolvedDept,
             year_of_study: resolvedYear,
             phone: resolvedPhone,
-            verification_status: resolvedVerification,
-            aadhaar_last4: cloudUser?.aadhaar_last4 || meta.aadhaar_last4,
             monthly_income: resolvedIncome,
             avatar: cloudUser?.avatar || meta.avatar || null,
             initials: userName
@@ -271,7 +268,6 @@ function LoginContent() {
           department: resolvedDept,
           year_of_study: yearOfStudy,
           phone: phone.trim(),
-          verification_status: "unverified",
           monthly_income: resolvedIncome,
           avatar: null,
           initials: name

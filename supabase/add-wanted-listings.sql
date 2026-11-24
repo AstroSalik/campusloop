@@ -44,19 +44,19 @@ create policy "Wanted listings are viewable by everyone"
 
 drop policy if exists "Authenticated users can create wanted listings" on public.wanted_listings;
 create policy "Authenticated users can create wanted listings"
-  on public.wanted_listings for insert
-  with check (true);
+  on public.wanted_listings for insert to authenticated
+  with check (auth.uid() = requester_id);
 
 drop policy if exists "Requesters can update their own wanted listings" on public.wanted_listings;
 create policy "Requesters can update their own wanted listings"
-  on public.wanted_listings for update
-  using (true)
-  with check (true);
+  on public.wanted_listings for update to authenticated
+  using (auth.uid() = requester_id)
+  with check (auth.uid() = requester_id);
 
 drop policy if exists "Requesters can delete their own wanted listings" on public.wanted_listings;
 create policy "Requesters can delete their own wanted listings"
-  on public.wanted_listings for delete
-  using (true);
+  on public.wanted_listings for delete to authenticated
+  using (auth.uid() = requester_id);
 
 -- 6. Policies for room_images
 drop policy if exists "Room images are viewable by everyone" on public.room_images;
@@ -66,5 +66,6 @@ create policy "Room images are viewable by everyone"
 
 drop policy if exists "Room owners can manage room images" on public.room_images;
 create policy "Room owners can manage room images"
-  on public.room_images for all
-  using (true);
+  on public.room_images for all to authenticated
+  using (exists (select 1 from public.rooms where rooms.id = room_images.room_id and rooms.owner_id = auth.uid()))
+  with check (exists (select 1 from public.rooms where rooms.id = room_images.room_id and rooms.owner_id = auth.uid()));

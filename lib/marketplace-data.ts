@@ -502,14 +502,13 @@ export async function restockListing(
 }
 
 export async function requestItemRestock(
-  listingId: string,
-  userId?: string
+  listingId: string
 ): Promise<{ success: boolean; error?: string; restock_requests_count?: number; message?: string }> {
   try {
     const res = await fetch("/api/marketplace/restock-request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ listingId, userId }),
+      body: JSON.stringify({ listingId }),
     });
 
     const data = await res.json().catch(() => ({}));
@@ -538,29 +537,16 @@ export async function requestItemRestock(
 }
 
 export async function deleteListing(id: string): Promise<boolean> {
-  // 1. Delete on the server via dedicated API route so it's permanently deleted in Supabase for all devices
-  try {
-    const res = await fetch("/api/marketplace/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok || result.error) {
-      console.warn("[Server Delete] Falling back to direct client delete:", result.error);
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.from("listings").delete().eq("id", id);
-    }
-  } catch (err) {
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.from("listings").delete().eq("id", id);
-    } catch (e) {}
+  const response = await fetch("/api/marketplace/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({}));
+    throw new Error(error || "Could not delete this listing.");
   }
 
-  // 2. Synchronize local cache immediately
   if (typeof window !== "undefined") {
     try {
       const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);

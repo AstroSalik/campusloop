@@ -10,8 +10,6 @@ import {
   GraduationCap,
   Link as LinkIcon, 
   Phone,
-  ShieldAlert,
-  ShieldCheck,
   Trash2, 
   Upload, 
   User as UserIcon, 
@@ -38,7 +36,6 @@ interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProfileUpdated: (updated: DemoUser) => void;
-  onRequestKyc?: () => void;
 }
 
 // Client-side lightweight image compression for snappy avatar storage & rendering
@@ -87,7 +84,6 @@ export function EditProfileDialog({
   open,
   onOpenChange,
   onProfileUpdated,
-  onRequestKyc,
 }: EditProfileDialogProps) {
   const [name, setName] = useState(user.name || "");
   const [campusName, setCampusName] = useState(user.campus_name || "Lovely Professional University (LPU)");
@@ -340,7 +336,7 @@ export function EditProfileDialog({
             Edit Student Profile
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Update your verified student details, actual campus, department, and contact information.
+            Update your campus, department, and contact information.
           </DialogDescription>
         </DialogHeader>
 
@@ -435,46 +431,6 @@ export function EditProfileDialog({
                 </div>
               )}
             </div>
-          </div>
-
-          {/* KYC Status Indicator in Edit Dialog */}
-          <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              {user.verification_status === "verified" ? (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                  <ShieldCheck className="h-4 w-4" />
-                </div>
-              ) : (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
-                  <ShieldAlert className="h-4 w-4" />
-                </div>
-              )}
-              <div>
-                <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                  {user.verification_status === "verified" ? "Aadhaar KYC Verified" : "Identity KYC Unverified"}
-                </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {user.verification_status === "verified"
-                    ? `Aadhaar ending in •••• ${user.aadhaar_last4 || "XXXX"}`
-                    : "Verify your Aadhaar card to receive the Verified Student tag"}
-                </span>
-              </div>
-            </div>
-
-            {user.verification_status !== "verified" && onRequestKyc && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  onOpenChange(false);
-                  onRequestKyc();
-                }}
-                className="h-7 text-xs font-bold border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
-              >
-                Verify KYC
-              </Button>
-            )}
           </div>
 
           {/* Full Name */}

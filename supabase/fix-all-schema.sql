@@ -196,7 +196,7 @@ CREATE INDEX IF NOT EXISTS idx_password_resets_token ON public.password_resets(t
 
 ALTER TABLE public.password_resets ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Service role manages password resets" ON public.password_resets;
-CREATE POLICY "Service role manages password resets" ON public.password_resets FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role manages password resets" ON public.password_resets FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Done!
 

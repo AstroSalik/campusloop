@@ -24,7 +24,7 @@ export default function NewRoomPage() {
       <AuthRequiredGuard
         title="Student Sign In Required"
         featureName="Post Room Accommodation"
-        description="To list available flats, hostels, or room spots for student flatmates, please sign in with your verified campus account."
+        description="To list available flats, hostels, or room spots for student flatmates, please sign in with your CampusLoop account."
         redirectUrl="/housing/new"
         backUrl="/housing"
         backLabel="Back to Housing Catalog"

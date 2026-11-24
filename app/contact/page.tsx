@@ -163,7 +163,7 @@ export default function ContactPage() {
 
         <Badge variant="outline" className="bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800 text-xs px-3 py-1.5 font-bold self-start sm:self-auto">
           <ShieldCheck className="h-4 w-4 mr-1 text-teal-600" />
-          Verified Student Helpdesk
+          CampusLoop Helpdesk
         </Badge>
       </div>
 

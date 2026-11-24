@@ -46,13 +46,13 @@ export function Footer() {
             </Link>
 
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
-              The verified peer-to-peer campus ecosystem connecting students for dorm essentials, bicycles, study books, verified PG accommodations, and split-rent calculations.
+              The peer-to-peer campus platform connecting students for dorm essentials, bicycles, study books, PG accommodations, and split-rent calculations.
             </p>
 
             {/* Trust Statement Badge */}
             <div className="inline-flex items-center gap-2 rounded-full border border-teal-200/80 dark:border-teal-800/60 bg-teal-50/70 dark:bg-teal-950/40 px-3.5 py-1.5 text-xs font-semibold text-teal-800 dark:text-teal-300 shadow-2xs">
               <ShieldCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-              <span>100% Student Verified · 0% Brokerage Fees</span>
+              <span>0% Brokerage Fees</span>
             </div>
           </div>
 

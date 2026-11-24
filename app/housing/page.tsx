@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { 
   Building2, 
   Clock,
-  Home, 
   Info,
   MapPin, 
   Percent, 
@@ -29,15 +28,12 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { RoomCard } from "@/components/housing/RoomCard";
-import { ModeToggle } from "@/components/shared/ModeToggle";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { getRooms, fetchRoomsFromSupabase, getUserActiveInterests, getUserActiveBookings } from "@/lib/housing-data";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
-import { useAppMode } from "@/lib/useAppMode";
 
 function HousingContent() {
-  const [mode, setMode] = useAppMode();
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [selectedBedrooms, setSelectedBedrooms] = useState("all");
   const [maxBudget, setMaxBudget] = useState("");
@@ -123,7 +119,7 @@ function HousingContent() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
-      {/* Header & Mode Switcher */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div>
           <div className="flex items-center gap-2">
@@ -135,26 +131,16 @@ function HousingContent() {
             </Badge>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Verified flats, shared hostel rooms, and PGs with transparent rent breakdown.
+            Flats, shared hostel rooms, and PGs with transparent rent breakdown.
           </p>
         </div>
 
-        {/* Mode Switcher */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <ModeToggle
-            mode={mode}
-            onModeChange={setMode}
-            buyerLabel="Room Seeker"
-            sellerLabel="Lister Mode"
-          />
-
-          <Button asChild size="sm" className="shadow-xs">
-            <Link href={currentUser ? "/housing/new" : "/login?redirect=/housing/new"}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              List Room
-            </Link>
-          </Button>
-        </div>
+        <Button asChild size="sm" className="self-start shadow-xs sm:self-auto">
+          <Link href={currentUser ? "/housing/new" : "/login?redirect=/housing/new"}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            List Room
+          </Link>
+        </Button>
       </div>
 
       {/* Active User Interest / Booking Reminder Banners */}
@@ -193,31 +179,6 @@ function HousingContent() {
               </Link>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Lister Mode Banner */}
-      {mode === "seller" && (
-        <div className="rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/[0.04] dark:bg-primary/10 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-xs">
-              <Home className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                You are in Lister Mode {currentUser ? `(${currentUser.name})` : ""}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Have a vacant spot or flat? List it in 1 minute to receive inquiries in an auto-created group thread.
-              </p>
-            </div>
-          </div>
-          <Button asChild size="sm">
-            <Link href={currentUser ? "/housing/new" : "/login?redirect=/housing/new"}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              Post Available Room
-            </Link>
-          </Button>
         </div>
       )}
 

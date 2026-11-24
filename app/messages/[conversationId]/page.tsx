@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,15 @@ export default function ConversationDetailPage() {
   const params = useParams();
   const router = useRouter();
   const conversationId = params.conversationId as string;
-  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
+  const showInterestDraft = useSearchParams().get("draft") === "interest";
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
+
+  useEffect(() => {
+    const sync = () => setCurrentUser(getClientDemoSession());
+    sync();
+    window.addEventListener("campusloop_auth_changed", sync);
+    return () => window.removeEventListener("campusloop_auth_changed", sync);
+  }, []);
 
   const [conversation, setConversation] = useState<StoredConversation | null>(null);
   const [allConversations, setAllConversations] = useState<StoredConversation[]>([]);
@@ -175,24 +183,19 @@ export default function ConversationDetailPage() {
       )
       .subscribe();
 
-    const handleAuth = () => {
-      setCurrentUser(getClientDemoSession());
-    };
-    window.addEventListener("campusloop_auth_changed", handleAuth);
-
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("campusloop_conversations_updated", handleCustomUpdate);
-      window.removeEventListener("campusloop_auth_changed", handleAuth);
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [conversationId, currentUser]);
 
   const handleSend = async (text: string) => {
-    if (!conversation || !currentUser) return;
+    if (!conversation || !currentUser) throw new Error("Sign in to send a message.");
     await sendMessage(conversation.id, currentUser.id, text);
     syncLocal();
+    if (isGroup && showInterestDraft) router.replace(`/messages/${conversationId}`, { scroll: false });
   };
 
   if (!currentUser) {
@@ -260,6 +263,8 @@ export default function ConversationDetailPage() {
 
           {/* Message Input & Quick Chips */}
           <MessageInput
+            key={conversationId}
+            initialDraft={isGroup && showInterestDraft ? "Hi, is there still a spot available?" : undefined}
             onSendMessage={handleSend}
             conversationType={conversation.type}
             isBlocked={isBlocked}

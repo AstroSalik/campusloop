@@ -15,9 +15,9 @@
 
 Students don't have separate isolated problems—they have a unified **campus-living problem**. Finding housing leads to forming roommate groups, roommate groups need transparent rent splitting, moving in/out creates a marketplace for second-hand student items, and every step requires immediate peer-to-peer communication.
 
-**CampusLoop** unifies this entire student lifecycle into one seamless, campus-verified web platform:
+**CampusLoop** brings this student lifecycle together in one web platform:
 1. 🛍️ **Hyper-Local Marketplace**: Buy, sell, or rent student essentials (cycles, mattresses, study tables, kettles, notes).
-2. 🏠 **Verified Housing & Flat Finder**: Discover 1BHK/2BHK flats, PGs, and hostel rooms with transparent rent breakdowns.
+2. 🏠 **Housing & Flat Finder**: Discover 1BHK/2BHK flats, PGs, and hostel rooms with transparent rent breakdowns.
 3. 👥 **Roommate Matcher**: Connect with fellow students filtered by budget, campus proximity, and lifestyle habits.
 4. 📊 **Rent Health Calculator**: Equal cost sharing algorithm + student allowance affordability index (🟢 Comfort, 🟡 Balanced, 🟠 Heavy, 🔴 At Risk).
 5. 💬 **Unified Realtime Chat**: Seamless auto-created 1:1 buyer↔seller direct messages and housing roommate group threads.
@@ -117,6 +117,30 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 *(Note: CampusLoop features built-in robust offline mock fallbacks with rich seeded campus data if external Supabase credentials are not provided).*
+
+### Account verification
+
+1. In the matching Supabase project's SQL Editor, run [the account verification SQL](supabase/account-verification.sql). Keep the service role key on the server. Previous profile flags and Aadhaar submissions do not carry forward as verified results.
+2. Deploy the code with `SETU_AADHAAR_MODE=disabled`. Then run [the account access hardening SQL](supabase/account-access-hardening.sql) after the base schema and earlier patches. This order lets the secured API take over chat writes before browser write permissions are removed. Check signed-in messages, listing management and notifications on that release.
+3. Test Aadhaar using a Setu sandbox instance with an HTTPS preview or staging origin. Set `SETU_AADHAAR_MODE=sandbox`, use separate sandbox credentials, and set the callback to `<staging-origin>/api/kyc/return`. Only use provider test data in this environment. Sandbox success grants no identity badge.
+4. Ask Setu to approve the optional CampusLoop identity-check use case and confirm the applicable UIDAI authorization, permitted data fields, consent and retention terms. Enable production only after that approval and a successful sandbox test. [Setu eKYC guide](https://docs.setu.co/data/ekyc/quickstart) · [UIDAI regulations](https://uidai.gov.in/en/regulations)
+
+For production, add these values under the CampusLoop Vercel project’s **Settings → Environment Variables → Production**. Store provider credentials as secrets.
+
+| Variable | Production value |
+| --- | --- |
+| `VERIFICATION_APP_ORIGIN` | `https://campusloop-blue.vercel.app` or the confirmed production origin, without a trailing slash |
+| `SETU_CLIENT_ID` | Setu production client ID |
+| `SETU_CLIENT_SECRET` | Setu production client secret |
+| `SETU_PRODUCT_INSTANCE_ID` | Approved Setu production eKYC product instance ID |
+| `SETU_AADHAAR_MODE` | `production` after approval and sandbox testing |
+| `SETU_AADHAAR_PRODUCTION_APPROVED` | `true` after Setu approves CampusLoop's production use case |
+
+Register `https://campusloop-blue.vercel.app/api/kyc/return` as the production callback if that remains the production origin. Deploy with the new settings, then confirm an authorized test user can complete the provider flow and sees the result only on their own profile. For rollback, set the mode back to `disabled` and redeploy. [Vercel environment variable guide](https://vercel.com/docs/environment-variables/managing-environment-variables)
+
+Campus email is configured separately. Set `CAMPUS_VERIFICATION_DOMAINS` to a comma-separated list of approved inbox domains. Configure a Resend key and a verified sender in `EMAIL_FROM` and generate a random, server-only `CAMPUS_VERIFICATION_SECRET` (for example, `openssl rand -hex 32`). Campus email confirmation shows control of an approved inbox.
+
+Verification is optional. A successful Aadhaar check confirms identity. Proof of current enrollment requires institution-issued evidence. The app never stores provider-returned identity documents or OTPs. Before launch, review and remove legacy Aadhaar metadata left by the previous flow from Supabase, including `public.users.aadhaar_last4` and the legacy `aadhaar_name` and `aadhaar_last4` Auth user metadata. Review applicable retention requirements before deleting data.
 
 ### 4. Run development server
 ```bash

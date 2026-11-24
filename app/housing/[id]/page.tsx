@@ -22,7 +22,6 @@ import {
   Mail, 
   MapPin, 
   MessageSquare, 
-  Percent, 
   Share2, 
   ShieldCheck, 
   Sparkles, 
@@ -64,7 +63,7 @@ import {
 } from "@/lib/housing-data";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
 import { getOrCreateRoomConversation } from "@/lib/conversations";
-import { calculateSplit, evaluateRentHealth } from "@/lib/rent-engine";
+import { calculateSplit } from "@/lib/rent-engine";
 import { RazorpayCheckoutModal } from "@/components/payments/RazorpayCheckoutModal";
 import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
 import { CancelBookingDialog } from "@/components/housing/CancelBookingDialog";
@@ -200,15 +199,6 @@ export default function RoomDetailPage({
   const perPersonShare = calculateSplit(room.rent, room.utilities, room.maintenance, room.occupancy_total);
   const totalMonthly = room.rent + room.utilities + room.maintenance;
 
-  // Rent health assessment against current user's monthly allowance
-  const rentHealth = evaluateRentHealth(
-    room.rent,
-    room.utilities,
-    room.maintenance,
-    room.occupancy_total,
-    currentUser.monthly_income || 15000
-  );
-
   // Handler: Express Interest / Join Group Chat
   const handleExpressInterest = async () => {
     if (isOwner) {
@@ -244,7 +234,7 @@ export default function RoomDetailPage({
 
       toast.success(res.message);
       refreshRoom();
-      router.push(`/messages/${conversationId}`);
+      router.push(`/messages/${conversationId}${isInterestedByMe ? "" : "?draft=interest"}`);
     } catch (err) {
       toast.error("Could not process request. Please try again.");
     } finally {
@@ -635,61 +625,6 @@ export default function RoomDetailPage({
                 <span>
                   <strong>Policy:</strong> When a student marks interest, they have 7 days to finalize and book. If not booked within that week, they are automatically removed so open spots reflect accurately.
                 </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Section 3: Cost Breakdown */}
-          <Card className="border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-            <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
-                  Transparent Cost Breakdown
-                </CardTitle>
-                <Badge variant={rentHealth.flag}>
-                  {rentHealth.flagEmoji} {rentHealth.flagLabel} ({rentHealth.housingRatioPct}%)
-                </Badge>
-              </div>
-              <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Split equally among {room.occupancy_total} flatmates.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-5 space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/70 p-3">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 block">Base Rent</span>
-                  <span className="text-base font-bold text-slate-900 dark:text-white">₹{room.rent.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/70 p-3">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 block">Utilities</span>
-                  <span className="text-base font-bold text-slate-900 dark:text-white">₹{room.utilities.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/70 p-3">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 block">Maintenance</span>
-                  <span className="text-base font-bold text-slate-900 dark:text-white">₹{room.maintenance.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10 p-3">
-                  <span className="text-xs text-primary dark:text-teal-300 font-semibold block">Your Share</span>
-                  <span className="text-base font-extrabold text-primary dark:text-teal-300">₹{perPersonShare.toLocaleString("en-IN")}/mo</span>
-                </div>
-              </div>
-
-              {/* Deep Link to Rent Health Calculator */}
-              <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 p-4 bg-slate-50/40 dark:bg-slate-800/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Percent className="h-4 w-4 text-primary dark:text-teal-400" />
-                    Rent Health Affordability Assessment
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Takes {rentHealth.housingRatioPct}% of your monthly allowance (₹{currentUser.monthly_income?.toLocaleString("en-IN")}).
-                  </p>
-                </div>
-                <Button asChild variant="outline" size="sm" className="shrink-0 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
-                  <Link href={`/rent?room=${room.id}`}>
-                    Launch Calculator
-                  </Link>
-                </Button>
               </div>
             </CardContent>
           </Card>

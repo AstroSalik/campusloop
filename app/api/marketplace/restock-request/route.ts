@@ -7,13 +7,13 @@ import { createNotification } from "@/lib/notification-service";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { listingId, userId: bodyUserId } = body;
+    const { listingId } = body;
 
     if (!listingId) {
       return NextResponse.json({ error: "listingId is required" }, { status: 400 });
     }
 
-    const userId = (await getAuthenticatedUserId(req)) || bodyUserId;
+    const userId = await getAuthenticatedUserId(req);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized: Active session required" }, { status: 401 });
     }

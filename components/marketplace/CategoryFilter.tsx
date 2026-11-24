@@ -29,7 +29,6 @@ const TYPES = [
   { id: "all", label: "All Types" },
   { id: "sell", label: "For Sale" },
   { id: "rent", label: "For Rent" },
-  { id: "buy", label: "Wanted (Buy)" },
 ];
 
 interface CategoryFilterProps {
@@ -55,6 +54,7 @@ export function CategoryFilter({
           return (
             <button
               key={cat.id}
+              aria-pressed={isSelected}
               onClick={() => onSelectCategory(cat.id)}
               className={cn(
                 "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border shrink-0",
@@ -81,6 +81,7 @@ export function CategoryFilter({
             return (
               <button
                 key={t.id}
+                aria-pressed={isSelected}
                 onClick={() => onSelectType(t.id)}
                 className={cn(
                   "px-3 py-1 text-xs font-medium rounded-md transition-all",

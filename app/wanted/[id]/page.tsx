@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { 
   ArrowLeft, 
@@ -27,6 +27,7 @@ import {
   User, 
   Zap 
 } from "lucide-react";
+import { ContactComposer } from "@/components/chat/ContactComposer";
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -45,7 +46,7 @@ import {
   StoredWantedListing 
 } from "@/lib/wanted-data";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
-import { getOrCreateWantedConversation } from "@/lib/conversations";
+import { getOrCreateWantedConversation, sendMessage } from "@/lib/conversations";
 import { EditWantedDialog } from "@/components/wanted/EditWantedDialog";
 import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 
@@ -55,10 +56,12 @@ export default function WantedDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
+  const searchParams = useSearchParams();
+  const offerRequested = searchParams.get("offer") === "1";
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
   const [wanted, setWanted] = useState<StoredWantedListing | null>(null);
   const [loading, setLoading] = useState(true);
-  const [contacting, setContacting] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -95,6 +98,7 @@ export default function WantedDetailPage({
     const handleAuth = () => {
       setCurrentUser(getClientDemoSession());
     };
+    handleAuth();
     window.addEventListener("campusloop_auth_changed", handleAuth);
     return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
   }, []);
@@ -109,45 +113,34 @@ export default function WantedDetailPage({
     }
   };
 
-  const handleProvideThis = async () => {
-    if (!wanted) return;
-    if (!currentUser) {
-      toast.error("Please sign in to connect with this student requester.");
-      router.push(`/login?redirect=${encodeURIComponent(`/wanted/${params.id}`)}`);
-      return;
+  useEffect(() => {
+    if (offerRequested && currentUser && wanted?.status === "active" && wanted.requester_id !== currentUser.id) {
+      setComposeOpen(true);
+      router.replace(`/wanted/${params.id}`, { scroll: false });
     }
+  }, [offerRequested, currentUser, wanted, params.id, router]);
 
-    if (wanted.requester_id === currentUser.id) {
-      toast.info("This is your own wanted request!");
-      return;
-    }
+  const sendOffer = async (text: string) => {
+    if (!wanted || !currentUser) throw new Error("Sign in to make an offer.");
+    const conversationId = await getOrCreateWantedConversation(
+      wanted.id,
+      currentUser.id,
+      wanted.requester_id,
+      {
+        providerName: currentUser.name,
+        providerEmail: currentUser.email,
+        providerAvatar: currentUser.avatar,
+        requesterName: wanted.requester_name,
+        requesterEmail: wanted.requester_email,
+        requesterAvatar: wanted.requester?.avatar || (wanted as any).requester_avatar,
+        wantedTitle: wanted.title,
+        budgetMax: wanted.budget_max,
+        category: wanted.category,
+      }
+    );
 
-    setContacting(true);
-    try {
-      const conversationId = await getOrCreateWantedConversation(
-        wanted.id,
-        currentUser.id,
-        wanted.requester_id,
-        {
-          providerName: currentUser.name,
-          providerEmail: currentUser.email,
-          providerAvatar: currentUser.avatar,
-          requesterName: wanted.requester_name,
-          requesterEmail: wanted.requester_email,
-          requesterAvatar: wanted.requester?.avatar || (wanted as any).requester_avatar,
-          wantedTitle: wanted.title,
-          budgetMax: wanted.budget_max,
-          category: wanted.category,
-        }
-      );
-
-      toast.success(`Connected with ${wanted.requester_name}! Opening conversation...`);
-      router.push(`/messages/${conversationId}`);
-    } catch (err) {
-      toast.error("Could not start conversation. Please try again.");
-    } finally {
-      setContacting(false);
-    }
+    await sendMessage(conversationId, currentUser.id, text);
+    router.push(`/messages/${conversationId}`);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -187,7 +180,7 @@ export default function WantedDetailPage({
           This buyer request may have been fulfilled or removed by the student.
         </p>
         <Button asChild className="bg-primary hover:bg-primary/90 text-white">
-          <Link href="/marketplace?type=buy">Browse Wanted Requests</Link>
+          <Link href="/marketplace?tab=wanted">Browse Wanted Requests</Link>
         </Button>
       </div>
     );
@@ -198,10 +191,10 @@ export default function WantedDetailPage({
       <AuthRequiredGuard
         title="Student Sign In Required"
         featureName="Wanted Request Itinerary Details"
-        description="To protect campus students, view verified buyer specifications, and respond with items you have for sale, please sign in."
-        redirectUrl={`/wanted/${params.id}`}
-        backUrl="/marketplace?type=buy"
-        backLabel="Back to Marketplace"
+        description="To protect campus students, view buyer requests, and respond with items you have for sale, please sign in."
+        redirectUrl={`/wanted/${params.id}${offerRequested ? "?offer=1" : ""}`}
+        backUrl="/marketplace?tab=wanted"
+        backLabel="Back to Wanted"
       />
     );
   }
@@ -213,9 +206,9 @@ export default function WantedDetailPage({
       {/* Navigation & Actions */}
       <div className="flex items-center justify-between">
         <Button asChild variant="ghost" size="sm" className="gap-1 text-slate-500 hover:text-slate-900 dark:hover:text-white -ml-2">
-          <Link href="/marketplace?type=buy">
+          <Link href="/marketplace?tab=wanted">
             <ArrowLeft className="h-4 w-4" />
-            Back to Marketplace
+            Back to Wanted
           </Link>
         </Button>
 
@@ -348,7 +341,7 @@ export default function WantedDetailPage({
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {/* Action Button: I Can Provide This */}
+              {/* Offer or manage the request */}
               {isOwner ? (
                 <div className="space-y-2.5">
                   <div className="rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2.5 text-center text-xs text-slate-700 dark:text-slate-300 font-medium">
@@ -374,17 +367,17 @@ export default function WantedDetailPage({
               ) : (
                 <Button
                   className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 text-white shadow-xs gap-2 transition-all active:scale-98"
-                  onClick={handleProvideThis}
-                  disabled={contacting}
+                  onClick={() => setComposeOpen(true)}
+                  disabled={wanted.status !== "active"}
                 >
                   <HandHeart className="h-5 w-5" />
-                  {contacting ? "Connecting..." : "I Can Provide This"}
+                  {wanted.status === "active" ? "Make an offer" : "Request closed"}
                 </Button>
               )}
 
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 justify-center">
                 <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <span>Direct 1:1 chat with verified student buyer</span>
+                <span>Direct chat with the requester</span>
               </div>
 
               {/* Student Requester Info Card */}
@@ -424,6 +417,17 @@ export default function WantedDetailPage({
           </Card>
         </div>
       </div>
+
+      {composeOpen && (
+        <ContactComposer
+          title="Make an offer"
+          recipient={wanted.requester_name || "Requester"}
+          context={wanted.title}
+          draft="Hi, I saw your request and would like to make an offer."
+          onDismiss={() => setComposeOpen(false)}
+          onSend={sendOffer}
+        />
+      )}
 
       {/* Edit Modal */}
       {wanted && (

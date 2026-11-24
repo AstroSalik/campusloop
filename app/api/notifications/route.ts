@@ -3,21 +3,21 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getAuthenticatedUserId } from "@/lib/auth-server";
 import { fetchUserNotifications, markNotificationsRead } from "@/lib/notification-service";
 
+const privateResponse = { "Cache-Control": "private, no-store" };
+
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const queryUserId = searchParams.get("userId");
-    const userId = (await getAuthenticatedUserId(req)) || queryUserId;
+    const userId = await getAuthenticatedUserId(req);
 
     if (!userId) {
-      return NextResponse.json({ notifications: [] });
+      return NextResponse.json({ notifications: [] }, { status: 401, headers: privateResponse });
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ notifications: [] });
+      return NextResponse.json({ notifications: [] }, { status: 503, headers: privateResponse });
     }
 
     const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey, {
@@ -25,27 +25,25 @@ export async function GET(req: NextRequest) {
     });
 
     const notifications = await fetchUserNotifications(supabaseAdmin, userId);
-    return NextResponse.json({ notifications });
-  } catch (err: any) {
-    return NextResponse.json({ notifications: [], error: err?.message });
+    return NextResponse.json({ notifications }, { headers: privateResponse });
+  } catch {
+    return NextResponse.json({ notifications: [] }, { status: 500, headers: privateResponse });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const { action, id, userId: bodyUserId } = body;
-    const userId = (await getAuthenticatedUserId(req)) || bodyUserId;
-
+    const userId = await getAuthenticatedUserId(req);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const { action, id } = await req.json().catch(() => ({}));
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ error: "Notifications are temporarily unavailable." }, { status: 503 });
     }
 
     const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey, {

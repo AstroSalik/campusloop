@@ -1,431 +1,265 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { toast } from "sonner";
-import { 
-  Check, 
-  CheckCircle2, 
-  ChevronRight, 
-  FileText, 
-  Lock, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Sparkles, 
-  Upload, 
-  X, 
-  AlertCircle
-} from "lucide-react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from "@/components/ui/dialog";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowUpRight, Check, Fingerprint, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { DemoUser, setClientDemoSession } from "@/lib/auth";
-import { 
-  formatAadhaarInput, 
-  validateAadhaarVerhoeff 
-} from "@/lib/kyc-validator";
+import { AADHAAR_CONSENT_VERSION, type VerificationAction, type VerificationDetail, type VerificationOverview } from "@/lib/verification";
 
-interface KycVerificationDialogProps {
-  user: DemoUser;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onVerified: (updated: DemoUser) => void;
+const endpoint = "/api/kyc/verify";
+
+export async function getVerification(): Promise<VerificationOverview> {
+  const response = await fetch(endpoint, { cache: "no-store" });
+  if (!response.ok) throw new Error("Couldn’t load your verification status.");
+  return response.json();
 }
 
-export function KycVerificationDialog({
-  user,
-  open,
-  onOpenChange,
-  onVerified,
-}: KycVerificationDialogProps) {
-  const [step, setStep] = useState<"details" | "otp" | "success">("details");
-  const [aadhaarRaw, setAadhaarRaw] = useState("");
-  const [fullName, setFullName] = useState(user.name || "");
+async function submit(action: VerificationAction): Promise<VerificationOverview> {
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(action),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data) throw new Error(data?.error || "Something went wrong. Please try again.");
+  return data;
+}
+
+function cooldown(detail: VerificationDetail, now: number) {
+  return detail.nextStartAt ? Math.max(0, Math.ceil((Date.parse(detail.nextStartAt) - now) / 1000)) : 0;
+}
+
+interface Props {
+  onOpenChange: (open: boolean) => void;
+  onStatus: (status: VerificationOverview) => void;
+  returning: boolean;
+}
+
+export function KycVerificationDialog({ onOpenChange, onStatus, returning }: Props) {
+  const [step, setStep] = useState<"choose" | "aadhaar" | "email">(returning ? "aadhaar" : "choose");
+  const [overview, setOverview] = useState<VerificationOverview | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(true);
   const [consent, setConsent] = useState(false);
-  const [docFront, setDocFront] = useState<string | null>(null);
-  const [otpCode, setOtpCode] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [changeEmail, setChangeEmail] = useState(false);
+  const [now, setNow] = useState(Date.now);
+  const autoCheck = useRef(returning);
 
-  const cleanAadhaar = aadhaarRaw.replace(/\s+/g, "");
-  const isAadhaar12 = cleanAadhaar.length === 12;
-  const isVerhoeffValid = isAadhaar12 && validateAadhaarVerhoeff(cleanAadhaar);
+  const update = useCallback((status: VerificationOverview) => {
+    setOverview(status);
+    onStatus(status);
+    setNow(Date.now());
+  }, [onStatus]);
 
-  const handleAadhaarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatAadhaarInput(e.target.value);
-    setAadhaarRaw(formatted);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
-      toast.error("Please upload a valid image (PNG, JPG, WEBP) or PDF of your Aadhaar card.");
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error("Document size is too large (max 8MB).");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setDocFront(reader.result as string);
-      toast.success("Aadhaar document uploaded successfully!");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleProceedToOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!isAadhaar12) {
-      toast.error("Please enter a complete 12-digit Aadhaar number.");
-      return;
-    }
-
-    if (!isVerhoeffValid) {
-      toast.error("The 12-digit Aadhaar number is invalid according to official UIDAI checksum. Please double-check.");
-      return;
-    }
-
-    if (!fullName.trim()) {
-      toast.error("Please provide your name as printed on your Aadhaar card.");
-      return;
-    }
-
-    if (!docFront) {
-      toast.error("Please upload a clear scan or photo of your Aadhaar card.");
-      return;
-    }
-
-    if (!consent) {
-      toast.error("Please check the consent box to proceed with KYC verification.");
-      return;
-    }
-
-    setStep("otp");
-    toast.info("Please enter your verification OTP to continue.");
-  };
-
-  const handleFinalVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (otpCode.length !== 6) {
-      toast.error("Please enter the 6-digit OTP to continue.");
-      return;
-    }
-
-    setVerifying(true);
-
+  const load = useCallback(async () => {
+    setBusy(true);
+    setError("");
     try {
-      const res = await fetch("/api/kyc/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          aadhaar_number: cleanAadhaar,
-          aadhaar_name: fullName.trim(),
-          doc_front_image: docFront,
-          consent_agreed: consent,
-          otp_code: otpCode,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        toast.error(data.error || "Aadhaar verification failed. Please check details.");
-        setVerifying(false);
-        return;
+      const status = await getVerification();
+      update(status);
+      if (autoCheck.current && status.aadhaar.mode !== "disabled" && status.aadhaar.status === "pending") {
+        autoCheck.current = false;
+        update(await submit({ action: "check-aadhaar" }));
       }
-
-      const updatedUser: DemoUser = {
-        ...user,
-        verification_status: "pending",
-        aadhaar_last4: cleanAadhaar.slice(-4),
-        kyc_doc_type: "Aadhaar Card (Under Review)",
-        kyc_submitted_at: new Date().toISOString(),
-      };
-
-      setClientDemoSession(updatedUser);
-      onVerified(updatedUser);
-      setStep("success");
-      toast.success("Aadhaar KYC submitted! Documents are now under review.");
-    } catch (err: any) {
-      toast.error(err?.message || "An unexpected error occurred during KYC verification.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Couldn’t load your verification status.");
     } finally {
-      setVerifying(false);
+      setBusy(false);
     }
-  };
+  }, [update]);
 
-  const handleClose = () => {
-    onOpenChange(false);
-    setTimeout(() => {
-      setStep("details");
-      setOtpCode("");
-    }, 300);
-  };
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!overview) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [overview]);
+
+  async function run(action: VerificationAction) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const status = await submit(action);
+      update(status);
+      if (action.action === "start-aadhaar" && status.aadhaar.url) {
+        window.location.assign(status.aadhaar.url);
+      }
+      if (action.action === "send-email") {
+        setCode("");
+        setChangeEmail(false);
+      }
+      if (action.action === "confirm-email") setCode("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Something went wrong. Please try again.");
+      try { update(await getVerification()); } catch { /* Keep displaying the original error. */ }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const aadhaar = overview?.aadhaar;
+  const campus = overview?.campusEmail;
+  const sandbox = aadhaar?.mode === "sandbox";
+  const aadhaarWait = aadhaar ? cooldown(aadhaar, now) : 0;
+  const emailWait = campus ? cooldown(campus, now) : 0;
+  const emailPending = campus?.status === "pending" && Date.parse(campus.expiresAt ?? "") > now;
+  const aadhaarPending = aadhaar?.status === "pending" && Date.parse(aadhaar.expiresAt ?? "") > now;
+
+  function choose(next: typeof step) {
+    setError("");
+    setStep(next);
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500/10 dark:bg-teal-400/20 text-teal-600 dark:text-teal-400">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">
-                Student Aadhaar KYC Verification
-              </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-                Official UIDAI Aadhaar verification to unlock your Verified Student tag.
-              </DialogDescription>
-            </div>
-          </div>
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl p-5 sm:p-7">
+        <DialogHeader className="pr-5 text-left">
+          <DialogTitle className="text-xl tracking-tight">
+            {step === "aadhaar" ? "Aadhaar identity check" : step === "email" ? "Campus email" : "Account verification"}
+          </DialogTitle>
+          <DialogDescription>
+            {step === "choose" ? "Confirm your campus email or complete an optional identity check."
+              : step === "aadhaar" ? "Setu hosts the check and returns its result to CampusLoop."
+              : "Confirm access to an email address issued by a supported campus."}
+          </DialogDescription>
         </DialogHeader>
 
-        {step === "details" && (
-          <form onSubmit={handleProceedToOtp} className="space-y-4 pt-1">
-            <div className="rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/70 dark:border-teal-800/60 p-3 text-xs text-teal-900 dark:text-teal-200 space-y-1">
-              <div className="font-bold flex items-center gap-1.5 text-teal-800 dark:text-teal-300">
-                <Lock className="h-3.5 w-3.5" />
-                <span>Bank-Grade Privacy & Encryption</span>
-              </div>
-              <p className="text-[11px] leading-relaxed text-teal-700/90 dark:text-teal-300/80">
-                Aadhaar details and document scans are transmitted securely to the server for verification, where only the masked last 4 digits are retained in the public profile after review.
-              </p>
-            </div>
+        {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:bg-red-950/60 dark:text-red-300">{error}</p>}
 
-            {/* Aadhaar Number */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  12-Digit Aadhaar Number *
-                </label>
-                {cleanAadhaar.length > 0 && (
-                  <span className={`text-[10px] font-semibold flex items-center gap-1 ${
-                    isVerhoeffValid 
-                      ? "text-emerald-600 dark:text-emerald-400" 
-                      : cleanAadhaar.length === 12 
-                        ? "text-red-500" 
-                        : "text-slate-400"
-                  }`}>
-                    {isVerhoeffValid ? (
-                      <>
-                        <Check className="h-3 w-3" /> Valid UIDAI Format
-                      </>
-                    ) : cleanAadhaar.length === 12 ? (
-                      <>
-                        <AlertCircle className="h-3 w-3" /> Checksum Mismatch
-                      </>
-                    ) : (
-                      `${cleanAadhaar.length} / 12 digits`
-                    )}
-                  </span>
-                )}
-              </div>
-              <Input
-                type="text"
-                placeholder="XXXX XXXX XXXX"
-                value={aadhaarRaw}
-                onChange={handleAadhaarChange}
-                maxLength={14}
-                required
-                className="h-10 text-sm font-mono tracking-wider bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-              />
-            </div>
+        {!overview && (busy
+          ? <p role="status" className="flex items-center gap-2 py-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> Checking your status…</p>
+          : <Button onClick={() => void load()}>Try again</Button>)}
 
-            {/* Full Name on Aadhaar */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Full Name (As on Aadhaar Card) *
-              </label>
-              <Input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Bilal Ashiq"
-                required
-                className="h-10 text-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-              />
-            </div>
-
-            {/* Document Upload */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Aadhaar Card Document / Scan *
-              </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-colors ${
-                  docFront 
-                    ? "border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 dark:border-emerald-800" 
-                    : "border-slate-200 dark:border-slate-700 hover:border-primary/50 bg-slate-50/50 dark:bg-slate-800/40"
-                }`}
-              >
-                {docFront ? (
-                  <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>Aadhaar Photo Attached (Click to change)</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-1">
-                    <Upload className="h-5 w-5 text-slate-400" />
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                      Upload Aadhaar Card (Front Side)
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      PNG, JPG, or PDF up to 8MB
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* UIDAI Consent Checkbox */}
-            <div className="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
-              <input
-                id="aadhaar-consent"
-                type="checkbox"
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20 accent-primary cursor-pointer shrink-0"
-              />
-              <label
-                htmlFor="aadhaar-consent"
-                className="text-[11px] leading-tight text-slate-600 dark:text-slate-300 cursor-pointer select-none"
-              >
-                I voluntarily submit my Aadhaar details for student identity verification on CampusLoop and confirm that this information is accurate.
-              </label>
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleClose}
-                className="text-xs"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!isVerhoeffValid || !docFront || !consent}
-                className="bg-primary hover:bg-primary/90 text-white text-xs font-bold gap-1.5"
-              >
-                <span>Continue to OTP</span>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-
-        {step === "otp" && (
-          <form onSubmit={handleFinalVerify} className="space-y-4 pt-1">
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-3 space-y-2 text-center">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary dark:text-teal-400">
-                <Lock className="h-5 w-5" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                  Enter 6-Digit Aadhaar Verification OTP
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Sent to mobile linked with Aadhaar ending in <strong className="text-slate-800 dark:text-slate-200">•••• {cleanAadhaar.slice(-4)}</strong>
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center block">
-                Verification OTP
-              </label>
-              <Input
-                type="text"
-                placeholder="123456"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                maxLength={6}
-                autoFocus
-                required
-                className="h-12 text-center text-lg font-mono tracking-widest bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-              />
-            </div>
-
-            <DialogFooter className="pt-2 flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setStep("details")}
-                disabled={verifying}
-                className="text-xs"
-              >
-                Back
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={verifying || otpCode.length !== 6}
-                className="bg-primary hover:bg-primary/90 text-white text-xs font-bold flex-1"
-              >
-                {verifying ? "Verifying with UIDAI..." : "Complete Verification"}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-
-        {step === "success" && (
-          <div className="py-6 text-center space-y-4">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 ring-8 ring-amber-50 dark:ring-amber-900/30 animate-in zoom-in-50">
-              <ShieldCheck className="h-8 w-8" />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
-                Aadhaar KYC Submitted!
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                Your Aadhaar verification has been submitted securely. Your profile is currently under review and will display the <strong className="text-emerald-600 dark:text-emerald-400">Verified Student</strong> badge once approved.
-              </p>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 py-1 px-3 bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 rounded-full text-xs font-bold text-amber-700 dark:text-amber-300">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              KYC In Review • Aadhaar ending in •••• {cleanAadhaar.slice(-4)}
-            </div>
-
-            <div className="pt-2">
-              <Button
-                type="button"
-                onClick={handleClose}
-                className="w-full bg-primary hover:bg-primary/90 text-white text-xs font-bold h-10"
-              >
-                Done
-              </Button>
-            </div>
+        {overview && step === "choose" && (
+          <div className="divide-y divide-border rounded-xl border border-border">
+            <Method icon={Mail} label="Campus email" detail={campus?.status === "verified"
+              ? `Confirmed · ${campus.domain}` : campus?.available ? "Confirm your campus inbox" : "Currently unavailable"}
+              verified={campus?.status === "verified"} onClick={() => choose("email")} />
+            <Method icon={Fingerprint} label="Aadhaar identity" detail={sandbox
+              ? "Sandbox · test data only" : overview.identityVerified ? "Identity check complete"
+              : aadhaar?.mode === "production" ? "Optional · hosted by Setu" : "Currently unavailable"}
+              verified={overview.identityVerified && !sandbox} onClick={() => choose("aadhaar")} />
           </div>
+        )}
+
+        {aadhaar && step === "aadhaar" && (
+          <div className="space-y-4">
+            {sandbox && <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+              Sandbox only. Use provider test data. A completed test gives you no identity badge.
+            </p>}
+            {aadhaar.status === "verified" ? (
+              <p role="status" className="flex items-center gap-2 text-sm font-medium text-primary">
+                <Check className="h-4 w-4" /> {sandbox ? "Sandbox check complete" : "Identity check complete"}
+              </p>
+            ) : aadhaar.mode === "disabled" ? (
+              <p className="text-sm text-muted-foreground">Aadhaar verification is currently unavailable. You can still use CampusLoop and confirm a supported campus email when available.</p>
+            ) : aadhaarPending && aadhaar.url ? (
+              <>
+                <p role="status" className="text-sm text-muted-foreground">{busy
+                  ? "Checking with Setu…" : "Your check is still open. Continue on Setu or check for the result if you’ve finished."}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild>
+                    <a href={aadhaar.url} referrerPolicy="no-referrer">Resume on Setu <ArrowUpRight className="h-4 w-4" /></a>
+                  </Button>
+                  <Button variant="outline" disabled={busy} onClick={() => void run({ action: "check-aadhaar" })}>Check status</Button>
+                </div>
+              </>
+            ) : (
+              <>
+                {aadhaar.status === "failed" && <p className="text-sm text-muted-foreground">The last check ended. You can start a new one.</p>}
+                {(aadhaar.status === "expired" || aadhaar.status === "pending") && <p className="text-sm text-muted-foreground">The previous link has expired.</p>}
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Enter your Aadhaar details only on Setu. This optional check confirms identity. CampusLoop keeps the result, a request reference and your consent.
+                </p>
+                <a href="/privacy#account-verification" target="_blank" rel="noreferrer" className="inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline">
+                  How we handle verification data <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                </a>
+                <label className="flex items-start gap-2.5 text-sm leading-relaxed">
+                  <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)}
+                    className="mt-1 h-4 w-4 shrink-0 accent-teal-700" />
+                  I agree to use Setu for this identity check.
+                </label>
+                <Button disabled={!consent || busy || !!aadhaarWait}
+                  onClick={() => void run({ action: "start-aadhaar", consentVersion: AADHAAR_CONSENT_VERSION })}>
+                  {busy ? "Connecting…" : aadhaarWait ? `Try again in ${aadhaarWait}s` : "Continue to Setu"}
+                  {!busy && !aadhaarWait && <ArrowUpRight className="h-4 w-4" />}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {campus && step === "email" && (
+          <div className="space-y-3">
+            {campus.status === "verified" ? (
+              <p role="status" className="flex items-center gap-2 text-sm font-medium text-primary">
+                <Check className="h-4 w-4" /> Campus email confirmed · {campus.domain}
+              </p>
+            ) : !campus.available ? (
+              <p className="text-sm text-muted-foreground">Campus email verification is currently unavailable.</p>
+            ) : emailPending && !changeEmail ? (
+              <form className="space-y-3" onSubmit={(event) => {
+                event.preventDefault();
+                void run({ action: "confirm-email", code });
+              }}>
+                <p className="text-sm text-muted-foreground">Enter the code sent to your @{campus.domain} inbox. It expires 10 minutes after sending.</p>
+                <label htmlFor="campus-verification-code" className="text-sm font-medium">Verification code</label>
+                <Input id="campus-verification-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+                  value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button disabled={busy || code.length !== 6}>{busy ? "Checking…" : "Confirm email"}</Button>
+                  <Button type="button" variant="ghost" disabled={busy || !!emailWait}
+                    onClick={() => { setChangeEmail(true); setError(""); }}>Request another code</Button>
+                </div>
+              </form>
+            ) : (
+              <form className="space-y-3" onSubmit={(event) => {
+                event.preventDefault();
+                void run({ action: "send-email", email });
+              }}>
+                {campus.expiresAt && !emailPending && <p className="text-sm text-muted-foreground">The previous code has expired.</p>}
+                <label htmlFor="campus-verification-email" className="text-sm font-medium">Campus email address</label>
+                <Input id="campus-verification-email" type="email" autoComplete="email" maxLength={254}
+                  value={email} onChange={(event) => setEmail(event.target.value)} required />
+                <Button disabled={busy || !email.trim() || !!emailWait}>
+                  {busy ? "Sending…" : emailWait ? `Try again in ${emailWait}s` : "Send code"}
+                </Button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {step !== "choose" && (
+          <button type="button" onClick={() => choose("choose")}
+            className="mt-1 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">
+            <ArrowLeft className="h-3.5 w-3.5" /> Verification options
+          </button>
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Method({ icon: Icon, label, detail, verified, onClick }: {
+  icon: typeof Mail;
+  label: string;
+  detail: string;
+  verified: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className="flex w-full items-center gap-3 px-3 py-3.5 text-left transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary">
+      <Icon className="h-5 w-5 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className="block break-words text-sm text-muted-foreground">{detail}</span>
+      </span>
+      {verified ? <Check className="h-4 w-4 text-primary" /> : <ArrowUpRight className="h-4 w-4 text-muted-foreground" />}
+    </button>
   );
 }

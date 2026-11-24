@@ -22,7 +22,6 @@ import {
   Plus, 
   Receipt,
   Settings,
-  ShieldAlert,
   ShieldCheck, 
   Sparkles, 
   Store, 
@@ -64,7 +63,8 @@ import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EditListingDialog } from "@/components/marketplace/EditListingDialog";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
-import { KycVerificationDialog } from "@/components/profile/KycVerificationDialog";
+import { getVerification, KycVerificationDialog } from "@/components/profile/KycVerificationDialog";
+import { type VerificationOverview } from "@/lib/verification";
 import { createClient } from "@/lib/supabase/client";
 import { AuthRequiredGuard } from "@/components/auth/AuthRequiredGuard";
 import { Input } from "@/components/ui/input";
@@ -79,7 +79,8 @@ import {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [myListings, setMyListings] = useState<ReturnType<typeof getListings>>([]);
   const [myRooms, setMyRooms] = useState<ReturnType<typeof getRooms>>([]);
   const [myTransactions, setMyTransactions] = useState<PaymentTransaction[]>([]);
@@ -88,6 +89,9 @@ export default function ProfilePage() {
   const [editingListing, setEditingListing] = useState<any | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isKycOpen, setIsKycOpen] = useState(false);
+  const [authenticatedUserId, setAuthenticatedUserId] = useState<string | null>(null);
+  const [verification, setVerification] = useState<VerificationOverview | null>(null);
+  const [returningFromVerification, setReturningFromVerification] = useState(false);
   const [restockingListing, setRestockingListing] = useState<any | null>(null);
   const [restockQuantity, setRestockQuantity] = useState<number>(1);
   const [isSubmittingRestock, setIsSubmittingRestock] = useState(false);
@@ -125,8 +129,6 @@ export default function ProfilePage() {
           let cloudDept: string | undefined = undefined;
           let cloudYear: string | undefined = undefined;
           let cloudPhone: string | undefined = undefined;
-          let cloudVerification: "unverified" | "pending" | "verified" | undefined = undefined;
-          let cloudAadhaarLast4: string | undefined = undefined;
 
           try {
             const { data: dbUser } = await supabase
@@ -144,8 +146,6 @@ export default function ProfilePage() {
               if (dbUser.department) cloudDept = dbUser.department;
               if (dbUser.year_of_study) cloudYear = dbUser.year_of_study;
               if (dbUser.phone) cloudPhone = dbUser.phone;
-              if (dbUser.verification_status) cloudVerification = dbUser.verification_status as any;
-              if (dbUser.aadhaar_last4) cloudAadhaarLast4 = dbUser.aadhaar_last4;
             }
           } catch (e) {}
 
@@ -175,15 +175,6 @@ export default function ProfilePage() {
             || user.user_metadata?.phone 
             || clientSession?.phone;
 
-          const resolvedVerification = cloudVerification 
-            || user.user_metadata?.verification_status 
-            || clientSession?.verification_status 
-            || "unverified";
-
-          const resolvedAadhaarLast4 = cloudAadhaarLast4 
-            || user.user_metadata?.aadhaar_last4 
-            || clientSession?.aadhaar_last4;
-
           const activeUser: DemoUser = {
             id: user.id,
             name: cloudName || clientSession?.name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Student",
@@ -194,8 +185,6 @@ export default function ProfilePage() {
             department: resolvedDept,
             year_of_study: resolvedYear,
             phone: resolvedPhone,
-            verification_status: resolvedVerification,
-            aadhaar_last4: resolvedAadhaarLast4,
             monthly_income: resolvedIncome,
             avatar: cloudAvatar || clientSession?.avatar || user.user_metadata?.avatar || null,
             initials: (cloudName || clientSession?.name || user.user_metadata?.full_name || user.email || "S")
@@ -208,25 +197,51 @@ export default function ProfilePage() {
           };
           setClientDemoSession(activeUser);
           setCurrentUser(activeUser);
+          setAuthenticatedUserId(user.id);
+          setIsLoadingProfile(false);
           loadUserData(activeUser);
           return;
         }
       } catch (err) {}
 
       const fallback = getClientDemoSession();
+      setIsLoadingProfile(false);
       if (fallback) {
         setCurrentUser(fallback);
         loadUserData(fallback);
       } else {
-        router.push("/login?redirect=/profile");
+        const redirect = new URLSearchParams(window.location.search).get("verification") === "return"
+          ? "/profile?verification=return"
+          : "/profile";
+        router.push(`/login?redirect=${encodeURIComponent(redirect)}`);
       }
     };
 
     fetchUser();
   }, [router]);
 
+  useEffect(() => {
+    if (!authenticatedUserId) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("verification") === "return") {
+      url.searchParams.delete("verification");
+      window.history.replaceState(window.history.state, "", url);
+      setReturningFromVerification(true);
+      setIsKycOpen(true);
+      return;
+    }
+    let active = true;
+    void getVerification().then((status) => {
+      if (active) setVerification(status);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [authenticatedUserId]);
+
 
   const handleSignOut = async () => {
+    setIsKycOpen(false);
+    setAuthenticatedUserId(null);
+    setVerification(null);
     try {
       // 1. Terminate server-side session and invalidate auth cookies
       await fetch("/api/auth/signout", { method: "POST" });
@@ -292,6 +307,15 @@ export default function ProfilePage() {
     }
   };
 
+  if (isLoadingProfile) {
+    return (
+      <div role="status" className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+        <span className="sr-only">Loading your profile</span>
+        <div aria-hidden="true" className="h-44 rounded-2xl border border-border bg-muted/60 motion-safe:animate-pulse" />
+      </div>
+    );
+  }
+
   if (!currentUser) {
     return (
       <AuthRequiredGuard
@@ -341,21 +365,17 @@ export default function ProfilePage() {
                 <Badge variant="outline" className="bg-white dark:bg-slate-900 text-primary dark:text-teal-300 border-primary/30 dark:border-teal-500/40 text-xs font-bold">
                   {currentUser.role_desc}
                 </Badge>
-                {currentUser.verification_status === "verified" ? (
+                {authenticatedUserId === currentUser.id && verification?.identityVerified && (
                   <Badge variant="secondary" className="bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 text-[10px] gap-1 font-bold">
-                    <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                    Verified Student
+                    <ShieldCheck className="h-3 w-3" />
+                    Identity checked
                   </Badge>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsKycOpen(true)}
-                    title="Click to verify your profile with Aadhaar KYC"
-                    className="inline-flex items-center gap-1.5 py-0.5 px-2.5 rounded-full text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 transition-all shadow-xs group"
-                  >
-                    <ShieldAlert className="h-3 w-3 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
-                    <span>Verify Profile (Aadhaar KYC)</span>
-                  </button>
+                )}
+                {authenticatedUserId === currentUser.id && verification?.campusEmail.status === "verified" && (
+                  <Badge variant="secondary" className="gap-1 text-[10px] font-bold">
+                    <Mail className="h-3 w-3" />
+                    Campus email confirmed
+                  </Badge>
                 )}
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-1.5">
@@ -426,35 +446,17 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Actionable Prompt Card for Unverified Users */}
-        {currentUser.verification_status !== "verified" && (
-          <div className="p-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/50 dark:via-slate-850 dark:to-transparent border-t border-amber-200/60 dark:border-amber-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                <ShieldAlert className="h-4 w-4" />
-              </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                    Aadhaar Student KYC Verification Required
-                  </h4>
-                  <Badge variant="outline" className="text-[10px] font-bold text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700/60 py-0 px-1.5">
-                    Not Verified
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
-                  Verify your student identity using your 12-digit Aadhaar card to unlock the verified badge across all marketplace listings, roommate posts, and rent agreements.
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => setIsKycOpen(true)}
-              className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-1.5 h-8 shadow-xs"
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Verify with Aadhaar
-            </Button>
+        {authenticatedUserId === currentUser.id && (
+          <div className="border-t border-slate-200/80 px-4 py-3 dark:border-slate-700 sm:px-6">
+            <button type="button" onClick={() => setIsKycOpen(true)}
+              className="flex w-full items-center gap-3 rounded-lg py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-primary dark:text-teal-400" />
+              <span className="flex-1">
+                <span className="block text-sm font-semibold">Account verification</span>
+                <span className="block text-xs text-muted-foreground">Campus email and optional identity check</span>
+              </span>
+              <span className="text-xs font-semibold text-primary dark:text-teal-400">Manage</span>
+            </button>
           </div>
         )}
 
@@ -938,21 +940,19 @@ export default function ProfilePage() {
           user={currentUser}
           open={isEditingProfile}
           onOpenChange={setIsEditingProfile}
-          onRequestKyc={() => setIsKycOpen(true)}
           onProfileUpdated={(updated) => {
             setCurrentUser(updated);
           }}
         />
       )}
 
-      {/* Aadhaar KYC Verification Modal */}
-      {currentUser && isKycOpen && (
+      {authenticatedUserId === currentUser.id && isKycOpen && (
         <KycVerificationDialog
-          user={currentUser}
-          open={isKycOpen}
-          onOpenChange={setIsKycOpen}
-          onVerified={(updated) => {
-            setCurrentUser(updated);
+          returning={returningFromVerification}
+          onStatus={setVerification}
+          onOpenChange={(open) => {
+            setIsKycOpen(open);
+            if (!open) setReturningFromVerification(false);
           }}
         />
       )}

@@ -141,7 +141,7 @@ export function RoomForm() {
           List Flat, Room, or PG
         </CardTitle>
         <CardDescription className="text-slate-500 dark:text-slate-400">
-          Post available accommodation to find verified student flatmates.
+          Post available accommodation to find student flatmates.
         </CardDescription>
       </CardHeader>
 

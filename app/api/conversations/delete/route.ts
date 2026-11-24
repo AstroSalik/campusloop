@@ -5,9 +5,13 @@ import { getAuthenticatedUserId } from "@/lib/auth-server";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { conversationId, userId: bodyUserId, deleteForEveryone = false } = body;
+    const { conversationId, deleteForEveryone = false } = body;
+    const userId = await getAuthenticatedUserId(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Sign in to delete a conversation." }, { status: 401 });
+    }
 
-    if (!conversationId) {
+    if (typeof conversationId !== "string" || !conversationId || typeof deleteForEveryone !== "boolean") {
       return NextResponse.json({ error: "conversationId is required" }, { status: 400 });
     }
 
@@ -16,17 +20,6 @@ export async function POST(req: NextRequest) {
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ error: "Supabase service configuration missing" }, { status: 500 });
-    }
-
-    // 1. Resolve authenticated user identity server-side
-    const sessionUserId = await getAuthenticatedUserId(req);
-    const effectiveUserId = sessionUserId || bodyUserId;
-
-    if (!effectiveUserId) {
-      return NextResponse.json(
-        { error: "Unauthorized: Active session or userId required" },
-        { status: 401 }
-      );
     }
 
     const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey, {
@@ -38,7 +31,7 @@ export async function POST(req: NextRequest) {
       .from("conversation_members")
       .select("user_id")
       .eq("conversation_id", conversationId)
-      .eq("user_id", effectiveUserId)
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (checkMemErr) {
@@ -87,18 +80,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, conversationId, deletedFor: "everyone" });
     } else {
       // Telegram: Delete for me only (removes current user from conversation)
-      if (!effectiveUserId) {
-        return NextResponse.json(
-          { error: "userId is required when deleteForEveryone is false" },
-          { status: 400 }
-        );
-      }
-
       const { error: memErr } = await supabaseAdmin
         .from("conversation_members")
         .delete()
         .eq("conversation_id", conversationId)
-        .eq("user_id", effectiveUserId);
+        .eq("user_id", userId);
 
       if (memErr) {
         console.error("[delete-conversation] Error deleting membership for-me:", memErr.message);

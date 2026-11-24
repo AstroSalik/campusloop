@@ -30,6 +30,7 @@ import {
   UserCheck, 
   Zap 
 } from "lucide-react";
+import { ContactComposer } from "@/components/chat/ContactComposer";
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -51,7 +52,7 @@ import {
   requestItemRestock
 } from "@/lib/marketplace-data";
 import { getClientDemoSession, DemoUser } from "@/lib/auth";
-import { getOrCreateMarketplaceConversation } from "@/lib/conversations";
+import { getOrCreateMarketplaceConversation, sendMessage } from "@/lib/conversations";
 import { EditListingDialog } from "@/components/marketplace/EditListingDialog";
 import { RazorpayCheckoutModal } from "@/components/payments/RazorpayCheckoutModal";
 import { PaymentReceiptDialog } from "@/components/payments/PaymentReceiptDialog";
@@ -64,10 +65,10 @@ export default function ListingDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
   const [listing, setListing] = useState<ReturnType<typeof getListingById> | null>(null);
   const [loading, setLoading] = useState(true);
-  const [contacting, setContacting] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
@@ -93,7 +94,7 @@ export default function ListingDetailPage({
     }
     setIsRequestingRestock(true);
     try {
-      const res = await requestItemRestock(listing.id, currentUser.id);
+      const res = await requestItemRestock(listing.id);
       if (res.success) {
         setListing((prev) =>
           prev
@@ -158,6 +159,7 @@ export default function ListingDetailPage({
     const handleAuth = () => {
       setCurrentUser(getClientDemoSession());
     };
+    handleAuth();
     window.addEventListener("campusloop_auth_changed", handleAuth);
     return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
   }, []);
@@ -172,46 +174,27 @@ export default function ListingDetailPage({
     }
   };
 
-  const handleMessageSeller = async () => {
-    if (!listing) return;
-    if (!currentUser) {
-      toast.error("Please sign in to message this student seller.");
-      router.push(`/login?redirect=${encodeURIComponent(`/marketplace/${params.id}`)}`);
-      return;
-    }
+  const sendSellerMessage = async (text: string) => {
+    if (!listing || !currentUser) throw new Error("Sign in to message the seller.");
+    const conversationId = await getOrCreateMarketplaceConversation(
+      listing.id,
+      currentUser.id,
+      listing.seller_id,
+      {
+        buyerName: currentUser.name,
+        buyerEmail: currentUser.email,
+        buyerAvatar: currentUser.avatar,
+        sellerName: listing.seller_name,
+        sellerEmail: listing.seller_email,
+        sellerAvatar: listing.seller?.avatar || (listing as any).seller_avatar,
+        listingTitle: listing.title,
+        price: listing.price,
+        location: listing.location_label,
+      }
+    );
 
-    if (listing.seller_id === currentUser.id) {
-      toast.info("This is your own listing!");
-      return;
-    }
-
-    setContacting(true);
-    try {
-      // PRD Flow A: Unified Conversation Auto-Creation
-      const conversationId = await getOrCreateMarketplaceConversation(
-        listing.id,
-        currentUser.id,
-        listing.seller_id,
-        {
-          buyerName: currentUser.name,
-          buyerEmail: currentUser.email,
-          buyerAvatar: currentUser.avatar,
-          sellerName: listing.seller_name,
-          sellerEmail: listing.seller_email,
-          sellerAvatar: listing.seller?.avatar || (listing as any).seller_avatar,
-          listingTitle: listing.title,
-          price: listing.price,
-          location: listing.location_label,
-        }
-      );
-
-      toast.success(`Connected with ${listing.seller_name}! Opening conversation...`);
-      router.push(`/messages/${conversationId}`);
-    } catch (err) {
-      toast.error("Could not start conversation. Please try again.");
-    } finally {
-      setContacting(false);
-    }
+    await sendMessage(conversationId, currentUser.id, text);
+    router.push(`/messages/${conversationId}`);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -262,7 +245,7 @@ export default function ListingDetailPage({
       <AuthRequiredGuard
         title="Student Sign In Required"
         featureName="Marketplace Itinerary Details"
-        description="To protect campus safety, prevent spam, and access full item specifications, verified student seller details, and campus meetups, please sign in."
+        description="To protect campus safety, prevent spam, and access full item specifications, seller details, and campus meetups, please sign in."
         redirectUrl={`/marketplace/${params.id}`}
         backUrl="/marketplace"
         backLabel="Back to Marketplace"
@@ -344,7 +327,7 @@ export default function ListingDetailPage({
                   {listing.category} • {listing.location_label}
                 </span>
                 <span className="text-[11px] text-slate-400">
-                  Verified campus student listing
+                  Campus marketplace listing
                 </span>
               </div>
             )}
@@ -509,11 +492,10 @@ export default function ListingDetailPage({
                   <Button
                     variant="outline"
                     className="w-full h-10 text-sm font-semibold border-slate-200 dark:border-slate-700"
-                    onClick={handleMessageSeller}
-                    disabled={contacting}
+                    onClick={() => setComposeOpen(true)}
                   >
                     <MessageSquare className="mr-2 h-4 w-4" />
-                    {contacting ? "Connecting..." : "Message Seller"}
+                    Message Seller
                   </Button>
                 </div>
               ) : (
@@ -574,18 +556,17 @@ export default function ListingDetailPage({
                   <Button
                     variant="outline"
                     className="w-full h-10 text-sm font-semibold border-slate-200 dark:border-slate-700"
-                    onClick={handleMessageSeller}
-                    disabled={contacting}
+                    onClick={() => setComposeOpen(true)}
                   >
                     <MessageSquare className="mr-2 h-4 w-4" />
-                    {contacting ? "Connecting..." : "Message Seller"}
+                    Message Seller
                   </Button>
                 </div>
               )}
 
               <div className="flex items-center gap-2 text-xs text-slate-500 justify-center">
                 <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <span>Verified student peer transaction</span>
+                <span>Direct peer transaction</span>
               </div>
 
               {/* Seller Info Card */}
@@ -663,6 +644,17 @@ export default function ListingDetailPage({
             setReceiptTx(transaction);
             setIsReceiptOpen(true);
           }}
+        />
+      )}
+
+      {composeOpen && (
+        <ContactComposer
+          title="Message seller"
+          recipient={listing.seller_name || "Listing owner"}
+          context={listing.title}
+          draft="Hi, is this still available?"
+          onDismiss={() => setComposeOpen(false)}
+          onSend={sendSellerMessage}
         />
       )}
 

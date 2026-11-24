@@ -2,25 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getAuthenticatedUserId } from "@/lib/auth-server";
 
+const privateResponse = { "Cache-Control": "private, no-store" };
+
 export async function GET(req: NextRequest) {
   try {
+    const actingUserId = await getAuthenticatedUserId(req);
+    if (!actingUserId) {
+      return NextResponse.json({ error: "Unauthorized: Active session required" }, { status: 401, headers: privateResponse });
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ blockedUserIds: [], blockedByUserIds: [] });
-    }
-
-    // Authenticate request and derive acting identity from session
-    const sessionUserId = await getAuthenticatedUserId(req);
-    const { searchParams } = new URL(req.url);
-    const queryUserId = searchParams.get("userId");
-
-    // Preserve queryUserId as target user lookup if provided, while acting identity is sessionUserId
-    const actingUserId = sessionUserId || queryUserId;
-
-    if (!actingUserId) {
-      return NextResponse.json({ error: "Unauthorized: Active session required" }, { status: 401 });
+      return NextResponse.json({ blockedUserIds: [], blockedByUserIds: [] }, { status: 503, headers: privateResponse });
     }
 
     const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey, {
@@ -41,16 +36,16 @@ export async function GET(req: NextRequest) {
 
     if (bErr || byErr) {
       // If table doesn't exist yet or other schema notice
-      return NextResponse.json({ blockedUserIds: [], blockedByUserIds: [] });
+      return NextResponse.json({ blockedUserIds: [], blockedByUserIds: [] }, { headers: privateResponse });
     }
 
     const blockedUserIds = (blockedRows || []).map((r: any) => r.blocked_id);
     const blockedByUserIds = (blockedByRows || []).map((r: any) => r.blocker_id);
 
-    return NextResponse.json({ blockedUserIds, blockedByUserIds });
+    return NextResponse.json({ blockedUserIds, blockedByUserIds }, { headers: privateResponse });
   } catch (err: any) {
     console.error("GET user blocks exception:", err);
-    return NextResponse.json({ blockedUserIds: [], blockedByUserIds: [] });
+    return NextResponse.json({ blockedUserIds: [], blockedByUserIds: [] }, { status: 500, headers: privateResponse });
   }
 }
 
@@ -60,8 +55,7 @@ export async function POST(req: NextRequest) {
     const { blockedId, userId, action = "block" } = body;
 
     // Derive the acting blocker identity from the authenticated session
-    const sessionUserId = await getAuthenticatedUserId(req);
-    const blockerId = sessionUserId || body.blockerId;
+    const blockerId = await getAuthenticatedUserId(req);
     const targetUserId = blockedId || userId;
 
     if (!blockerId) {
@@ -71,7 +65,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!targetUserId) {
+    if (typeof targetUserId !== "string" || !targetUserId || !["block", "unblock"].includes(action)) {
       return NextResponse.json(
         { error: "Target user ID (blockedId or userId) is required" },
         { status: 400 }

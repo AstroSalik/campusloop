@@ -166,7 +166,7 @@ export default function DashboardPage() {
             </h1>
             
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
-              Buy & sell items, find verified student housing, and calculate transparent rent splits—all in one place designed exclusively for your campus.
+              Buy & sell items, find student housing, and calculate transparent rent splits—all in one place designed exclusively for your campus.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
@@ -181,8 +181,8 @@ export default function DashboardPage() {
             {/* Relevant Stats/Trust Indicators */}
             <div className="pt-8 flex flex-wrap items-center gap-6 sm:gap-8 border-t border-slate-200/60 dark:border-slate-800/60 max-w-md">
               <div>
-                <div className="text-3xl font-black text-slate-900 dark:text-white">100%</div>
-                <div className="text-sm font-semibold text-slate-500 mt-1 uppercase tracking-wider">Student Verified</div>
+                <div className="text-3xl font-black text-slate-900 dark:text-white">1</div>
+                <div className="text-sm font-semibold text-slate-500 mt-1 uppercase tracking-wider">Place to get settled</div>
               </div>
               <div className="w-px h-10 bg-slate-200 dark:bg-slate-800" />
               <div>
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                       <ShieldCheck className="h-4 w-4 sm:h-6 sm:w-6" />
                     </div>
                     <div>
-                      <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Verified Flatmate</div>
+                      <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Roommate Search</div>
                       <div className="text-[10px] sm:text-xs text-slate-500">Looking for 1 room</div>
                     </div>
                   </div>
@@ -301,7 +301,7 @@ export default function DashboardPage() {
                     Flats & Hostel Rooms
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                    Explore verified 1BHK, 2BHK, and 3BHK student flats near campus with transparent rent breakdowns.
+                    Explore 1BHK, 2BHK, and 3BHK student flats near campus with transparent rent breakdowns.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 pt-0">
@@ -328,7 +328,7 @@ export default function DashboardPage() {
                     Roommate Finder
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                    Filter verified students by budget range, location preferences, move-in timelines, and habits.
+                    Filter roommate profiles by budget range, location preferences, move-in timelines, and habits.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 pt-0">

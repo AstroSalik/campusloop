@@ -63,6 +63,7 @@ export function mapSupabaseWanted(row: any): StoredWantedListing {
 export async function fetchWantedListingsFromSupabase(): Promise<StoredWantedListing[]> {
   const results: StoredWantedListing[] = [];
   const seenIds = new Set<string>();
+  let readSucceeded = false;
 
   try {
     const { createClient } = await import("@/lib/supabase/client");
@@ -76,6 +77,7 @@ export async function fetchWantedListingsFromSupabase(): Promise<StoredWantedLis
         .order("created_at", { ascending: false });
 
       if (!wantedErr && wantedData) {
+        readSucceeded = true;
         for (const row of wantedData) {
           if (!seenIds.has(row.id)) {
             seenIds.add(row.id);
@@ -96,6 +98,7 @@ export async function fetchWantedListingsFromSupabase(): Promise<StoredWantedLis
         .order("created_at", { ascending: false });
 
       if (!buyErr && buyListings) {
+        readSucceeded = true;
         for (const row of buyListings) {
           if (!seenIds.has(row.id)) {
             seenIds.add(row.id);
@@ -105,7 +108,9 @@ export async function fetchWantedListingsFromSupabase(): Promise<StoredWantedLis
       }
     } catch (e) {}
 
-    // Always update local cache with the exact cloud items (even if empty, to propagate deletions!)
+    if (!readSucceeded) return getWantedListings();
+
+    // A confirmed empty board clears cached requests that were removed.
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(results));
@@ -188,55 +193,30 @@ export async function fetchWantedListingByIdFromSupabase(id: string): Promise<St
 }
 
 export async function saveWantedListing(newWanted: StoredWantedListing) {
+  const { createClient } = await import("@/lib/supabase/client");
+  const supabase = createClient();
+  const values = {
+    id: newWanted.id,
+    campus_id: newWanted.campus_id,
+    title: newWanted.title,
+    description: newWanted.description,
+    category: newWanted.category,
+    location_label: newWanted.location_label || "Campus",
+    status: "active",
+  };
+  const writes = await Promise.allSettled([
+    supabase.from("wanted_listings").insert({ ...values, requester_id: newWanted.requester_id, budget_max: newWanted.budget_max }),
+    supabase.from("listings").insert({ ...values, seller_id: newWanted.requester_id, type: "buy", condition: "Wanted", price: newWanted.budget_max }),
+  ]);
+  if (!writes.some((write) => write.status === "fulfilled" && !write.value.error)) {
+    throw new Error("Wanted request did not publish.");
+  }
+
   if (typeof window !== "undefined") {
     try {
-      const customRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
-      const customList: StoredWantedListing[] = customRaw ? JSON.parse(customRaw) : [];
-      customList.unshift(newWanted);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(customList));
-    } catch (e) {
-      // fallback
-    }
-
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-
-      // Attempt 1: wanted_listings table
-      try {
-        await supabase.from("wanted_listings").insert({
-          id: newWanted.id,
-          requester_id: newWanted.requester_id,
-          campus_id: newWanted.campus_id,
-          title: newWanted.title,
-          description: newWanted.description,
-          category: newWanted.category,
-          budget_max: newWanted.budget_max,
-          location_label: newWanted.location_label || "Campus",
-          status: newWanted.status || "active",
-        });
-      } catch (err) {}
-
-      // Attempt 2: listings table with type = 'buy' (ensures cross-device visibility immediately)
-      try {
-        await supabase.from("listings").insert({
-          id: newWanted.id,
-          seller_id: newWanted.requester_id,
-          campus_id: newWanted.campus_id,
-          title: newWanted.title,
-          description: newWanted.description,
-          category: newWanted.category,
-          type: "buy",
-          price: newWanted.budget_max,
-          condition: "Wanted",
-          location_label: newWanted.location_label || "Campus",
-          status: "active",
-        });
-      } catch (err) {}
-    } catch (err) {
-      console.warn("Supabase wanted_listings insert warning:", err);
-    }
-
+      const cached = getWantedListings().filter((listing) => listing.id !== newWanted.id);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([newWanted, ...cached]));
+    } catch {}
     window.dispatchEvent(new Event("campusloop_wanted_updated"));
   }
 }
@@ -293,27 +273,14 @@ export async function updateWantedListing(id: string, updatedFields: Partial<Sto
 }
 
 export async function deleteWantedListing(id: string): Promise<boolean> {
-  try {
-    const res = await fetch("/api/wanted/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok || result.error) {
-      console.warn("[Server Delete] Falling back to direct client delete for wanted listing:", result.error);
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.from("wanted_listings").delete().eq("id", id);
-      await supabase.from("listings").delete().eq("id", id);
-    }
-  } catch (err) {
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.from("wanted_listings").delete().eq("id", id);
-      await supabase.from("listings").delete().eq("id", id);
-    } catch (e) {}
+  const response = await fetch("/api/wanted/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({}));
+    throw new Error(error || "Could not delete this request.");
   }
 
   if (typeof window !== "undefined") {

@@ -1,68 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUserId } from "@/lib/auth-server";
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const { id } = body;
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Sign in to delete this listing." }, { status: 401 });
+    }
 
-    if (!id) {
+    const { id } = await request.json().catch(() => ({}));
+    if (typeof id !== "string" || !id) {
       return NextResponse.json({ error: "Listing ID is required" }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ error: "Supabase service configuration missing" }, { status: 500 });
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      return NextResponse.json({ error: "Deletion is temporarily unavailable." }, { status: 503 });
     }
 
-    const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
+    const db = createClient(url, key, { auth: { persistSession: false } });
+    const { data: record, error: lookupError } = await db.from("listings")
+      .select("seller_id").eq("id", id).maybeSingle();
+    if (lookupError) throw lookupError;
+    if (record && record.seller_id !== userId) {
+      return NextResponse.json({ error: "You can only delete your own listing." }, { status: 403 });
+    }
 
-    // 1. Get authenticated session user if present
-    const serverSupabase = createServerSupabaseClient();
-    const { data: { user: sessionUser } } = await serverSupabase.auth.getUser();
-
-    // 2. Fetch existing listing to verify existence and ownership
-    const { data: existingListing } = await supabaseAdmin
-      .from("listings")
-      .select("id, seller_id")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (existingListing) {
-      // If user is authenticated, ensure they own the listing (or allow primary demo user)
-      if (sessionUser && existingListing.seller_id !== sessionUser.id && sessionUser.id !== "4898495c-0953-432c-8041-9efdc1eeab5f") {
-        return NextResponse.json(
-          { error: "Forbidden: You do not have permission to delete this listing" },
-          { status: 403 }
-        );
-      }
-
-      // 3. Delete listing images first to prevent foreign key issues
-      await supabaseAdmin.from("listing_images").delete().eq("listing_id", id);
-
-      // 4. Delete the listing from database
-      const { error: deleteError } = await supabaseAdmin
-        .from("listings")
-        .delete()
-        .eq("id", id);
-
-      if (deleteError) {
-        console.error("Failed to delete listing:", deleteError);
-        return NextResponse.json({ error: deleteError.message }, { status: 500 });
-      }
+    if (record) {
+      const { error } = await db.from("listings").delete().eq("id", id).eq("seller_id", userId);
+      if (error) throw error;
     }
 
     return NextResponse.json({ success: true, id });
-  } catch (err: any) {
-    console.error("Delete listing exception:", err);
-    return NextResponse.json(
-      { error: err?.message || "Internal server error during deletion" },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("Delete listing failed:", error);
+    return NextResponse.json({ error: "Could not delete this listing. Please try again." }, { status: 500 });
   }
 }

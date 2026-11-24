@@ -64,7 +64,7 @@ export async function fetchUserBlocks(userId?: string): Promise<UserBlocksData> 
   if (!uid) return { blockedUserIds: [], blockedByUserIds: [] };
 
   try {
-    const res = await fetch(`/api/users/block?userId=${encodeURIComponent(uid)}`);
+    const res = await fetch("/api/users/block");
     const data = await res.json();
 
     if (res.ok && data) {
@@ -115,7 +115,6 @@ export async function blockUser(blockerId: string, blockedId: string): Promise<b
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        blockerId,
         blockedId,
         action: "block",
       }),
@@ -164,7 +163,6 @@ export async function unblockUser(blockerId: string, blockedId: string): Promise
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        blockerId,
         blockedId,
         action: "unblock",
       }),

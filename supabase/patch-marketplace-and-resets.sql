@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_password_resets_email ON public.password_resets(e
 CREATE INDEX IF NOT EXISTS idx_password_resets_token ON public.password_resets(token);
 ALTER TABLE public.password_resets ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Service role manages password resets" ON public.password_resets;
-CREATE POLICY "Service role manages password resets" ON public.password_resets FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role manages password resets" ON public.password_resets FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- 4. In-App Notifications Table
 CREATE TABLE IF NOT EXISTS public.notifications (
@@ -66,4 +66,4 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can manage their own notifications" ON public.notifications;
 CREATE POLICY "Users can manage their own notifications" ON public.notifications FOR ALL USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Service role manages all notifications" ON public.notifications;
-CREATE POLICY "Service role manages all notifications" ON public.notifications FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role manages all notifications" ON public.notifications FOR ALL TO service_role USING (true) WITH CHECK (true);

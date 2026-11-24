@@ -25,11 +25,6 @@ export interface User {
   year_of_study?: string;
   phone?: string;
   student_id?: string;
-  verification_status?: "unverified" | "pending" | "verified";
-  kyc_doc_type?: string;
-  aadhaar_last4?: string;
-  kyc_submitted_at?: string;
-  kyc_verified_at?: string;
   settings?: UserSettings;
 }
 

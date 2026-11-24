@@ -1,9 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { 
   Bike, 
   BookOpen, 
@@ -12,34 +9,22 @@ import {
   HandHeart, 
   Home, 
   MapPin, 
-  MessageSquare, 
   Package, 
-  Sparkles, 
-  Tag, 
-  User, 
   Zap 
 } from "lucide-react";
-import { 
-  Card, 
-  CardContent, 
-  CardFooter, 
-  CardHeader 
-} from "@/components/ui/card";
+import { Card, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StoredWantedListing } from "@/lib/wanted-data";
 import { getClientDemoSession } from "@/lib/auth";
-import { getOrCreateWantedConversation } from "@/lib/conversations";
 
 interface WantedCardProps {
   wanted: StoredWantedListing;
 }
 
 export function WantedCard({ wanted }: WantedCardProps) {
-  const router = useRouter();
   const currentUser = getClientDemoSession();
-  const [connecting, setConnecting] = useState(false);
 
   const getCategoryIcon = (cat: string) => {
     switch (cat?.toLowerCase()) {
@@ -58,50 +43,8 @@ export function WantedCard({ wanted }: WantedCardProps) {
     }
   };
 
-  const handleProvideThis = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!currentUser) {
-      toast.error("Please sign in to connect with this student requester.");
-      router.push(`/login?redirect=${encodeURIComponent(`/wanted/${wanted.id}`)}`);
-      return;
-    }
-
-    if (wanted.requester_id === currentUser.id) {
-      toast.info("This is your own wanted request!");
-      router.push(`/wanted/${wanted.id}`);
-      return;
-    }
-
-    setConnecting(true);
-    try {
-      const convId = await getOrCreateWantedConversation(
-        wanted.id,
-        currentUser.id,
-        wanted.requester_id,
-        {
-          providerName: currentUser.name,
-          providerEmail: currentUser.email,
-          providerAvatar: currentUser.avatar,
-          requesterName: wanted.requester_name,
-          requesterEmail: wanted.requester_email,
-          requesterAvatar: wanted.requester?.avatar || (wanted as any).requester_avatar,
-          wantedTitle: wanted.title,
-          budgetMax: wanted.budget_max,
-          category: wanted.category,
-        }
-      );
-      toast.success(`Connected with ${wanted.requester_name}! Opening chat...`);
-      router.push(`/messages/${convId}`);
-    } catch (err) {
-      toast.error("Could not open conversation. Please try again.");
-    } finally {
-      setConnecting(false);
-    }
-  };
-
   const isOwner = currentUser ? wanted.requester_id === currentUser.id : false;
+  const createdAt = new Date(wanted.created_at);
 
   return (
     <Card className="group overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all hover:border-primary/40 dark:hover:border-teal-700/60 hover:shadow-md flex flex-col justify-between rounded-xl">
@@ -117,12 +60,12 @@ export function WantedCard({ wanted }: WantedCardProps) {
               <span>{wanted.category}</span>
             </Badge>
 
-            <Badge 
-              variant="secondary"
-              className="bg-teal-50 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60 text-[11px] font-bold uppercase tracking-wider"
-            >
-              Wanted Request
-            </Badge>
+            {wanted.location_label && (
+              <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{wanted.location_label}</span>
+              </span>
+            )}
           </div>
 
           {/* Title */}
@@ -139,7 +82,7 @@ export function WantedCard({ wanted }: WantedCardProps) {
         {/* Budget Ceiling Display */}
         <div className="px-4 py-2.5 bg-slate-50/70 dark:bg-slate-800/40 border-y border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
           <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-            Buyer Budget Ceiling:
+            Maximum budget
           </span>
           <span className="text-base font-extrabold text-slate-900 dark:text-white">
             Up to ₹{wanted.budget_max.toLocaleString("en-IN")}
@@ -161,35 +104,21 @@ export function WantedCard({ wanted }: WantedCardProps) {
             </span>
           </div>
 
-          <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
-            <Clock className="h-3 w-3" />
-            <span>{new Date(wanted.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>
-          </div>
+          {Number.isFinite(createdAt.getTime()) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock aria-hidden="true" className="h-3 w-3" />
+              <time dateTime={createdAt.toISOString()}>{createdAt.toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</time>
+            </div>
+          )}
         </div>
 
         {/* Action Button */}
-        {isOwner ? (
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="w-full text-xs h-8.5 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium"
-          >
-            <Link href={`/wanted/${wanted.id}`}>
-              Manage Your Request
-            </Link>
-          </Button>
-        ) : (
-          <Button
-            onClick={handleProvideThis}
-            disabled={connecting}
-            size="sm"
-            className="w-full text-xs h-8.5 font-semibold bg-primary hover:bg-primary/90 text-white shadow-xs gap-1.5 transition-all active:scale-98"
-          >
-            <HandHeart className="h-3.5 w-3.5" />
-            {connecting ? "Connecting..." : "I Can Provide This"}
-          </Button>
-        )}
+        <Button asChild variant="outline" className="h-10 w-full gap-1.5">
+          <Link href={`/wanted/${wanted.id}${isOwner ? "" : "?offer=1"}`}>
+            {!isOwner && <HandHeart aria-hidden="true" className="h-3.5 w-3.5" />}
+            {isOwner ? "Manage request" : "Make an offer"}
+          </Link>
+        </Button>
       </CardFooter>
     </Card>
   );

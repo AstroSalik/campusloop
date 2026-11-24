@@ -6,6 +6,10 @@ import { purgeExpiredSoldListings } from "@/lib/marketplace-cleanup";
 
 export async function POST(req: NextRequest) {
   try {
+    const sellerId = await getAuthenticatedUserId(req);
+    if (!sellerId) {
+      return NextResponse.json({ error: "Sign in to post a listing." }, { status: 401 });
+    }
     const body = await req.json().catch(() => ({}));
     const listingData = body.listing || body;
 
@@ -41,19 +45,6 @@ export async function POST(req: NextRequest) {
       auth: { persistSession: false },
     });
 
-    // 1. Resolve seller ID
-    let sellerId = listingData.seller_id;
-    if (!sellerId) {
-      sellerId = await getAuthenticatedUserId(req);
-    }
-
-    if (!sellerId) {
-      return NextResponse.json(
-        { error: "Authentication required: Missing seller ID." },
-        { status: 401 }
-      );
-    }
-
     // Verify seller exists in public.users
     const { data: existingUser } = await supabaseAdmin
       .from("users")
@@ -70,7 +61,7 @@ export async function POST(req: NextRequest) {
         await supabaseAdmin.from("users").upsert({
           id: u.id,
           name: u.user_metadata?.full_name || u.user_metadata?.name || listingData.seller_name || "Student Seller",
-          email: u.email || listingData.seller_email || "",
+          email: u.email || "",
           campus_id: fallbackCampus,
         });
       }
@@ -154,7 +145,14 @@ export async function POST(req: NextRequest) {
       insertErr = fallbackResult.error;
     }
 
-    if (insertErr && insertErr.code !== "23505") {
+    if (insertErr?.code === "23505") {
+      const { data: ownedListing, error } = await supabaseAdmin.from("listings")
+        .select("id").eq("id", listingId).eq("seller_id", sellerId).maybeSingle();
+      if (error) throw error;
+      if (!ownedListing) {
+        return NextResponse.json({ error: "This listing could not be created. Try a new listing." }, { status: 409 });
+      }
+    } else if (insertErr) {
       console.error("[marketplace-create] Insert failed:", insertErr);
       return NextResponse.json(
         { error: insertErr.message || "Failed to save listing to database." },
@@ -180,6 +178,7 @@ export async function POST(req: NextRequest) {
       .from("listings")
       .select("*, listing_images(*), users(name, email)")
       .eq("id", listingId)
+      .eq("seller_id", sellerId)
       .maybeSingle();
 
     return NextResponse.json({

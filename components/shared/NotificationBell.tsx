@@ -25,7 +25,7 @@ export interface CampusNotification {
 }
 
 export function NotificationBell() {
-  const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => getClientDemoSession());
+  const [currentUser, setCurrentUser] = useState<DemoUser | null>(null);
   const [notifications, setNotifications] = useState<CampusNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -38,6 +38,7 @@ export function NotificationBell() {
   // Listen for auth changes
   useEffect(() => {
     const handleAuth = () => setCurrentUser(getClientDemoSession());
+    handleAuth();
     window.addEventListener("campusloop_auth_changed", handleAuth);
     return () => window.removeEventListener("campusloop_auth_changed", handleAuth);
   }, []);
@@ -46,7 +47,7 @@ export function NotificationBell() {
   const fetchNotifications = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`/api/notifications?userId=${currentUser.id}`);
+      const res = await fetch("/api/notifications");
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.notifications)) {
@@ -122,7 +123,7 @@ export function NotificationBell() {
         await fetch("/api/notifications", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "mark_read", id, userId: currentUser.id }),
+          body: JSON.stringify({ action: "mark_read", id }),
         });
       } catch {}
     }
@@ -145,7 +146,7 @@ export function NotificationBell() {
         await fetch("/api/notifications", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "mark_all_read", userId: currentUser.id }),
+          body: JSON.stringify({ action: "mark_all_read" }),
         });
       } catch {}
     }

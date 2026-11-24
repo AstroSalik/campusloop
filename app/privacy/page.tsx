@@ -51,7 +51,7 @@ export default function PrivacyPage() {
               Privacy Policy
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              Last updated: August 2026 · Committed to student privacy & data protection
+              Last updated November 24, 2026
             </p>
           </div>
         </div>
@@ -110,6 +110,20 @@ export default function PrivacyPage() {
             <li><strong>Roommate Preferences:</strong> Lifestyle habits (sleep schedule, study environment, cleanliness level, budget ranges) when you choose to publish a roommate profile.</li>
             <li><strong>Messages:</strong> In-app chat messages exchanged between buyers, sellers, and flatmate groups to facilitate transparent communication.</li>
           </ul>
+        </CardContent>
+      </Card>
+
+      <Card id="account-verification" className="scroll-mt-24 border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-bold">Account verification</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+          <p>
+            Aadhaar verification is optional. If you choose it, you enter your details on Setu. CampusLoop reads the provider response to confirm the result and discards the identity details it returns. We keep the result, provider request reference, timestamps and consent version with your account.
+          </p>
+          <p>
+            For campus email verification, Resend delivers a one-time code to the address you enter. CampusLoop stores the campus domain, the result and a protected code digest. We also store a protected digest of the address to limit repeated sends. Campus email confirmation shows access to the inbox.
+          </p>
         </CardContent>
       </Card>
 

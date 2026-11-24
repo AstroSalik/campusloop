@@ -131,7 +131,6 @@ export async function POST(req: NextRequest) {
           phone: resolvedPhone,
           student_id: normalizedStudentId,
           monthly_income: resolvedIncome,
-          verification_status: "unverified",
         },
       });
 
@@ -170,7 +169,6 @@ export async function POST(req: NextRequest) {
             phone: resolvedPhone,
             student_id: normalizedStudentId,
             monthly_income: resolvedIncome,
-            verification_status: "unverified",
           },
           { onConflict: "id" }
         );
@@ -207,7 +205,6 @@ export async function POST(req: NextRequest) {
         phone: resolvedPhone,
         student_id: normalizedStudentId,
         monthly_income: resolvedIncome,
-        verification_status: "unverified",
       },
     });
   } catch (err: any) {

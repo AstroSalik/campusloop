@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { getAuthenticatedUserId } from "@/lib/auth-server";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { id, conversationId, senderId: bodySenderId, content, created_at } = body;
+    const { id, conversationId } = body;
+    const content = typeof body.content === "string" ? body.content.trim() : "";
 
-    if (!id || !conversationId || !content) {
+    if (!id || !conversationId || !content || content.length > 2000) {
       return NextResponse.json(
-        { error: "Missing required fields (id, conversationId, content)" },
+        { error: "Enter a message of up to 2,000 characters." },
         { status: 400 }
       );
     }
@@ -22,8 +23,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Derive sender identity from authenticated session
-    const sessionUserId = await getAuthenticatedUserId(req);
-    const authenticatedSenderId = sessionUserId || bodySenderId;
+    const { data: { user } } = await createServerClient().auth.getUser();
+    const authenticatedSenderId = user?.id;
 
     if (!authenticatedSenderId) {
       return NextResponse.json(
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
       // Graceful fallback if table is not yet migrated
     }
 
-    const timestamp = created_at || new Date().toISOString();
+    const timestamp = new Date().toISOString();
 
     const { error: msgErr } = await supabaseAdmin.from("messages").insert({
       id,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ConversationType } from "@/lib/types";
 
 interface MessageInputProps {
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string) => Promise<void>;
   disabled?: boolean;
   isHousing?: boolean;
   conversationType?: ConversationType | "marketplace";
@@ -17,6 +17,7 @@ interface MessageInputProps {
   isBlockedByOther?: boolean;
   onUnblock?: () => void;
   peerName?: string;
+  initialDraft?: string;
 }
 
 export function MessageInput({ 
@@ -28,9 +29,14 @@ export function MessageInput({
   isBlocked = false,
   isBlockedByOther = false,
   onUnblock,
-  peerName = "this student"
+  peerName = "this student",
+  initialDraft = ""
 }: MessageInputProps) {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(initialDraft);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const pending = useRef(false);
 
   if (isBlocked) {
     return (
@@ -120,15 +126,26 @@ export function MessageInput({
 
   const quickPrompts = getQuickPrompts();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
-    onSendMessage(content.trim());
-    setContent("");
+    if (disabled || pending.current || !content.trim()) return;
+    pending.current = true;
+    setSending(true);
+    setError("");
+    try {
+      await onSendMessage(content.trim());
+      setContent("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Your message could not be sent. Try again.");
+    } finally {
+      pending.current = false;
+      setSending(false);
+    }
   };
 
   const handleQuickPrompt = (prompt: string) => {
-    onSendMessage(prompt);
+    setContent(prompt);
+    inputRef.current?.focus();
   };
 
   return (
@@ -143,6 +160,7 @@ export function MessageInput({
           <button
             key={idx}
             type="button"
+            disabled={disabled || sending}
             onClick={() => handleQuickPrompt(p)}
             className="text-xs shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-slate-700 dark:text-slate-200 hover:bg-primary/10 dark:hover:bg-slate-700 hover:text-primary dark:hover:text-teal-300 transition-colors border border-slate-200/60 dark:border-slate-700 font-medium"
           >
@@ -152,18 +170,22 @@ export function MessageInput({
       </div>
 
       {/* Main Text Input */}
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
         <Input
+          ref={inputRef}
+          aria-label="Message"
+          maxLength={2000}
           placeholder="Type your message... (Press Enter to send)"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          disabled={disabled}
+          disabled={disabled || sending}
           className="h-10 bg-slate-50 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-800"
         />
         <Button
           type="submit"
           size="sm"
-          disabled={disabled || !content.trim()}
+          disabled={disabled || sending || !content.trim()}
           className="h-10 px-4 shrink-0 bg-primary dark:bg-teal-600 hover:dark:bg-teal-500 text-white font-bold shadow-xs"
         >
           <Send className="h-4 w-4" />
